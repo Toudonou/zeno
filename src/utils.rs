@@ -24,7 +24,7 @@ pub struct Piece {
     pub piece_type: PieceType,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Coord {
     pub rank: i8,
     pub file: char,

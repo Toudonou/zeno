@@ -2,7 +2,15 @@ use crate::utils::{Coord, Move, MoveType, Piece, PieceColor, PieceType};
 
 #[derive(Clone)]
 pub struct Position {
-    board: Vec<Piece>,
+    white_board: u64,
+    black_board: u64,
+    pawns_board: u64,
+    knights_board: u64,
+    bishops_board: u64,
+    rooks_board: u64,
+    queens_board: u64,
+    kings_board: u64,
+
     turn: PieceColor,
     number_of_move: u32,
     white_can_castle_kingside: bool,
@@ -13,15 +21,29 @@ pub struct Position {
 
 impl Position {
     pub fn from_fen(fen: &str) -> Position {
-        let mut board = vec![
-            Piece {
-                color: PieceColor::None,
-                piece_type: PieceType::None
-            };
-            8 * 8
-        ];
+        /*
+            Bit Index (square):
+            56 57 58 59 60 61 62 63   ← Rank 8
+            48 49 50 51 52 53 54 55   ← Rank 7
+            40 41 42 43 44 45 46 47   ← Rank 6
+            32 33 34 35 36 37 38 39   ← Rank 5
+            24 25 26 27 28 29 30 31   ← Rank 4
+            16 17 18 19 20 21 22 23   ← Rank 3
+            08 09 10 11 12 13 14 15   ← Rank 2
+            00 01 02 03 04 05 06 07   ← Rank 1
+            ↑
+            File A
+        */
+        let mut board_index: usize = 56;
 
-        let mut board_index: usize = 0;
+        let mut white_board: u64 = 0;
+        let mut black_board: u64 = 0;
+        let mut pawns_board: u64 = 0;
+        let mut knights_board: u64 = 0;
+        let mut bishops_board: u64 = 0;
+        let mut rooks_board: u64 = 0;
+        let mut queens_board: u64 = 0;
+        let mut kings_board: u64 = 0;
 
         let mut parts = fen.split_whitespace();
         let board_part = parts.next().expect("Missing board part");
@@ -33,103 +55,78 @@ impl Position {
 
         for ch in board_part.chars() {
             match ch {
-                '/' => continue,
+                '/' => {
+                    board_index = board_index - 16;
+                    continue;
+                }
 
                 '1'..='8' => {
-                    let skip = ch.to_digit(10).unwrap();
+                    let skip = ch.to_digit(10).unwrap() - 1;
                     board_index += skip as usize;
                 }
 
-                'p' => {
-                    board[board_index] = Piece {
-                        color: PieceColor::Black,
-                        piece_type: PieceType::Pawn,
-                    };
-                    board_index += 1;
-                }
-                'r' => {
-                    board[board_index] = Piece {
-                        color: PieceColor::Black,
-                        piece_type: PieceType::Rook,
-                    };
-                    board_index += 1;
-                }
-                'n' => {
-                    board[board_index] = Piece {
-                        color: PieceColor::Black,
-                        piece_type: PieceType::Knight,
-                    };
-                    board_index += 1;
-                }
-                'b' => {
-                    board[board_index] = Piece {
-                        color: PieceColor::Black,
-                        piece_type: PieceType::Bishop,
-                    };
-                    board_index += 1;
-                }
-                'q' => {
-                    board[board_index] = Piece {
-                        color: PieceColor::Black,
-                        piece_type: PieceType::Queen,
-                    };
-                    board_index += 1;
-                }
-                'k' => {
-                    board[board_index] = Piece {
-                        color: PieceColor::Black,
-                        piece_type: PieceType::King,
-                    };
-                    board_index += 1;
+                'P' | 'p' => {
+                    pawns_board |= 1 << board_index;
+                    if ch == 'P' {
+                        white_board |= 1 << board_index;
+                    } else {
+                        black_board |= 1 << board_index;
+                    }
                 }
 
-                'P' => {
-                    board[board_index] = Piece {
-                        color: PieceColor::White,
-                        piece_type: PieceType::Pawn,
-                    };
-                    board_index += 1;
+                'N' | 'n' => {
+                    knights_board |= 1 << board_index;
+                    if ch == 'N' {
+                        white_board |= 1 << board_index;
+                    } else {
+                        black_board |= 1 << board_index;
+                    }
                 }
-                'R' => {
-                    board[board_index] = Piece {
-                        color: PieceColor::White,
-                        piece_type: PieceType::Rook,
-                    };
-                    board_index += 1;
+
+                'B' | 'b' => {
+                    bishops_board |= 1 << board_index;
+                    if ch == 'B' {
+                        white_board |= 1 << board_index;
+                    } else {
+                        black_board |= 1 << board_index;
+                    }
                 }
-                'N' => {
-                    board[board_index] = Piece {
-                        color: PieceColor::White,
-                        piece_type: PieceType::Knight,
-                    };
-                    board_index += 1;
+
+                'R' | 'r' => {
+                    rooks_board |= 1 << board_index;
+                    if ch == 'R' {
+                        white_board |= 1 << board_index;
+                    } else {
+                        black_board |= 1 << board_index;
+                    }
                 }
-                'B' => {
-                    board[board_index] = Piece {
-                        color: PieceColor::White,
-                        piece_type: PieceType::Bishop,
-                    };
-                    board_index += 1;
+
+                'Q' | 'q' => {
+                    queens_board |= 1 << board_index;
+                    if ch == 'Q' {
+                        white_board |= 1 << board_index;
+                    } else {
+                        black_board |= 1 << board_index;
+                    }
                 }
-                'Q' => {
-                    board[board_index] = Piece {
-                        color: PieceColor::White,
-                        piece_type: PieceType::Queen,
-                    };
-                    board_index += 1;
-                }
-                'K' => {
-                    board[board_index] = Piece {
-                        color: PieceColor::White,
-                        piece_type: PieceType::King,
-                    };
-                    board_index += 1;
+
+                'K' | 'k' => {
+                    kings_board |= 1 << board_index;
+                    if ch == 'K' {
+                        white_board |= 1 << board_index;
+                    } else {
+                        black_board |= 1 << board_index;
+                    }
                 }
 
                 ' ' => break, // End of board part in FEN
                 _ => panic!("Invalid character in FEN: {}", ch),
             }
+
+            board_index = board_index + 1;
         }
+
+        println!("\nmsbsbsdsddsfdfs = {board_index}\n");
 
         let turn = match turn_part {
             "w" => PieceColor::White,
@@ -155,7 +152,14 @@ impl Position {
         }
 
         Position {
-            board,
+            white_board,
+            black_board,
+            pawns_board,
+            knights_board,
+            bishops_board,
+            rooks_board,
+            queens_board,
+            kings_board,
             turn,
             number_of_move: number_of_moves_move_part.parse().unwrap(),
             white_can_castle_kingside,
@@ -377,7 +381,11 @@ impl Position {
         if (1 <= coord.rank && coord.rank <= 8) && ('a' <= coord.file && coord.file <= 'h') {
             let i = 8 - coord.rank;
             let j = coord.file as u8 - 'a' as u8;
-            return self.board[(8 * i as u8 + j) as usize].clone();
+            return Piece {
+                color: PieceColor::Black,
+                piece_type: PieceType::Knight,
+            }
+            .clone();
         }
 
         Piece {
@@ -407,7 +415,7 @@ impl Position {
         if (1 <= coord.rank && coord.rank <= 8) && ('a' <= coord.file && coord.file <= 'h') {
             let i = 8 - coord.rank;
             let j = coord.file as u8 - 'a' as u8;
-            self.board[(8 * i as u8 + j) as usize] = piece.clone();
+            // self.board[(8 * i as u8 + j) as usize] = piece.clone();
         }
     }
 
@@ -496,8 +504,14 @@ impl Position {
         }
     }
 
-    fn piece_to_unicode(&self, piece: Piece) -> char {
-        match (piece.color, piece.piece_type) {
+    fn piece_to_unicode(&self, index: &u64, piece_type: &PieceType) -> char {
+        let color = if (self.white_board >> index) & 1 != 0 {
+            PieceColor::White
+        } else {
+            PieceColor::Black
+        };
+
+        match (color, piece_type) {
             (PieceColor::White, PieceType::Pawn) => '♙',
             (PieceColor::White, PieceType::Knight) => '♘',
             (PieceColor::White, PieceType::Bishop) => '♗',
@@ -517,15 +531,29 @@ impl Position {
     }
 
     pub fn print_board(&self) {
-        println!();
-        for rank in (1..=8).rev() {
-            print!("{} ", rank);
-            for file in 'a'..='h' {
-                let piece = self.get_piece_on_square(&Coord { rank, file });
-                print!("{} ", self.piece_to_unicode(piece));
+        println!("Bitboard:");
+        for rank in (0..=7).rev() {
+            print!("{}  ", rank + 1);
+            for file in 0..=7 {
+                let index = rank * 8 + file;
+                if (self.pawns_board >> index) & 1 != 0 {
+                    print!("{} ", self.piece_to_unicode(&index, &PieceType::Pawn));
+                } else if (self.knights_board >> index) & 1 != 0 {
+                    print!("{} ", self.piece_to_unicode(&index, &PieceType::Knight));
+                } else if (self.bishops_board >> index) & 1 != 0 {
+                    print!("{} ", self.piece_to_unicode(&index, &PieceType::Bishop));
+                } else if (self.rooks_board >> index) & 1 != 0 {
+                    print!("{} ", self.piece_to_unicode(&index, &PieceType::Rook));
+                } else if (self.queens_board >> index) & 1 != 0 {
+                    print!("{} ", self.piece_to_unicode(&index, &PieceType::Queen));
+                } else if (self.kings_board >> index) & 1 != 0 {
+                    print!("{} ", self.piece_to_unicode(&index, &PieceType::King));
+                } else {
+                    print!(". ");
+                }
             }
             println!();
         }
-        println!("  a b c d e f g h\n");
+        println!("\n   A B C D E F G H\n");
     }
 }
