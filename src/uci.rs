@@ -62,12 +62,12 @@ fn uci_commands() {
     println!("uciok\n");
 }
 
-fn uci_make_move(command: &str, position: &mut Position) {
-    if command.starts_with("move") {
-        let moves = command[5usize..].split_whitespace();
+pub fn uci_make_move(command: &str, position: &mut Position) {
+    // if command.starts_with("") {
+        let moves = command.split_whitespace();
 
         moves.for_each(|move_string| position.make_move(&uci_move(move_string, position)))
-    }
+    // }
 }
 
 fn uci_position(command: &str, position: &mut Position) {

@@ -1,4 +1,30 @@
-use crate::utils::{Coord, Move, MoveType, Piece, PieceColor, PieceType};
+use crate::utils::{
+    ANTI_DIAGONAL, Coord, DIAGONAL, FILE_A, Move, Piece, PieceColor, PieceType, RANK_1,
+};
+use crate::{attacks_table, lookup_tables, utils};
+/*
+    Directions and shifts
+    +-----+-----+-----+
+    | << 7| << 8| << 9|
+    +-----+-----+-----+
+    | >> 1|  0  | << 1|
+    +-----+-----+-----+
+    | >> 9| >> 8| >> 7|
+    +-----+-----+-----+
+
+
+     Bit Index (square):
+     56 57 58 59 60 61 62 63   ← Rank 8
+     48 49 50 51 52 53 54 55   ← Rank 7
+     40 41 42 43 44 45 46 47   ← Rank 6
+     32 33 34 35 36 37 38 39   ← Rank 5
+     24 25 26 27 28 29 30 31   ← Rank 4
+     16 17 18 19 20 21 22 23   ← Rank 3
+     08 09 10 11 12 13 14 15   ← Rank 2
+     00 01 02 03 04 05 06 07   ← Rank 1
+     ↑
+     File A
+*/
 
 #[derive(Clone)]
 pub struct Position {
@@ -21,19 +47,6 @@ pub struct Position {
 
 impl Position {
     pub fn from_fen(fen: &str) -> Position {
-        /*
-            Bit Index (square):
-            56 57 58 59 60 61 62 63   ← Rank 8
-            48 49 50 51 52 53 54 55   ← Rank 7
-            40 41 42 43 44 45 46 47   ← Rank 6
-            32 33 34 35 36 37 38 39   ← Rank 5
-            24 25 26 27 28 29 30 31   ← Rank 4
-            16 17 18 19 20 21 22 23   ← Rank 3
-            08 09 10 11 12 13 14 15   ← Rank 2
-            00 01 02 03 04 05 06 07   ← Rank 1
-            ↑
-            File A
-        */
         let mut board_index: usize = 56;
 
         let mut white_board: u64 = 0;
@@ -66,56 +79,56 @@ impl Position {
                 }
 
                 'P' | 'p' => {
-                    pawns_board |= 1 << board_index;
+                    pawns_board |= 1u64 << board_index;
                     if ch == 'P' {
-                        white_board |= 1 << board_index;
+                        white_board |= 1u64 << board_index;
                     } else {
-                        black_board |= 1 << board_index;
+                        black_board |= 1u64 << board_index;
                     }
                 }
 
                 'N' | 'n' => {
-                    knights_board |= 1 << board_index;
+                    knights_board |= 1u64 << board_index;
                     if ch == 'N' {
-                        white_board |= 1 << board_index;
+                        white_board |= 1u64 << board_index;
                     } else {
-                        black_board |= 1 << board_index;
+                        black_board |= 1u64 << board_index;
                     }
                 }
 
                 'B' | 'b' => {
-                    bishops_board |= 1 << board_index;
+                    bishops_board |= 1u64 << board_index;
                     if ch == 'B' {
-                        white_board |= 1 << board_index;
+                        white_board |= 1u64 << board_index;
                     } else {
-                        black_board |= 1 << board_index;
+                        black_board |= 1u64 << board_index;
                     }
                 }
 
                 'R' | 'r' => {
-                    rooks_board |= 1 << board_index;
+                    rooks_board |= 1u64 << board_index;
                     if ch == 'R' {
-                        white_board |= 1 << board_index;
+                        white_board |= 1u64 << board_index;
                     } else {
-                        black_board |= 1 << board_index;
+                        black_board |= 1u64 << board_index;
                     }
                 }
 
                 'Q' | 'q' => {
-                    queens_board |= 1 << board_index;
+                    queens_board |= 1u64 << board_index;
                     if ch == 'Q' {
-                        white_board |= 1 << board_index;
+                        white_board |= 1u64 << board_index;
                     } else {
-                        black_board |= 1 << board_index;
+                        black_board |= 1u64 << board_index;
                     }
                 }
 
                 'K' | 'k' => {
-                    kings_board |= 1 << board_index;
+                    kings_board |= 1u64 << board_index;
                     if ch == 'K' {
-                        white_board |= 1 << board_index;
+                        white_board |= 1u64 << board_index;
                     } else {
-                        black_board |= 1 << board_index;
+                        black_board |= 1u64 << board_index;
                     }
                 }
 
@@ -125,8 +138,6 @@ impl Position {
 
             board_index = board_index + 1;
         }
-
-        println!("\nmsbsbsdsddsfdfs = {board_index}\n");
 
         let turn = match turn_part {
             "w" => PieceColor::White,
@@ -169,192 +180,320 @@ impl Position {
         }
     }
 
+    pub fn is_legal_move(&self, mov: &Move) -> bool {
+        // TODO: Pawn moves
+        // TODO: Castling and promotions moves
+
+        let source_piece = self.get_piece_on_square(&mov.source);
+        let destination_piece = self.get_piece_on_square(&mov.destination);
+
+        // The piece involve in the attack must be well-defined
+        if source_piece.piece_type == PieceType::None {
+            return false;
+        }
+        // The attacker must have a well-defined color and must be the one that has to play
+        if source_piece.color == PieceColor::None || source_piece.color != self.turn {
+            return false;
+        }
+        // The destination square could not have the same color as the attacker
+        if destination_piece.color == source_piece.color {
+            return false;
+        }
+
+        let mut attacks_squares: u64 = match source_piece.piece_type {
+            PieceType::None => 0,
+            PieceType::Pawn => attacks_table::knight_attacks_table(&mov.source),
+            PieceType::Knight => self.generate_move_mask_for_knight(&mov.source),
+            PieceType::Bishop => self.generate_move_mask_for_bishop(&mov.source),
+            PieceType::Rook => self.generate_move_mask_for_rook(&mov.source),
+            PieceType::Queen => {
+                self.generate_move_mask_for_rook(&mov.source)
+                    | self.generate_move_mask_for_bishop(&mov.source)
+            }
+            PieceType::King => attacks_table::king_attacks_table(&mov.source),
+        };
+
+        for rank in (1..=8).rev() {
+            print!("{} ", rank);
+            for file in 'a'..='h' {
+                let r = rank - 1;
+                let f = (file as u8 - 'a' as u8) as i8;
+                let index = r * 8 + f as i8;
+                print!("{} ", (attacks_squares >> index) & 1);
+            }
+            println!();
+        }
+        println!("\n  a b c d e f g h\n");
+
+        // Avoid your own pieces in the attack
+        attacks_squares = match self.turn {
+            PieceColor::None => attacks_squares,
+            PieceColor::White => attacks_squares & !self.white_board,
+            PieceColor::Black => attacks_squares & !self.black_board,
+        };
+
+        // The destination square must appear as one the square that the attacker piece can reach
+        let r = mov.destination.rank - 1;
+        let f = mov.destination.file as u8 - 'a' as u8;
+        let destination_index = r * 8 + f as i8;
+        if (attacks_squares >> destination_index) & 1 == 0 {
+            return false;
+        }
+
+        true
+    }
+
     pub fn make_move(&mut self, mov: &Move) {
         if !self.is_legal_move(&mov) {
+            println!("Illegal move {:?}", mov);
             return;
         }
 
-        match mov.move_type {
-            MoveType::Normal => {
-                let piece = self.get_piece_on_square(&mov.source);
-                self.set_piece_on_square(&piece, &mov.destination);
-            }
-            MoveType::ShortCastle => match self.turn {
-                PieceColor::None => {}
-                PieceColor::White => {
-                    self.white_can_castle_kingside = false;
-                    self.set_piece_on_square(
-                        &Piece {
-                            color: PieceColor::None,
-                            piece_type: PieceType::None,
-                        },
-                        &Coord { rank: 1, file: 'e' },
-                    );
-                    self.set_piece_on_square(
-                        &Piece {
-                            color: PieceColor::None,
-                            piece_type: PieceType::None,
-                        },
-                        &Coord { rank: 1, file: 'h' },
-                    );
+        let source_piece = self.get_piece_on_square(&mov.source);
+        let destination_piece = self.get_piece_on_square(&mov.destination);
 
-                    self.set_piece_on_square(
-                        &Piece {
-                            color: PieceColor::White,
-                            piece_type: PieceType::King,
-                        },
-                        &Coord { rank: 1, file: 'g' },
-                    );
-                    self.set_piece_on_square(
-                        &Piece {
-                            color: PieceColor::White,
-                            piece_type: PieceType::Rook,
-                        },
-                        &Coord { rank: 1, file: 'f' },
-                    );
-                }
-                PieceColor::Black => {
-                    self.black_can_castle_kingside = false;
-                    self.set_piece_on_square(
-                        &Piece {
-                            color: PieceColor::None,
-                            piece_type: PieceType::None,
-                        },
-                        &Coord { rank: 8, file: 'e' },
-                    );
-                    self.set_piece_on_square(
-                        &Piece {
-                            color: PieceColor::None,
-                            piece_type: PieceType::None,
-                        },
-                        &Coord { rank: 8, file: 'h' },
-                    );
+        let source_index = (mov.source.rank - 1) * 8 + (mov.source.file as u8 - 'a' as u8) as i8;
+        let destination_index =
+            (mov.destination.rank - 1) * 8 + (mov.destination.file as u8 - 'a' as u8) as i8;
 
-                    self.set_piece_on_square(
-                        &Piece {
-                            color: PieceColor::Black,
-                            piece_type: PieceType::King,
-                        },
-                        &Coord { rank: 8, file: 'g' },
-                    );
-                    self.set_piece_on_square(
-                        &Piece {
-                            color: PieceColor::Black,
-                            piece_type: PieceType::Rook,
-                        },
-                        &Coord { rank: 8, file: 'f' },
-                    );
-                }
-            },
-            MoveType::LongCastle => match self.turn {
-                PieceColor::None => {}
-                PieceColor::White => {
-                    self.white_can_castle_queenside = false;
-                    self.set_piece_on_square(
-                        &Piece {
-                            color: PieceColor::None,
-                            piece_type: PieceType::None,
-                        },
-                        &Coord { rank: 1, file: 'e' },
-                    );
-                    self.set_piece_on_square(
-                        &Piece {
-                            color: PieceColor::None,
-                            piece_type: PieceType::None,
-                        },
-                        &Coord { rank: 1, file: 'a' },
-                    );
-
-                    self.set_piece_on_square(
-                        &Piece {
-                            color: PieceColor::White,
-                            piece_type: PieceType::King,
-                        },
-                        &Coord { rank: 1, file: 'c' },
-                    );
-                    self.set_piece_on_square(
-                        &Piece {
-                            color: PieceColor::White,
-                            piece_type: PieceType::Rook,
-                        },
-                        &Coord { rank: 1, file: 'd' },
-                    );
-                }
-                PieceColor::Black => {
-                    self.black_can_castle_queenside = false;
-                    self.set_piece_on_square(
-                        &Piece {
-                            color: PieceColor::None,
-                            piece_type: PieceType::None,
-                        },
-                        &Coord { rank: 8, file: 'e' },
-                    );
-                    self.set_piece_on_square(
-                        &Piece {
-                            color: PieceColor::None,
-                            piece_type: PieceType::None,
-                        },
-                        &Coord { rank: 8, file: 'a' },
-                    );
-
-                    self.set_piece_on_square(
-                        &Piece {
-                            color: PieceColor::Black,
-                            piece_type: PieceType::King,
-                        },
-                        &Coord { rank: 8, file: 'c' },
-                    );
-                    self.set_piece_on_square(
-                        &Piece {
-                            color: PieceColor::Black,
-                            piece_type: PieceType::Rook,
-                        },
-                        &Coord { rank: 8, file: 'd' },
-                    );
-                }
-            },
-            MoveType::PawnToKnight => self.set_piece_on_square(
-                &Piece {
-                    color: self.turn.clone(),
-                    piece_type: PieceType::Knight,
-                },
-                &mov.destination,
-            ),
-            MoveType::PawnToBishop => self.set_piece_on_square(
-                &Piece {
-                    color: self.turn.clone(),
-                    piece_type: PieceType::Bishop,
-                },
-                &mov.destination,
-            ),
-            MoveType::PawnToRook => self.set_piece_on_square(
-                &Piece {
-                    color: self.turn.clone(),
-                    piece_type: PieceType::Rook,
-                },
-                &mov.destination,
-            ),
-            MoveType::PawnToQueen => self.set_piece_on_square(
-                &Piece {
-                    color: self.turn.clone(),
-                    piece_type: PieceType::Queen,
-                },
-                &mov.destination,
-            ),
+        // Putting 0 at the index of the destination
+        match destination_piece.piece_type {
+            PieceType::None => {}
+            PieceType::Pawn => self.pawns_board &= !(1u64 << destination_index),
+            PieceType::Knight => self.knights_board &= !(1u64 << destination_index),
+            PieceType::Bishop => self.bishops_board &= !(1u64 << destination_index),
+            PieceType::Rook => self.rooks_board &= !(1u64 << destination_index),
+            PieceType::Queen => self.queens_board &= !(1u64 << destination_index),
+            PieceType::King => self.kings_board &= !(1u64 << destination_index),
         }
 
-        self.set_piece_on_square(
-            &Piece {
-                color: PieceColor::None,
-                piece_type: PieceType::None,
-            },
-            &mov.source,
-        );
+        // Putting 0 at the index of the source
+        // And moving the piece at the destination
+        match source_piece.piece_type {
+            PieceType::None => {}
+            PieceType::Pawn => {
+                self.pawns_board &= !(1u64 << source_index);
+                self.pawns_board |= 1u64 << destination_index;
+            }
+            PieceType::Knight => {
+                self.knights_board &= !(1u64 << source_index);
+                self.knights_board |= 1u64 << destination_index;
+            }
+            PieceType::Bishop => {
+                self.bishops_board &= !(1u64 << source_index);
+                self.bishops_board |= 1u64 << destination_index;
+            }
+            PieceType::Rook => {
+                self.rooks_board &= !(1u64 << source_index);
+                self.rooks_board |= 1u64 << destination_index;
+            }
+            PieceType::Queen => {
+                self.queens_board &= !(1u64 << source_index);
+                self.queens_board |= 1u64 << destination_index;
+            }
+            PieceType::King => {
+                self.kings_board &= !(1u64 << source_index);
+                self.kings_board |= 1u64 << destination_index;
+            }
+        }
+
+        match source_piece.color {
+            PieceColor::None => {}
+            PieceColor::White => {
+                self.white_board &= !(1u64 << source_index);
+                self.white_board |= 1u64 << destination_index;
+
+                self.black_board &= !(1u64 << destination_index);
+            }
+            PieceColor::Black => {
+                self.black_board &= !(1u64 << source_index);
+                self.black_board |= 1u64 << destination_index;
+
+                self.white_board &= !(1u64 << destination_index);
+            }
+        };
+
         match self.turn {
             PieceColor::None => {}
             PieceColor::White => self.turn = PieceColor::Black,
             PieceColor::Black => self.turn = PieceColor::White,
         }
+    }
+
+    // Move generator section
+
+    // Rook's moves mask
+    fn generate_move_mask_for_rook(&self, source: &Coord) -> u64 {
+        let mut rank_mask = self.white_board | self.black_board;
+        rank_mask >>= (source.rank - 1) * 8; // Move the rank to the first one
+        rank_mask &= RANK_1.clone(); // Remove everything that is not on the first rank
+        rank_mask &= !(1 << (source.file as u8 - 'a' as u8));
+
+        let mut rank_attacks = *lookup_tables::ROOK_RANK_MASK
+            [(source.file as u8 - 'a' as u8) as usize]
+            .get(&rank_mask)
+            .unwrap();
+        rank_attacks <<= (source.rank - 1) * 8; // Move the rank back to its original position
+
+        let mut file_mask = self.white_board | self.black_board;
+        file_mask = file_mask >> (source.file as u8 - 'a' as u8); // Move toward the FILE_A
+        file_mask &= FILE_A.clone(); // Remove everything that is not on the FILE_A
+
+        // Make a 90° anti-clock-wise rotation
+        let mut file_to_rank: u64 = lookup_tables::FILE_TO_RANK[&file_mask];
+
+        file_to_rank &= !(1 << (source.rank - 1));
+
+        let file_rank_attack_mask = *lookup_tables::ROOK_RANK_MASK[(source.rank - 1) as usize]
+            .get(&file_to_rank)
+            .unwrap();
+
+        // Compute the final disposition for the file
+        let mut file_attacks = lookup_tables::RANK_TO_FILE[&file_rank_attack_mask];
+        file_attacks = file_attacks << (source.file as u8 - 'a' as u8); // Move the file back to its original position
+
+        rank_attacks | file_attacks
+    }
+
+    // Bishop's moves mask
+    fn generate_move_mask_for_bishop(&self, source: &Coord) -> u64 {
+        // The file that contains the anti-diagonal for each rank
+        // That allows us to know in which direction we will have to move to be on the anti-diagonal
+        let anti_diagonal_reference = vec!['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+        let mut anti_diagonal_mask = self.white_board | self.black_board;
+        let anti_diag_file = anti_diagonal_reference[(source.rank - 1) as usize];
+
+        let distance_to_anti_diag: i8 = (source.file as u8 - anti_diag_file as u8) as i8;
+        if distance_to_anti_diag < 0 {
+            anti_diagonal_mask <<= (-1 * distance_to_anti_diag); // Move to the right
+        } else if distance_to_anti_diag > 0 {
+            anti_diagonal_mask >>= distance_to_anti_diag; // Move to the left
+        }
+
+        anti_diagonal_mask &= ANTI_DIAGONAL.clone();
+
+        let mut anti_diag_to_rank: u64 = ((anti_diagonal_mask >> 0 & 1) << 0)
+            | ((anti_diagonal_mask >> 9 & 1) << 1)
+            | ((anti_diagonal_mask >> 18 & 1) << 2)
+            | ((anti_diagonal_mask >> 27 & 1) << 3)
+            | ((anti_diagonal_mask >> 36 & 1) << 4)
+            | ((anti_diagonal_mask >> 45 & 1) << 5)
+            | ((anti_diagonal_mask >> 54 & 1) << 6)
+            | ((anti_diagonal_mask >> 63 & 1) << 7);
+
+        anti_diag_to_rank &= !(1 << (source.rank - 1));
+
+        let anti_diag_rank_attack_mask = *lookup_tables::ROOK_RANK_MASK[(source.rank - 1) as usize]
+            .get(&anti_diag_to_rank)
+            .unwrap();
+
+        let mut anti_diag_attacks: u64 = ((anti_diag_rank_attack_mask >> 0 & 1) << 0)
+            | ((anti_diag_rank_attack_mask >> 1 & 1) << 9)
+            | ((anti_diag_rank_attack_mask >> 2 & 1) << 18)
+            | ((anti_diag_rank_attack_mask >> 3 & 1) << 27)
+            | ((anti_diag_rank_attack_mask >> 4 & 1) << 36)
+            | ((anti_diag_rank_attack_mask >> 5 & 1) << 45)
+            | ((anti_diag_rank_attack_mask >> 6 & 1) << 54)
+            | ((anti_diag_rank_attack_mask >> 7 & 1) << 63);
+
+        // Re-position the anti-diagonal attacks
+        if distance_to_anti_diag < 0 {
+            anti_diag_attacks >>= (-1 * distance_to_anti_diag); // Move to the left
+        } else if distance_to_anti_diag > 0 {
+            anti_diag_attacks <<= distance_to_anti_diag; // Move to the right
+        }
+
+        // Applying the anti-diagonal mask
+        // Anti-diag index in the lookup table: file - a + 8 - rank (for the upper diagonal)
+        let anti_diag_mask = if distance_to_anti_diag < 0 {
+            lookup_tables::ANTI_DIAG_MASK
+                [(source.file as u8 - 'a' as u8) as usize + 8 - source.rank as usize]
+        } else if distance_to_anti_diag > 0 {
+            let index = (source.file as u8 - 'a' as u8) as usize + source.rank as usize;
+            let mut temp_mask = lookup_tables::ANTI_DIAG_MASK[index];
+            temp_mask >>= (7 - index) * 8; // 7 - index times to the bottom
+            temp_mask <<= 7 - index; // 7 - index times to the right
+            temp_mask
+        } else {
+            // The anti-diag itself
+            lookup_tables::ANTI_DIAG_MASK[7]
+        };
+        anti_diag_attacks &= anti_diag_mask;
+
+        // The same thing wil be done for the DIAGONAL
+
+        // The file that contains the diagonal for each rank
+        // That allows us to know in which direction we will have to move to be on the diagonal
+        let diagonal_reference = vec!['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+        let mut diagonal_mask = self.white_board | self.black_board;
+        let diag_file = diagonal_reference[(8 - source.rank) as usize];
+
+        let distance_to_diag: i8 = (source.file as u8 - diag_file as u8) as i8;
+        if distance_to_diag < 0 {
+            diagonal_mask <<= (-1 * distance_to_diag); // Move to the right
+        } else if distance_to_diag > 0 {
+            diagonal_mask >>= distance_to_diag; // Move to the left
+        }
+
+        diagonal_mask &= DIAGONAL.clone();
+
+        let mut diag_to_rank: u64 = ((diagonal_mask >> 7 & 1) << 7)
+            | ((diagonal_mask >> 14 & 1) << 6)
+            | ((diagonal_mask >> 21 & 1) << 5)
+            | ((diagonal_mask >> 28 & 1) << 4)
+            | ((diagonal_mask >> 35 & 1) << 3)
+            | ((diagonal_mask >> 42 & 1) << 2)
+            | ((diagonal_mask >> 49 & 1) << 1)
+            | ((diagonal_mask >> 56 & 1) << 0);
+
+        diag_to_rank &= !(1 << (8 - source.rank));
+
+        let diag_rank_attack_mask = *lookup_tables::ROOK_RANK_MASK[(8 - source.rank) as usize]
+            .get(&diag_to_rank)
+            .unwrap();
+
+        let mut diag_attacks: u64 = ((diag_rank_attack_mask >> 0 & 56) << 7)
+            | ((diag_rank_attack_mask >> 1 & 1) << 49)
+            | ((diag_rank_attack_mask >> 2 & 1) << 42)
+            | ((diag_rank_attack_mask >> 3 & 1) << 35)
+            | ((diag_rank_attack_mask >> 4 & 1) << 28)
+            | ((diag_rank_attack_mask >> 5 & 1) << 21)
+            | ((diag_rank_attack_mask >> 6 & 1) << 14)
+            | ((diag_rank_attack_mask >> 7 & 1) << 7);
+
+        // Re-position the diagonal attacks
+        if distance_to_diag < 0 {
+            diag_attacks >>= (-1 * distance_to_diag); // Move to the left
+        } else if distance_to_diag > 0 {
+            diag_attacks <<= distance_to_diag; // Move to the right
+        }
+
+        // Applying the diagonal mask
+        // Diag index in the lookup table: file - a + rank - 1 (for the upper diagonal)
+        let diag_mask = if distance_to_diag < 0 {
+            lookup_tables::DIAG_MASK
+                [(source.file as u8 - 'a' as u8) as usize + source.rank as usize - 1]
+        } else if distance_to_diag > 0 {
+            let index = (source.file as u8 - 'a' as u8) as usize + source.rank as usize - 1;
+            let mut temp_mask = lookup_tables::DIAG_MASK[index];
+            temp_mask >>= (7 - index) * 8; // 7 - index times to the bottom
+            temp_mask >>= 7 - index; // 7 - index times to the left
+            temp_mask
+        } else {
+            // The diag itself
+            lookup_tables::ANTI_DIAG_MASK[7]
+        };
+        diag_attacks &= diag_mask;
+
+        anti_diag_attacks | diag_attacks
+    }
+
+    // Knight's moves mask
+    fn generate_move_mask_for_knight(&self, source: &Coord) -> u64 {
+        let r = source.rank - 1;
+        let f = (source.file as u8 - 'a' as u8) as i8;
+        let index = r * 8 + f;
+        lookup_tables::KNIGHT_MASK[index as usize]
     }
 
     pub fn get_available_pieces_for_move(&self, color: &PieceColor) -> Vec<(Piece, Coord)> {
@@ -378,20 +517,34 @@ impl Position {
     }
 
     pub fn get_piece_on_square(&self, coord: &Coord) -> Piece {
-        if (1 <= coord.rank && coord.rank <= 8) && ('a' <= coord.file && coord.file <= 'h') {
-            let i = 8 - coord.rank;
-            let j = coord.file as u8 - 'a' as u8;
-            return Piece {
-                color: PieceColor::Black,
-                piece_type: PieceType::Knight,
-            }
-            .clone();
-        }
+        let r = coord.rank - 1;
+        let f = coord.file as u8 - 'a' as u8;
+        let index = r * 8 + f as i8;
+        let color = if (self.white_board >> index) & 1 != 0 {
+            PieceColor::White
+        } else if (self.black_board >> index) & 1 != 0 {
+            PieceColor::Black
+        } else {
+            PieceColor::None
+        };
 
-        Piece {
-            color: PieceColor::None,
-            piece_type: PieceType::None,
-        }
+        let piece_type = if (self.pawns_board >> index) & 1 != 0 {
+            PieceType::Pawn
+        } else if (self.knights_board >> index) & 1 != 0 {
+            PieceType::Knight
+        } else if (self.bishops_board >> index) & 1 != 0 {
+            PieceType::Bishop
+        } else if (self.rooks_board >> index) & 1 != 0 {
+            PieceType::Rook
+        } else if (self.queens_board >> index) & 1 != 0 {
+            PieceType::Queen
+        } else if (self.kings_board >> index) & 1 != 0 {
+            PieceType::King
+        } else {
+            PieceType::None
+        };
+
+        Piece { color, piece_type }
     }
 
     pub fn get_king_coord(&self, color: &PieceColor) -> Coord {
@@ -419,20 +572,8 @@ impl Position {
         }
     }
 
-    pub fn is_legal_move(&self, mov: &Move) -> bool {
-        if !(1 <= mov.source.rank && mov.source.rank <= 8)
-            || !('a' <= mov.source.file && mov.source.file <= 'h')
-        {
-            return false;
-        }
-
-        if !(1 <= mov.destination.rank && mov.destination.rank <= 8)
-            || !('a' <= mov.destination.file && mov.destination.file <= 'h')
-        {
-            return false;
-        }
-
-        true
+    pub fn get_board(&self) -> u64 {
+        self.white_board | self.black_board
     }
 
     // TODO: Verify that the move do not put the king in check
@@ -504,14 +645,8 @@ impl Position {
         }
     }
 
-    fn piece_to_unicode(&self, index: &u64, piece_type: &PieceType) -> char {
-        let color = if (self.white_board >> index) & 1 != 0 {
-            PieceColor::White
-        } else {
-            PieceColor::Black
-        };
-
-        match (color, piece_type) {
+    fn piece_to_unicode(&self, piece: &Piece) -> char {
+        match (piece.color.clone(), piece.piece_type.clone()) {
             (PieceColor::White, PieceType::Pawn) => '♙',
             (PieceColor::White, PieceType::Knight) => '♘',
             (PieceColor::White, PieceType::Bishop) => '♗',
@@ -531,29 +666,16 @@ impl Position {
     }
 
     pub fn print_board(&self) {
-        println!("Bitboard:");
-        for rank in (0..=7).rev() {
-            print!("{}  ", rank + 1);
-            for file in 0..=7 {
-                let index = rank * 8 + file;
-                if (self.pawns_board >> index) & 1 != 0 {
-                    print!("{} ", self.piece_to_unicode(&index, &PieceType::Pawn));
-                } else if (self.knights_board >> index) & 1 != 0 {
-                    print!("{} ", self.piece_to_unicode(&index, &PieceType::Knight));
-                } else if (self.bishops_board >> index) & 1 != 0 {
-                    print!("{} ", self.piece_to_unicode(&index, &PieceType::Bishop));
-                } else if (self.rooks_board >> index) & 1 != 0 {
-                    print!("{} ", self.piece_to_unicode(&index, &PieceType::Rook));
-                } else if (self.queens_board >> index) & 1 != 0 {
-                    print!("{} ", self.piece_to_unicode(&index, &PieceType::Queen));
-                } else if (self.kings_board >> index) & 1 != 0 {
-                    print!("{} ", self.piece_to_unicode(&index, &PieceType::King));
-                } else {
-                    print!(". ");
-                }
+        for rank in (1..=8).rev() {
+            print!("{} ", rank);
+            for file in 'a'..='h' {
+                print!(
+                    "{} ",
+                    self.piece_to_unicode(&self.get_piece_on_square(&Coord { rank, file }))
+                );
             }
             println!();
         }
-        println!("\n   A B C D E F G H\n");
+        println!("\n  a b c d e f g h\n");
     }
 }
