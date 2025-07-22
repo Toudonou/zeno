@@ -1,7 +1,7 @@
+use crate::lookup_tables;
 use crate::utils::{
-    ANTI_DIAGONAL, Coord, DIAGONAL, FILE_A, Move, Piece, PieceColor, PieceType, RANK_1,
+    ANTI_DIAGONAL, Coord, DIAGONAL, FILE_A, Move, MoveType, Piece, PieceColor, PieceType, RANK_1,
 };
-use crate::{attacks_table, lookup_tables, utils};
 /*
     Directions and shifts
     +-----+-----+-----+
@@ -39,10 +39,13 @@ pub struct Position {
 
     turn: PieceColor,
     number_of_move: u32,
-    white_can_castle_kingside: bool,
-    white_can_castle_queenside: bool,
-    black_can_castle_kingside: bool,
-    black_can_castle_queenside: bool,
+    // Clearly not the best way to keep track of castling rights
+    white_rook_king_side_moves: u32,
+    white_rook_queen_side_moves: u32,
+    white_king_moves: u32,
+    black_rook_king_side_moves: u32,
+    black_rook_queen_side_moves: u32,
+    black_king_moves: u32,
 }
 
 impl Position {
@@ -173,16 +176,27 @@ impl Position {
             kings_board,
             turn,
             number_of_move: number_of_moves_move_part.parse().unwrap(),
-            white_can_castle_kingside,
-            white_can_castle_queenside,
-            black_can_castle_kingside,
-            black_can_castle_queenside,
+            white_rook_king_side_moves: if white_can_castle_kingside { 0 } else { 1 },
+            white_rook_queen_side_moves: if white_can_castle_queenside { 0 } else { 1 },
+            white_king_moves: if white_can_castle_kingside | white_can_castle_queenside {
+                0
+            } else {
+                1
+            },
+
+            black_rook_king_side_moves: if black_can_castle_kingside { 0 } else { 1 },
+            black_rook_queen_side_moves: if black_can_castle_queenside { 0 } else { 1 },
+            black_king_moves: if black_can_castle_kingside | black_can_castle_queenside {
+                0
+            } else {
+                1
+            },
         }
     }
 
     pub fn is_legal_move(&self, mov: &Move) -> bool {
-        // TODO: Pawn moves
-        // TODO: Castling and promotions moves
+        // TODO: Pawn moves (Promotion(avoid having a pawn on the fist and the last rank) and en-passant)
+        // TODO: Can not castle if in check and promotions moves
 
         let source_piece = self.get_piece_on_square(&mov.source);
         let destination_piece = self.get_piece_on_square(&mov.destination);
@@ -195,52 +209,72 @@ impl Position {
         if source_piece.color == PieceColor::None || source_piece.color != self.turn {
             return false;
         }
-        // The destination square could not have the same color as the attacker
+        // The piece at the destination square could not have the same color as the attacker
         if destination_piece.color == source_piece.color {
             return false;
         }
 
-        let mut attacks_squares: u64 = match source_piece.piece_type {
-            PieceType::None => 0,
-            PieceType::Pawn => attacks_table::knight_attacks_table(&mov.source),
-            PieceType::Knight => self.generate_move_mask_for_knight(&mov.source),
-            PieceType::Bishop => self.generate_move_mask_for_bishop(&mov.source),
-            PieceType::Rook => self.generate_move_mask_for_rook(&mov.source),
-            PieceType::Queen => {
-                self.generate_move_mask_for_rook(&mov.source)
-                    | self.generate_move_mask_for_bishop(&mov.source)
+        match mov.move_type {
+            MoveType::Normal => {
+                let mut attacks_squares: u64 = match source_piece.piece_type {
+                    PieceType::None => 0,
+                    PieceType::Pawn => self.generate_move_mask_for_pawn(
+                        &mov.source,
+                        &mov.destination,
+                        &source_piece.color,
+                    ),
+                    PieceType::Knight => self.generate_move_mask_for_knight(&mov.source),
+                    PieceType::Bishop => self.generate_move_mask_for_bishop(&mov.source),
+                    PieceType::Rook => self.generate_move_mask_for_rook(&mov.source),
+                    PieceType::Queen => {
+                        self.generate_move_mask_for_rook(&mov.source)
+                            | self.generate_move_mask_for_bishop(&mov.source)
+                    }
+                    PieceType::King => self.generate_move_mask_for_king(&mov.source),
+                };
+
+                // Avoid your own pieces in the attack
+                attacks_squares = match self.turn {
+                    PieceColor::None => attacks_squares,
+                    PieceColor::White => attacks_squares & !self.white_board,
+                    PieceColor::Black => attacks_squares & !self.black_board,
+                };
+
+                // The destination square must appear as one the square that the attacker piece can reach
+                let r = mov.destination.rank - 1;
+                let f = mov.destination.file as u8 - 'a' as u8;
+                let destination_index = r * 8 + f as i8;
+                if (attacks_squares >> destination_index) & 1 == 0 {
+                    return false;
+                }
+
+                true
             }
-            PieceType::King => attacks_table::king_attacks_table(&mov.source),
-        };
-
-        for rank in (1..=8).rev() {
-            print!("{} ", rank);
-            for file in 'a'..='h' {
-                let r = rank - 1;
-                let f = (file as u8 - 'a' as u8) as i8;
-                let index = r * 8 + f as i8;
-                print!("{} ", (attacks_squares >> index) & 1);
+            MoveType::ShortCastle => {
+                let board = self.white_board | self.black_board;
+                let king_index =
+                    (mov.source.rank - 1) * 8 + (mov.source.file as u8 - 'a' as u8) as i8;
+                source_piece.piece_type == PieceType::King
+                    && self.can_short_castle(&self.turn)
+                    && ((mov.source.file as u8).abs_diff(mov.destination.file as u8) == 2)
+                    && ((board >> (king_index + 1) & 1) == 0)
+                    && ((board >> (king_index + 2) & 1) == 0)
             }
-            println!();
+            MoveType::LongCastle => {
+                let board = self.white_board | self.black_board;
+                let king_index =
+                    (mov.source.rank - 1) * 8 + (mov.source.file as u8 - 'a' as u8) as i8;
+                source_piece.piece_type == PieceType::King
+                    && self.can_long_castle(&self.turn)
+                    && ((mov.source.file as u8).abs_diff(mov.destination.file as u8) == 2)
+                    && ((board >> (king_index - 1) & 1) == 0)
+                    && ((board >> (king_index - 2) & 1) == 0)
+            }
+            MoveType::PawnToKnight => true,
+            MoveType::PawnToBishop => true,
+            MoveType::PawnToRook => true,
+            MoveType::PawnToQueen => true,
         }
-        println!("\n  a b c d e f g h\n");
-
-        // Avoid your own pieces in the attack
-        attacks_squares = match self.turn {
-            PieceColor::None => attacks_squares,
-            PieceColor::White => attacks_squares & !self.white_board,
-            PieceColor::Black => attacks_squares & !self.black_board,
-        };
-
-        // The destination square must appear as one the square that the attacker piece can reach
-        let r = mov.destination.rank - 1;
-        let f = mov.destination.file as u8 - 'a' as u8;
-        let destination_index = r * 8 + f as i8;
-        if (attacks_squares >> destination_index) & 1 == 0 {
-            return false;
-        }
-
-        true
     }
 
     pub fn make_move(&mut self, mov: &Move) {
@@ -268,7 +302,7 @@ impl Position {
         }
 
         // Putting 0 at the index of the source
-        // And moving the piece at the destination
+        // And moving the piece at the destination by putting 1 at the destination for the corresponding piece
         match source_piece.piece_type {
             PieceType::None => {}
             PieceType::Pawn => {
@@ -286,6 +320,23 @@ impl Position {
             PieceType::Rook => {
                 self.rooks_board &= !(1u64 << source_index);
                 self.rooks_board |= 1u64 << destination_index;
+                match source_piece.color {
+                    PieceColor::None => {}
+                    PieceColor::White => {
+                        if source_index == 7 {
+                            self.white_rook_king_side_moves += 1;
+                        } else if source_index == 0 {
+                            self.white_rook_queen_side_moves += 1;
+                        }
+                    }
+                    PieceColor::Black => {
+                        if source_index == 63 {
+                            self.black_rook_king_side_moves += 1;
+                        } else if source_index == 56 {
+                            self.black_rook_queen_side_moves += 1;
+                        }
+                    }
+                }
             }
             PieceType::Queen => {
                 self.queens_board &= !(1u64 << source_index);
@@ -294,9 +345,23 @@ impl Position {
             PieceType::King => {
                 self.kings_board &= !(1u64 << source_index);
                 self.kings_board |= 1u64 << destination_index;
+                match source_piece.color {
+                    PieceColor::None => {}
+                    PieceColor::White => {
+                        if source_index == 4 {
+                            self.white_rook_king_side_moves += 1;
+                        }
+                    }
+                    PieceColor::Black => {
+                        if source_index == 60 {
+                            self.black_rook_king_side_moves += 1;
+                        }
+                    }
+                }
             }
         }
 
+        // Updating the boards (for each color)
         match source_piece.color {
             PieceColor::None => {}
             PieceColor::White => {
@@ -312,6 +377,60 @@ impl Position {
                 self.white_board &= !(1u64 << destination_index);
             }
         };
+
+        match mov.move_type {
+            MoveType::Normal => {}
+            MoveType::ShortCastle => match source_piece.color {
+                PieceColor::None => {}
+                PieceColor::White => {
+                    let rook_source = (1 - 1) * 8 + ('h' as u8 - 'a' as u8) as i8;
+                    let rook_destination = (1 - 1) * 8 + ('f' as u8 - 'a' as u8) as i8;
+
+                    self.rooks_board &= !(1u64 << rook_source);
+                    self.rooks_board |= 1u64 << rook_destination;
+
+                    self.white_board &= !(1u64 << rook_source);
+                    self.white_board |= 1u64 << rook_destination;
+                }
+                PieceColor::Black => {
+                    let rook_source = (8 - 1) * 8 + ('h' as u8 - 'a' as u8) as i8;
+                    let rook_destination = (8 - 1) * 8 + ('f' as u8 - 'a' as u8) as i8;
+
+                    self.rooks_board &= !(1u64 << rook_source);
+                    self.rooks_board |= 1u64 << rook_destination;
+
+                    self.black_board &= !(1u64 << rook_source);
+                    self.black_board |= 1u64 << rook_destination;
+                }
+            },
+            MoveType::LongCastle => match source_piece.color {
+                PieceColor::None => {}
+                PieceColor::White => {
+                    let rook_source = (1 - 1) * 8 + ('a' as u8 - 'a' as u8) as i8;
+                    let rook_destination = (1 - 1) * 8 + ('d' as u8 - 'a' as u8) as i8;
+
+                    self.rooks_board &= !(1u64 << rook_source);
+                    self.rooks_board |= 1u64 << rook_destination;
+
+                    self.white_board &= !(1u64 << rook_source);
+                    self.white_board |= 1u64 << rook_destination;
+                }
+                PieceColor::Black => {
+                    let rook_source = (8 - 1) * 8 + ('a' as u8 - 'a' as u8) as i8;
+                    let rook_destination = (8 - 1) * 8 + ('d' as u8 - 'a' as u8) as i8;
+
+                    self.rooks_board &= !(1u64 << rook_source);
+                    self.rooks_board |= 1u64 << rook_destination;
+
+                    self.black_board &= !(1u64 << rook_source);
+                    self.black_board |= 1u64 << rook_destination;
+                }
+            },
+            MoveType::PawnToKnight => {}
+            MoveType::PawnToBishop => {}
+            MoveType::PawnToRook => {}
+            MoveType::PawnToQueen => {}
+        }
 
         match self.turn {
             PieceColor::None => {}
@@ -496,6 +615,107 @@ impl Position {
         lookup_tables::KNIGHT_MASK[index as usize]
     }
 
+    // Pawn's moves mask
+    fn generate_move_mask_for_pawn(
+        &self,
+        source: &Coord,
+        destination: &Coord,
+        color: &PieceColor,
+    ) -> u64 {
+        let board = self.white_board | self.black_board;
+        let mut pawn_attacks_mask = 0u64;
+        let r = source.rank - 1;
+        let f = source.file as u8 - 'a' as u8;
+        let pawn_index = r * 8 + f as i8;
+
+        /*
+             Bit Index (square):
+             56 57 58 59 60 61 62 63   ← Rank 8
+             48 49 50 51 52 53 54 55   ← Rank 7
+             40 41 42 43 44 45 46 47   ← Rank 6
+             32 33 34 35 36 37 38 39   ← Rank 5
+             24 25 26 27 28 29 30 31   ← Rank 4
+             16 17 18 19 20 21 22 23   ← Rank 3
+             08 09 10 11 12 13 14 15   ← Rank 2
+             00 01 02 03 04 05 06 07   ← Rank 1
+             ↑
+             File A
+        */
+
+        match color {
+            PieceColor::None => {}
+            PieceColor::White => {
+                match source.file == destination.file {
+                    true => {
+                        // if there is a non-occupied piece in front of the pawn, it can move
+                        if (board >> (pawn_index + 8)) & 1 == 0 {
+                            pawn_attacks_mask |= 1 << (pawn_index + 8)
+                        }
+
+                        // if the pawn is at the second rank and if the two square in front od it are empty,
+                        // it can move two-square ahead
+                        if source.rank == 2
+                            && (board >> (pawn_index + 8)) & 1 == 0
+                            && (board >> (pawn_index + 16)) & 1 == 0
+                        {
+                            pawn_attacks_mask |= 1 << (pawn_index + 16)
+                        }
+                    }
+                    false => {
+                        // if the upper left cell is not empty
+                        if (board >> (pawn_index + 7)) & 1 != 0 {
+                            pawn_attacks_mask |= 1 << (pawn_index + 7);
+                        }
+
+                        // if the upper right cell is not empty
+                        if (board >> (pawn_index + 9)) & 1 != 0 {
+                            pawn_attacks_mask |= 1 << (pawn_index + 9);
+                        }
+                    }
+                }
+            }
+            PieceColor::Black => {
+                match source.file == destination.file {
+                    true => {
+                        // if there is a non-occupied piece in front of the pawn, it can move
+                        if (board >> (pawn_index - 8)) & 1 == 0 {
+                            pawn_attacks_mask |= 1 << (pawn_index - 8)
+                        }
+
+                        // if the pawn is at the seven rank and if the two square in front od it are empty,
+                        // it can move two-square ahead
+                        if source.rank == 7
+                            && (board >> (pawn_index - 8)) & 1 == 0
+                            && (board >> (pawn_index - 16)) & 1 == 0
+                        {
+                            pawn_attacks_mask |= 1 << (pawn_index - 16)
+                        }
+                    }
+                    false => {
+                        // if the bottom left cell is not empty
+                        if (board >> (pawn_index - 9)) & 1 != 0 {
+                            pawn_attacks_mask |= 1 << (pawn_index - 9);
+                        }
+
+                        // if the bottom right cell is not empty
+                        if (board >> (pawn_index - 7)) & 1 != 0 {
+                            pawn_attacks_mask |= 1 << (pawn_index - 7);
+                        }
+                    }
+                }
+            }
+        }
+        pawn_attacks_mask
+    }
+
+    // King's moves mask
+    fn generate_move_mask_for_king(&self, source: &Coord) -> u64 {
+        let r = source.rank - 1;
+        let f = (source.file as u8 - 'a' as u8) as i8;
+        let index = r * 8 + f;
+        lookup_tables::KING_MASK[index as usize]
+    }
+
     pub fn get_available_pieces_for_move(&self, color: &PieceColor) -> Vec<(Piece, Coord)> {
         let mut pieces: Vec<(Piece, Coord)> = Vec::new();
 
@@ -576,71 +796,27 @@ impl Position {
         self.white_board | self.black_board
     }
 
-    // TODO: Verify that the move do not put the king in check
+    // TODO: Verify that the move do not put the king in check and that the king is not in check
     pub fn can_short_castle(&self, color: &PieceColor) -> bool {
-        let kin_coord = self.get_king_coord(color);
-        let piece_in_h_rank = self.get_piece_on_square(&Coord {
-            rank: match color {
-                PieceColor::None => 0,
-                PieceColor::White => 1,
-                PieceColor::Black => 8,
-            },
-            file: 'h',
-        });
-
         match color {
             PieceColor::None => false,
             PieceColor::White => {
-                if kin_coord == (Coord { rank: 1, file: 'e' })
-                    && piece_in_h_rank.color == *color
-                    && piece_in_h_rank.piece_type == PieceType::Rook
-                {
-                    return true;
-                }
-                false
+                (self.white_king_moves == 0) && (self.white_rook_king_side_moves == 0)
             }
             PieceColor::Black => {
-                if kin_coord == (Coord { rank: 8, file: 'e' })
-                    && piece_in_h_rank.color == *color
-                    && piece_in_h_rank.piece_type == PieceType::Rook
-                {
-                    return true;
-                }
-                false
+                (self.black_king_moves == 0) && (self.black_rook_king_side_moves == 0)
             }
         }
     }
 
     pub fn can_long_castle(&self, color: &PieceColor) -> bool {
-        let kin_coord = self.get_king_coord(color);
-        let piece_in_a_rank = self.get_piece_on_square(&Coord {
-            rank: match color {
-                PieceColor::None => 0,
-                PieceColor::White => 1,
-                PieceColor::Black => 8,
-            },
-            file: 'a',
-        });
-
         match color {
             PieceColor::None => false,
             PieceColor::White => {
-                if kin_coord == (Coord { rank: 1, file: 'e' })
-                    && piece_in_a_rank.color == *color
-                    && piece_in_a_rank.piece_type == PieceType::Rook
-                {
-                    return true;
-                }
-                false
+                (self.white_king_moves == 0) && (self.white_rook_queen_side_moves == 0)
             }
             PieceColor::Black => {
-                if kin_coord == (Coord { rank: 8, file: 'e' })
-                    && piece_in_a_rank.color == *color
-                    && piece_in_a_rank.piece_type == PieceType::Rook
-                {
-                    return true;
-                }
-                false
+                (self.black_king_moves == 0) && (self.black_rook_queen_side_moves == 0)
             }
         }
     }

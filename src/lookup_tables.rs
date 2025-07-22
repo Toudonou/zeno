@@ -15,6 +15,7 @@ pub static ANTI_DIAG_MASK: LazyLock<Vec<u64>> = LazyLock::new(|| generate_anti_d
 pub static DIAG_MASK: LazyLock<Vec<u64>> = LazyLock::new(|| generate_diag_mask());
 
 pub static KNIGHT_MASK: LazyLock<Vec<u64>> = LazyLock::new(|| generate_knight_mask());
+pub static KING_MASK: LazyLock<Vec<u64>> = LazyLock::new(|| generate_king_mask());
 
 fn generate_rook_rank_loop_up_mask() -> Vec<HashMap<u64, u64>> {
     let mut attacks: Vec<HashMap<u64, u64>> = Vec::new();
@@ -226,4 +227,47 @@ fn generate_knight_mask() -> Vec<u64> {
     }
 
     knight_mask_list
+}
+
+fn generate_king_mask() -> Vec<u64> {
+    let mut king_mask_list = Vec::new();
+
+    for rank in 1..=8 {
+        for file in 'a'..='h' {
+            let r = rank - 1;
+            let f = (file as u8 - 'a' as u8) as i8;
+            // let index = r * 8 + f as i8;
+            let mut king_mask: u64 = 0;
+
+            if 0 <= f - 1 {
+                king_mask |= 1u64 << (r * 8 + f - 1);
+                if 0 <= r - 1 {
+                    king_mask |= 1u64 << ((r - 1) * 8 + f - 1);
+                }
+                if r + 1 <= 7 {
+                    king_mask |= 1u64 << ((r + 1) * 8 + f - 1);
+                }
+            }
+            if f + 1 <= 7 {
+                king_mask |= 1u64 << (r * 8 + f + 1);
+                if 0 <= r - 1 {
+                    king_mask |= 1u64 << ((r - 1) * 8 + f + 1);
+                }
+                if r + 1 <= 7 {
+                    king_mask |= 1u64 << ((r + 1) * 8 + f + 1);
+                }
+            }
+
+            if 0 <= r - 1 {
+                king_mask |= 1u64 << ((r - 1) * 8 + f);
+            }
+            if r + 1 <= 7 {
+                king_mask |= 1u64 << ((r + 1) * 8 + f);
+            }
+
+            king_mask_list.push(king_mask);
+        }
+    }
+
+    king_mask_list
 }

@@ -12,10 +12,8 @@ use crate::uci::uci_make_move;
 use crate::utils::{Coord, Move, MoveType};
 use std::io;
 
-mod attacks_table;
 mod evaluation;
 mod lookup_tables;
-mod magic_bitboard_generator;
 mod moves_generator;
 mod position;
 mod search;
@@ -24,15 +22,19 @@ mod utils;
 mod zobrist_hash;
 
 fn main() {
-    let mut board = Position::from_fen("rkbnrbnq/pppppppp/8/8/8/8/PPPPPPPP/RKBNRBNQ w - - 0 1");
+    let mut board =
+        Position::from_fen("rnbqk2r/pppp1ppp/5n2/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 1");
 
     board.print_board();
+
     board.make_move(&Move {
-        source: Coord { rank: 1, file: 'd' },
-        destination: Coord { rank: 3, file: 'c' },
-        move_type: MoveType::Normal,
+        source: Coord { rank: 1, file: 'e' },
+        destination: Coord { rank: 1, file: 'g' },
+        move_type: MoveType::ShortCastle,
     });
     board.print_board();
+
+    // PLAY
 
     // board.print_board();
     // let mut board = board.get_board() >> ('d' as u8 - 'a' as u8);
@@ -57,24 +59,5 @@ fn main() {
 
     return;
 
-    // while i != 0 {
-    //     let des = i.trailing_zeros();
-    //     println!("{}", des);
-    //     i = i & !(1 << des);
-    //     println!("{:b}", i);
-    // }
-    //
-    // let mut position = Position::from_fen("rnbqkbnr/8/8/8/8/8/8/RNBQKBNR w KQkq - 0 1");
-    // position.print_board();
-    //
-    // loop {
-    //     let mut command = String::new();
-    //     io::stdin().read_line(&mut command).unwrap();
-    //     let command = command.trim();
-    //     uci_make_move(command, &mut position);
-    //     position.print_board();
-    // }
-    //
-    // return;
     // uci::uci_loop();
 }
