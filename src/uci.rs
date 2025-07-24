@@ -32,7 +32,7 @@ pub fn uci_loop() {
         io::stdout().flush().unwrap();
 
         sleep(time::Duration::from_millis(1000));
-        position.print_board();
+        // position.print_board();
     }
 }
 

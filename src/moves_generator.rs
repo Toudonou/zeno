@@ -25,7 +25,6 @@ pub fn generate_mask_moves(
         PieceType::King => generate_move_mask_for_king(source),
     };
 
-
     // Avoid your own pieces in the attack
     attacks_squares = match piece.color {
         PieceColor::None => attacks_squares,
@@ -36,12 +35,12 @@ pub fn generate_mask_moves(
     attacks_squares
 }
 
-pub fn generate_moves(position: &Position) -> Vec<Move> {
+pub fn generate_moves(position: &Position, color: &PieceColor) -> Vec<Move> {
     let mut moves = Vec::new();
-    let coords = position.get_available_piece_coords();
+
+    let coords = position.get_available_piece_coords(color);
     let white_board = position.get_white_board();
     let black_board = position.get_black_board();
-    let board = position.get_board();
 
     for source in &coords {
         let piece = position.get_piece_on_square(&source);
@@ -81,10 +80,7 @@ pub fn generate_moves(position: &Position) -> Vec<Move> {
                     }
                 }
                 PieceType::King => {
-                    if position.can_short_castle(&piece.color)
-                        && ((board >> (source.rank * 8 + (source.file as u8) as i8 + 1) & 1) == 0)
-                        && ((board >> (source.rank * 8 + (source.file as u8) as i8 + 2) & 1) == 0)
-                    {
+                    if position.can_short_castle(&piece.color) {
                         moves.push(Move {
                             source: source.clone(),
                             destination: Coord {
@@ -94,17 +90,14 @@ pub fn generate_moves(position: &Position) -> Vec<Move> {
                             move_type: MoveType::ShortCastle,
                         });
                     }
-                    if position.can_long_castle(&piece.color)
-                        && ((board >> (source.rank * 8 + (source.file as u8) as i8 - 1) & 1) == 0)
-                        && ((board >> (source.rank * 8 + (source.file as u8) as i8 - 2) & 1) == 0)
-                    {
+                    if position.can_long_castle(&piece.color) {
                         moves.push(Move {
                             source: source.clone(),
                             destination: Coord {
                                 rank: source.rank,
                                 file: (source.file as u8 - 2) as char,
                             },
-                            move_type: MoveType::ShortCastle,
+                            move_type: MoveType::LongCastle,
                         });
                     }
                 }
@@ -120,6 +113,7 @@ pub fn generate_moves(position: &Position) -> Vec<Move> {
         }
     }
     moves
+
 }
 
 // Rook's moves mask
@@ -162,7 +156,7 @@ fn generate_move_mask_for_bishop(board: &u64, source: &Coord) -> u64 {
     let mut anti_diagonal_mask = *board;
     let anti_diag_file = anti_diagonal_reference[(source.rank - 1) as usize];
 
-    let distance_to_anti_diag: i8 = (source.file as u8 - anti_diag_file as u8) as i8;
+    let distance_to_anti_diag: i8 = ((source.file as u8) as i8 - (anti_diag_file as u8) as i8);
     if distance_to_anti_diag < 0 {
         anti_diagonal_mask <<= (-1 * distance_to_anti_diag); // Move to the right
     } else if distance_to_anti_diag > 0 {
@@ -209,8 +203,8 @@ fn generate_move_mask_for_bishop(board: &u64, source: &Coord) -> u64 {
         lookup_tables::ANTI_DIAG_MASK
             [(source.file as u8 - 'a' as u8) as usize + 8 - source.rank as usize]
     } else if distance_to_anti_diag > 0 {
-        let index = 8 - ((source.file as u8 - 'a' as u8) as usize + source.rank as usize);
-        let mut temp_mask = lookup_tables::ANTI_DIAG_MASK[index];
+        let index = ('h' as u8 - source.file as u8) as i8 + source.rank - 1;
+        let mut temp_mask = lookup_tables::ANTI_DIAG_MASK[index as usize];
         temp_mask >>= (7 - index) * 8; // 7 - index times to the bottom
         temp_mask <<= 7 - index; // 7 - index times to the right
         temp_mask
@@ -221,7 +215,6 @@ fn generate_move_mask_for_bishop(board: &u64, source: &Coord) -> u64 {
 
     anti_diag_attacks &= anti_diag_mask;
 
-
     // The same thing wil be done for the DIAGONAL
 
     // The file that contains the diagonal for each rank
@@ -230,7 +223,7 @@ fn generate_move_mask_for_bishop(board: &u64, source: &Coord) -> u64 {
     let mut diagonal_mask = *board;
     let diag_file = diagonal_reference[(8 - source.rank) as usize];
 
-    let distance_to_diag: i8 = (source.file as u8 - diag_file as u8) as i8;
+    let distance_to_diag: i8 = ((source.file as u8) as i8 - (diag_file as u8) as i8);
     if distance_to_diag < 0 {
         diagonal_mask <<= (-1 * distance_to_diag); // Move to the right
     } else if distance_to_diag > 0 {

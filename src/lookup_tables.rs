@@ -55,18 +55,20 @@ fn generate_rook_rank_loop_up_mask() -> Vec<HashMap<u64, u64>> {
             }
 
             // right side
-            cursor = index - 1;
-            process = true;
-            while process && index > 0 {
-                if (mask >> cursor) & 1 != 0 {
-                    process = false;
-                }
-                moves |= 1 << cursor;
+            if index > 0 {
+                cursor = index - 1;
+                process = true;
+                while process {
+                    if (mask >> cursor) & 1 != 0 {
+                        process = false;
+                    }
+                    moves |= 1 << cursor;
 
-                if cursor == 0 {
-                    break;
+                    if cursor == 0 {
+                        break;
+                    }
+                    cursor -= 1;
                 }
-                cursor -= 1;
             }
 
             moves_list.insert(mask, moves);

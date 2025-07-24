@@ -1,3 +1,4 @@
+use crate::moves_generator::generate_moves;
 use crate::utils::{
     ANTI_DIAGONAL, Coord, DIAGONAL, FILE_A, Move, MoveType, Piece, PieceColor, PieceType, RANK_1,
 };
@@ -195,7 +196,7 @@ impl Position {
     }
 
     pub fn is_legal_move(&self, mov: &Move) -> bool {
-        // TODO: Pawn moves (Promotion(avoid having a pawn on the fist and the last rank) and en-passant)
+        // TODO: Pawn moves (En-passant)
         // TODO: Can not castle if in check And promotions moves
 
         let source_piece = self.get_piece_on_square(&mov.source);
@@ -233,30 +234,37 @@ impl Position {
                 true
             }
             MoveType::ShortCastle => {
-                let board = self.white_board | self.black_board;
-                let king_index =
-                    (mov.source.rank - 1) * 8 + (mov.source.file as u8 - 'a' as u8) as i8;
                 source_piece.piece_type == PieceType::King
                     && self.can_short_castle(&self.turn)
                     && ((mov.source.file as u8).abs_diff(mov.destination.file as u8) == 2)
-                    && ((board >> (king_index + 1) & 1) == 0)
-                    && ((board >> (king_index + 2) & 1) == 0)
             }
             MoveType::LongCastle => {
-                let board = self.white_board | self.black_board;
-                let king_index =
-                    (mov.source.rank - 1) * 8 + (mov.source.file as u8 - 'a' as u8) as i8;
                 source_piece.piece_type == PieceType::King
                     && self.can_long_castle(&self.turn)
                     && ((mov.source.file as u8).abs_diff(mov.destination.file as u8) == 2)
-                    && ((board >> (king_index - 1) & 1) == 0)
-                    && ((board >> (king_index - 2) & 1) == 0)
             }
             MoveType::PawnToKnight => true,
             MoveType::PawnToBishop => true,
             MoveType::PawnToRook => true,
             MoveType::PawnToQueen => true,
         }
+    }
+
+    pub fn is_check(&self, color: &PieceColor) -> bool {
+        let opponent_color = match color {
+            PieceColor::None => PieceColor::None,
+            PieceColor::White => PieceColor::Black,
+            PieceColor::Black => PieceColor::White,
+        };
+
+        let opponent_attacks = generate_moves(self, &opponent_color);
+        let king_coord = self.get_king_coord(color);
+        for m in opponent_attacks {
+            if m.destination == king_coord {
+                return true;
+            }
+        }
+        false
     }
 
     pub fn make_move(&mut self, mov: &Move, is_intern_move_request: bool) {
@@ -472,9 +480,9 @@ impl Position {
         Piece { color, piece_type }
     }
 
-    pub fn get_available_piece_coords(&self) -> Vec<Coord> {
+    pub fn get_available_piece_coords(&self, piece_color: &PieceColor) -> Vec<Coord> {
         let mut coords = Vec::new();
-        let mut board = match self.turn {
+        let mut board = match piece_color {
             PieceColor::None => 0,
             PieceColor::White => self.white_board,
             PieceColor::Black => self.black_board,
@@ -491,20 +499,22 @@ impl Position {
     }
 
     pub fn get_king_coord(&self, color: &PieceColor) -> Coord {
-        let mut king_coord: Coord = Coord { rank: 0, file: 'a' };
         if *color == PieceColor::None {
             panic!("Trying to get a king with the color None")
         }
 
-        for rank in 1..=8 {
-            for file in 'a'..='h' {
-                let piece = self.get_piece_on_square(&Coord { rank, file });
-                if piece.color == *color && piece.piece_type == PieceType::King {
-                    king_coord = Coord { rank, file };
-                }
+        let king_index = match color {
+            PieceColor::None => {
+                panic!("Invalid color")
             }
+            PieceColor::White => (self.white_board & self.kings_board).trailing_zeros(),
+            PieceColor::Black => (self.black_board & self.kings_board).trailing_zeros(),
+        };
+
+        Coord {
+            rank: (1 + (king_index / 8)) as i8,
+            file: ((king_index % 8) as u8 + 'a' as u8) as char,
         }
-        king_coord
     }
 
     pub fn get_board(&self) -> u64 {
@@ -519,25 +529,54 @@ impl Position {
 
     // TODO: Verify that the move do not put the king in check and that the king is not in check
     pub fn can_short_castle(&self, color: &PieceColor) -> bool {
+        let board = self.white_board | self.black_board;
+        let king_index = match color {
+            PieceColor::None => {
+                panic!("Invalid color")
+            }
+            PieceColor::White => (self.white_board & self.kings_board).trailing_zeros(),
+            PieceColor::Black => (self.black_board & self.kings_board).trailing_zeros(),
+        };
+
         match color {
             PieceColor::None => false,
             PieceColor::White => {
-                (self.white_king_moves == 0) && (self.white_rook_king_side_moves == 0)
+                (self.white_king_moves == 0)
+                    && (self.white_rook_king_side_moves == 0)
+                    && ((board >> (king_index + 1) & 1) == 0)
+                    && ((board >> (king_index + 2) & 1) == 0)
             }
             PieceColor::Black => {
-                (self.black_king_moves == 0) && (self.black_rook_king_side_moves == 0)
+                (self.black_king_moves == 0)
+                    && (self.black_rook_king_side_moves == 0)
+                    && ((board >> (king_index + 1) & 1) == 0)
+                    && ((board >> (king_index + 2) & 1) == 0)
             }
         }
     }
 
     pub fn can_long_castle(&self, color: &PieceColor) -> bool {
+        let board = self.white_board | self.black_board;
+        let king_index = match color {
+            PieceColor::None => {
+                panic!("Invalid color")
+            }
+            PieceColor::White => (self.white_board & self.kings_board).trailing_zeros(),
+            PieceColor::Black => (self.black_board & self.kings_board).trailing_zeros(),
+        };
         match color {
             PieceColor::None => false,
             PieceColor::White => {
-                (self.white_king_moves == 0) && (self.white_rook_queen_side_moves == 0)
+                (self.white_king_moves == 0)
+                    && (self.white_rook_queen_side_moves == 0)
+                    && ((board >> (king_index - 1) & 1) == 0)
+                    && ((board >> (king_index - 2) & 1) == 0)
             }
             PieceColor::Black => {
-                (self.black_king_moves == 0) && (self.black_rook_queen_side_moves == 0)
+                (self.black_king_moves == 0)
+                    && (self.black_rook_queen_side_moves == 0)
+                    && ((board >> (king_index - 1) & 1) == 0)
+                    && ((board >> (king_index - 2) & 1) == 0)
             }
         }
     }

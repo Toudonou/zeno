@@ -4,14 +4,24 @@ use crate::utils::{Move, PieceColor};
 use crate::zobrist_hash::ZobristHash;
 
 pub fn best_move(position: &Position) -> Move {
-    let moves = moves_generator::generate_moves(position);
-    let mut final_move: Move = moves[0].clone();
+    let temp_moves = moves_generator::generate_moves(position, &position.get_turn());
+    let mut moves = Vec::new();
     let mut score: i32 = match position.get_turn() {
         PieceColor::None => 0,
         PieceColor::White => -i32::MAX,
         PieceColor::Black => i32::MAX,
     };
     let depth = 3 * 2;
+
+    for m in temp_moves {
+        let mut temp_position = position.clone();
+        temp_position.make_move(&m, false);
+        if !temp_position.is_check(&temp_position.get_turn()){
+            moves.push(m)
+        }
+    }
+
+    let mut final_move: Move = moves[0].clone();
 
     // for m in moves {
     //     let mut temp_position = position.clone();
