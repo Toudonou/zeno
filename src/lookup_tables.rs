@@ -17,6 +17,16 @@ pub static DIAG_MASK: LazyLock<Vec<u64>> = LazyLock::new(|| generate_diag_mask()
 pub static KNIGHT_MASK: LazyLock<Vec<u64>> = LazyLock::new(|| generate_knight_mask());
 pub static KING_MASK: LazyLock<Vec<u64>> = LazyLock::new(|| generate_king_mask());
 
+pub static PAWN_WHITE_FRONT_MASK: LazyLock<Vec<u64>> =
+    LazyLock::new(|| generate_white_pawn_front_mask());
+pub static PAWN_WHITE_DIAG_MASK: LazyLock<Vec<u64>> =
+    LazyLock::new(|| generate_white_pawn_diag_mask());
+
+pub static PAWN_BLACK_FRONT_MASK: LazyLock<Vec<u64>> =
+    LazyLock::new(|| generate_black_pawn_front_mask());
+pub static PAWN_BLACK_DIAG_MASK: LazyLock<Vec<u64>> =
+    LazyLock::new(|| generate_black_pawn_diag_mask());
+
 fn generate_rook_rank_loop_up_mask() -> Vec<HashMap<u64, u64>> {
     let mut attacks: Vec<HashMap<u64, u64>> = Vec::new();
 
@@ -118,7 +128,8 @@ fn generate_anti_diag_mask() -> Vec<u64> {
     /*
         To generate the anti-diagonal mask, you do +9 to move alongside the corresponding diagonal and -8 for the next step
         We only need to generate the upper anti-diagonal
-        Anti-diag index in the lookup table: file - a + 8 - rank
+        Anti-diag index in the lookup table: file - a + 8 - rank (for the upper anti-diagonal)
+        Anti-diag index in the lookup table: 8 - (file - a + rank) (for the lower anti-diagonal)
 
         56 57 58 59 60 61 62 63   ← Rank 8
         48 49 50 51 52 53 54 55   ← Rank 7
@@ -150,7 +161,8 @@ fn generate_diag_mask() -> Vec<u64> {
     /*
         To generate the     diagonal mask, you do +7 to move alongside the corresponding diagonal and +1 for the next step
         We only need to generate the lower diagonal
-        Diag index in the lookup table: file - a + rank - 1
+        Diag index in the lookup table: file - a + rank - 1 (for the lower diagonal)
+        Diag index in the lookup table: h - file + 8 - rank (for the upper diagonal)
 
         56 57 58 59 60 61 62 63   ← Rank 8
         48 49 50 51 52 53 54 55   ← Rank 7
@@ -270,4 +282,95 @@ fn generate_king_mask() -> Vec<u64> {
     }
 
     king_mask_list
+}
+
+fn generate_white_pawn_front_mask() -> Vec<u64> {
+    let mut white_pawn_mask_list = Vec::new();
+
+    for rank in 1..=8 {
+        for file in 'a'..='h' {
+            let r = rank - 1;
+            let f = (file as u8 - 'a' as u8) as i8;
+            let index = r * 8 + f as i8;
+            let mut mask: u64 = 0;
+            if rank < 8 {
+                // The front
+                mask |= 1 << (index + 8);
+            }
+            white_pawn_mask_list.push(mask);
+        }
+    }
+
+    white_pawn_mask_list
+}
+
+fn generate_white_pawn_diag_mask() -> Vec<u64> {
+    let mut white_pawn_mask_list = Vec::new();
+
+    for rank in 1..=8 {
+        for file in 'a'..='h' {
+            let r = rank - 1;
+            let f = (file as u8 - 'a' as u8) as i8;
+            let index = r * 8 + f as i8;
+            let mut mask: u64 = 0;
+            if rank < 8 {
+                // No upper left for the file a
+                if 0 <= f - 1 {
+                    mask |= 1 << (index + 7);
+                }
+                // No upper right for the file h
+                if f + 1 <= 7 {
+                    mask |= 1 << (index + 9);
+                }
+            }
+            white_pawn_mask_list.push(mask);
+        }
+    }
+    white_pawn_mask_list
+}
+
+fn generate_black_pawn_front_mask() -> Vec<u64> {
+    let mut black_pawn_mask_list = Vec::new();
+
+    for rank in 1..=8 {
+        for file in 'a'..='h' {
+            let r = rank - 1;
+            let f = (file as u8 - 'a' as u8) as i8;
+            let index = r * 8 + f as i8;
+            let mut mask: u64 = 0;
+            if rank > 1 {
+                // The front
+                mask |= 1 << (index - 8);
+            }
+            black_pawn_mask_list.push(mask);
+        }
+    }
+
+    black_pawn_mask_list
+}
+
+fn generate_black_pawn_diag_mask() -> Vec<u64> {
+    let mut black_pawn_mask_list = Vec::new();
+
+    for rank in 1..=8 {
+        for file in 'a'..='h' {
+            let r = rank - 1;
+            let f = (file as u8 - 'a' as u8) as i8;
+            let index = r * 8 + f as i8;
+            let mut mask: u64 = 0;
+            if rank > 1 {
+                // No lower right for the file 'h'
+                if f + 1 <= 7 {
+                    mask |= 1 << (index - 7);
+                }
+                // No lower left for the file a
+                if 0 <= f - 1 {
+                    mask |= 1 << (index - 9);
+                }
+            }
+            black_pawn_mask_list.push(mask);
+        }
+    }
+
+    black_pawn_mask_list
 }

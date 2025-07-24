@@ -31,7 +31,7 @@ pub fn uci_loop() {
 
         io::stdout().flush().unwrap();
 
-        // sleep(time::Duration::from_millis(200));
+        sleep(time::Duration::from_millis(1000));
         position.print_board();
     }
 }
@@ -64,9 +64,9 @@ fn uci_commands() {
 
 pub fn uci_make_move(command: &str, position: &mut Position) {
     // if command.starts_with("") {
-        let moves = command.split_whitespace();
+        let moves = command[5usize..].split_whitespace();
 
-        moves.for_each(|move_string| position.make_move(&uci_move(move_string, position)))
+        moves.for_each(|move_string| position.make_move(&uci_move(move_string, position), false))
     // }
 }
 
@@ -82,7 +82,7 @@ fn uci_position(command: &str, position: &mut Position) {
     if command.starts_with("position startpos moves") {
         let moves = command[23usize..].split_whitespace();
 
-        moves.for_each(|move_string| position.make_move(&uci_move(move_string, position)))
+        moves.for_each(|move_string| position.make_move(&uci_move(move_string, position), false))
     }
 }
 
@@ -140,7 +140,7 @@ fn uci_move(move_string: &str, position: &Position) -> Move {
 
 fn go(position: &mut Position, zobrist_hash:&mut ZobristHash) {
    // for _ in 0..100{
-       let mov = search::best_move(position, zobrist_hash);
+       let mov = search::best_move(position);
        let move_type_character: char;
 
        match mov.move_type {
@@ -162,7 +162,7 @@ fn go(position: &mut Position, zobrist_hash:&mut ZobristHash) {
            move_type_character
        );
 
-   //     position.make_move(&mov);
-   //     position.print_board();
+       position.make_move(&mov, false);
+       // position.print_board();
    // }
 }
