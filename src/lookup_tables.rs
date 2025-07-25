@@ -81,16 +81,8 @@ fn generate_rook_rank_loop_up_mask() -> Vec<HashMap<u64, u64>> {
 fn generate_rook_file_to_rank_table() -> HashMap<u64, u64> {
     let mut file_to_rank: HashMap<u64, u64> = HashMap::new();
 
-    for index in 0..8 {
-        let mut rank_masks_list: Vec<u64> = Vec::new();
-        for i in 0..=255 {
-            if (i >> index) & 1 != 0 {
-                continue;
-            }
-            rank_masks_list.push(i);
-        }
-
-        for rank_mask in rank_masks_list {
+    for _ in 0..8 {
+        for rank_mask in 0..=255 {
             let mut file_mask = 0;
             for j in 0..=7u64 {
                 file_mask |= ((rank_mask >> j) & 1) << (8 * j);
@@ -105,16 +97,8 @@ fn generate_rook_file_to_rank_table() -> HashMap<u64, u64> {
 fn generate_rook_rank_to_file_table() -> HashMap<u64, u64> {
     let mut rank_to_file: HashMap<u64, u64> = HashMap::new();
 
-    for index in 0..8 {
-        let mut rank_masks_list: Vec<u64> = Vec::new();
-        for i in 0..=255 {
-            if (i >> index) & 1 != 0 {
-                continue;
-            }
-            rank_masks_list.push(i);
-        }
-
-        for rank_mask in rank_masks_list {
+    for _ in 0..8 {
+        for rank_mask in 0..=255 {
             let mut file_mask = 0;
             for j in 0..=7u64 {
                 file_mask |= ((rank_mask >> j) & 1) << (8 * j);

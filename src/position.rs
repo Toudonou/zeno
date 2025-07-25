@@ -1,3 +1,4 @@
+use std::time::Instant;
 use crate::moves_generator::generate_moves;
 use crate::utils::{
     ANTI_DIAGONAL, Coord, DIAGONAL, FILE_A, Move, MoveType, Piece, PieceColor, PieceType, RANK_1,
@@ -251,6 +252,8 @@ impl Position {
     }
 
     pub fn is_check(&self, color: &PieceColor) -> bool {
+        let start = Instant::now();
+        let mut result = false;
         let opponent_color = match color {
             PieceColor::None => PieceColor::None,
             PieceColor::White => PieceColor::Black,
@@ -261,10 +264,15 @@ impl Position {
         let king_coord = self.get_king_coord(color);
         for m in opponent_attacks {
             if m.destination == king_coord {
-                return true;
+                result = true;
+                break
             }
         }
-        false
+        let duration = start.elapsed();
+        if duration.as_millis() > 0 {
+            println!("Check Verification max time = {:?}", duration);
+        }
+        return result
     }
 
     pub fn make_move(&mut self, mov: &Move, is_intern_move_request: bool) {
@@ -342,12 +350,12 @@ impl Position {
                     PieceColor::None => {}
                     PieceColor::White => {
                         if source_index == 4 {
-                            self.white_rook_king_side_moves += 1;
+                            self.white_king_moves += 1;
                         }
                     }
                     PieceColor::Black => {
                         if source_index == 60 {
-                            self.black_rook_king_side_moves += 1;
+                            self.black_king_moves += 1;
                         }
                     }
                 }
@@ -557,13 +565,15 @@ impl Position {
 
     pub fn can_long_castle(&self, color: &PieceColor) -> bool {
         let board = self.white_board | self.black_board;
-        let king_index = match color {
+        let king_index: i32 = match color {
             PieceColor::None => {
                 panic!("Invalid color")
             }
-            PieceColor::White => (self.white_board & self.kings_board).trailing_zeros(),
-            PieceColor::Black => (self.black_board & self.kings_board).trailing_zeros(),
+            PieceColor::White => (self.white_board & self.kings_board).trailing_zeros() as i32,
+            PieceColor::Black => (self.black_board & self.kings_board).trailing_zeros() as i32,
         };
+        // println!("{}", (king_index - 2));
+        // println!("{}", (self.white_king_moves));
         match color {
             PieceColor::None => false,
             PieceColor::White => {

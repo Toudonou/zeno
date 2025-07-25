@@ -16,7 +16,7 @@ pub fn best_move(position: &Position) -> Move {
     for m in temp_moves {
         let mut temp_position = position.clone();
         temp_position.make_move(&m, false);
-        if !temp_position.is_check(&temp_position.get_turn()){
+        if !temp_position.is_check(&position.get_turn()){
             moves.push(m)
         }
     }

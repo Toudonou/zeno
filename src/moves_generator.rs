@@ -1,3 +1,4 @@
+use std::time::Instant;
 use crate::lookup_tables;
 use crate::position::Position;
 use crate::utils::{
@@ -13,16 +14,60 @@ pub fn generate_mask_moves(
     let mut attacks_squares: u64 = match piece.piece_type {
         PieceType::None => 0,
         PieceType::Pawn => {
-            generate_move_mask_for_pawn(&(white_board | black_board), source, &piece.color)
+            let start = Instant::now();
+            let attacks = generate_move_mask_for_pawn(&(white_board | black_board), source, &piece.color);
+            let duration = start.elapsed();
+            // if duration.as_millis() > 0 {
+            //     println!("Pawns = {:?}", duration);
+            // }
+            attacks
         }
-        PieceType::Knight => generate_move_mask_for_knight(source),
-        PieceType::Bishop => generate_move_mask_for_bishop(&(white_board | black_board), source),
-        PieceType::Rook => generate_move_mask_for_rook(&(white_board | black_board), source),
+        PieceType::Knight => {
+            let start = Instant::now();
+            let attacks = generate_move_mask_for_knight(source);
+            let duration = start.elapsed();
+            // if duration.as_millis() > 0 {
+            //     println!("Knight = {:?}", duration);
+            // }
+            attacks
+        }
+        PieceType::Bishop => {
+            let start = Instant::now();
+            let attacks = generate_move_mask_for_bishop(&(white_board | black_board), source);
+            let duration = start.elapsed();
+            // if duration.as_millis() > 0 {
+            //     println!("Bishop = {:?}", duration);
+            // }
+            attacks
+        }
+        PieceType::Rook => {
+            let start = Instant::now();
+            let attacks = generate_move_mask_for_rook(&(white_board | black_board), source);
+            let duration = start.elapsed();
+            // if duration.as_millis() > 0 {
+            //     println!("Rook = {:?}", duration);
+            // }
+            attacks
+        }
         PieceType::Queen => {
-            generate_move_mask_for_rook(&(white_board | black_board), source)
-                | generate_move_mask_for_bishop(&(white_board | black_board), source)
+            let start = Instant::now();
+            let attacks = generate_move_mask_for_rook(&(white_board | black_board), source)
+                | generate_move_mask_for_bishop(&(white_board | black_board), source);
+            let duration = start.elapsed();
+            // if duration.as_millis() > 0 {
+            //     println!("Queen = {:?}", duration);
+            // }
+            attacks
         }
-        PieceType::King => generate_move_mask_for_king(source),
+        PieceType::King => {
+            let start = Instant::now();
+            let attacks = generate_move_mask_for_king(source);
+            let duration = start.elapsed();
+            // if duration.as_millis() > 0 {
+            //     println!("King = {:?}", duration);
+            // }
+            attacks
+        }
     };
 
     // Avoid your own pieces in the attack
@@ -113,7 +158,6 @@ pub fn generate_moves(position: &Position, color: &PieceColor) -> Vec<Move> {
         }
     }
     moves
-
 }
 
 // Rook's moves mask
@@ -232,6 +276,7 @@ fn generate_move_mask_for_bishop(board: &u64, source: &Coord) -> u64 {
 
     diagonal_mask &= DIAGONAL.clone();
 
+
     let mut diag_to_rank: u64 = ((diagonal_mask >> 7 & 1) << 7)
         | ((diagonal_mask >> 14 & 1) << 6)
         | ((diagonal_mask >> 21 & 1) << 5)
@@ -247,7 +292,7 @@ fn generate_move_mask_for_bishop(board: &u64, source: &Coord) -> u64 {
         .get(&diag_to_rank)
         .unwrap();
 
-    let mut diag_attacks: u64 = ((diag_rank_attack_mask >> 0 & 56) << 7)
+    let mut diag_attacks: u64 = ((diag_rank_attack_mask >> 0 & 1) << 56)
         | ((diag_rank_attack_mask >> 1 & 1) << 49)
         | ((diag_rank_attack_mask >> 2 & 1) << 42)
         | ((diag_rank_attack_mask >> 3 & 1) << 35)
@@ -272,8 +317,8 @@ fn generate_move_mask_for_bishop(board: &u64, source: &Coord) -> u64 {
     } else if distance_to_diag > 0 {
         let index = ('h' as u8 - source.file as u8) as usize + 8 - source.rank as usize;
         let mut temp_mask = lookup_tables::DIAG_MASK[index];
-        temp_mask >>= (7 - index) * 8; // 7 - index times to the bottom
-        temp_mask >>= 7 - index; // 7 - index times to the left
+        temp_mask <<= (7 - index) * 8; // 7 - index times to the up
+        temp_mask <<= 7 - index; // 7 - index times to the right
         temp_mask
     } else {
         // The diag itself
