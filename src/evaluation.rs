@@ -9,7 +9,7 @@ fn pst_evaluation(position: &Position) -> i32 {
     let mut score= simple_evaluation(position);
 
     for rank in 0..=7 {
-        for file in 'a'..='h' {
+        for file in 0..=7 {
             let index = (rank * 8 + file as usize) as i8;
             let piece = position.get_piece_on_square(&index);
             score = score + get_pst_value(&piece, &index);
@@ -110,7 +110,7 @@ fn simple_evaluation(position: &Position) -> i32 {
     let mut score: i32 = 0;
 
     for rank in 0..=7 {
-        for file in 'a'..='h' {
+        for file in 0..=7 {
             let index = (rank * 8 + file as usize) as i8;
             let piece = position.get_piece_on_square(&index);
             score = score + (piece.piece_type as i16 * piece.color as i16) as i32;

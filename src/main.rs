@@ -13,14 +13,11 @@
 // TODO: Verify that the move do not put the king in check and that the king is not in check
 // TODO: CHECKMATE TO AVOID KING BEING CAPTURE
 
-use Zeno::moves_generator::generate_moves;
+use Zeno::moves_generator::{generate_legal_moves};
 use Zeno::position::Position;
-use Zeno::uci::uci_make_move;
-use Zeno::utils::{Move, MoveType};
-use std::io;
+use Zeno::utils::Move;
 use std::time::Instant;
 use thousands::Separable;
-use Zeno::lookup_tables;
 
 fn perft(depth: i32, position:  &Position) -> u32 {
     let mut number_of_move: u32 = 0;
@@ -28,20 +25,18 @@ fn perft(depth: i32, position:  &Position) -> u32 {
         number_of_move = 1;
     } else {
         let turn = position.get_turn();
-        let moves: Vec<Move> = generate_moves(position, &turn);
+        let moves: Vec<Move> = generate_legal_moves(position, &turn);
         for m in moves {
             let mut temp_position = position.clone();
             temp_position.make_move(&m, true);
-            if !temp_position.is_check(&turn) {
-                number_of_move += perft(depth - 1, &temp_position);
-            }
+            number_of_move += perft(depth - 1, &temp_position);
         }
     }
     number_of_move
 }
 
 fn main() {
-    let fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+    let fen = "rnbqkbnr/pppppppp/8/8/6P1/8/PPPPPP1P/RNBQKBNR b KQkq g3 0 1";
     Position::from_fen(fen).print_board();
 
     let mut start = Instant::now();

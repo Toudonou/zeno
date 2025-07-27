@@ -2,38 +2,21 @@ use crate::lookup_tables;
 use crate::position::Position;
 use crate::utils::{Move, MoveType, Piece, PieceColor, PieceType};
 
-pub fn generate_mask_moves(
-    white_board: &u64,
-    black_board: &u64,
-    source: &i8,
-    piece: &Piece,
-) -> u64 {
-    let mut attacks_squares: u64 = match piece.piece_type {
-        PieceType::None => 0,
-        PieceType::Pawn => {
-            generate_move_mask_for_pawn(&(white_board | black_board), source, &piece.color)
+pub fn generate_legal_moves(position: &Position, color: &PieceColor) -> Vec<Move>{
+    let turn = position.get_turn();
+    let pseudo_legal_moves: Vec<Move> = generate_pseudo_legal_moves(position, &turn);
+    let mut moves: Vec<Move> = Vec::new();
+    for m in pseudo_legal_moves {
+        let mut temp_position = position.clone();
+        temp_position.make_move(&m, false);
+        if !temp_position.is_check(&turn) {
+            moves.push(m);
         }
-        PieceType::Knight => generate_move_mask_for_knight(source),
-        PieceType::Bishop => generate_move_mask_for_bishop(&(white_board | black_board), source),
-        PieceType::Rook => generate_move_mask_for_rook(&(white_board | black_board), source),
-        PieceType::Queen => {
-            generate_move_mask_for_rook(&(white_board | black_board), source)
-                | generate_move_mask_for_bishop(&(white_board | black_board), source)
-        }
-        PieceType::King => generate_move_mask_for_king(source),
-    };
-
-    // Avoid your own pieces in the attack
-    attacks_squares = match piece.color {
-        PieceColor::None => attacks_squares,
-        PieceColor::White => attacks_squares & !white_board,
-        PieceColor::Black => attacks_squares & !black_board,
-    };
-
-    attacks_squares
+    }
+    moves
 }
 
-pub fn generate_moves(position: &Position, color: &PieceColor) -> Vec<Move> {
+fn generate_pseudo_legal_moves(position: &Position, color: &PieceColor) -> Vec<Move> {
     let mut moves = Vec::new();
 
     let coords = position.get_available_piece_coords(color);
@@ -110,9 +93,40 @@ pub fn generate_moves(position: &Position, color: &PieceColor) -> Vec<Move> {
     moves
 }
 
+pub fn generate_mask_moves(
+    white_board: &u64,
+    black_board: &u64,
+    source: &i8,
+    piece: &Piece,
+) -> u64 {
+    let mut attacks_squares: u64 = match piece.piece_type {
+        PieceType::None => 0,
+        PieceType::Pawn => {
+            generate_move_mask_for_pawn(&(white_board | black_board), source, &piece.color)
+        }
+        PieceType::Knight => generate_move_mask_for_knight(source),
+        PieceType::Bishop => generate_move_mask_for_bishop(&(white_board | black_board), source),
+        PieceType::Rook => generate_move_mask_for_rook(&(white_board | black_board), source),
+        PieceType::Queen => {
+            generate_move_mask_for_rook(&(white_board | black_board), source)
+                | generate_move_mask_for_bishop(&(white_board | black_board), source)
+        }
+        PieceType::King => generate_move_mask_for_king(source),
+    };
+
+    // Avoid your own pieces in the attack
+    attacks_squares = match piece.color {
+        PieceColor::None => attacks_squares,
+        PieceColor::White => attacks_squares & !white_board,
+        PieceColor::Black => attacks_squares & !black_board,
+    };
+
+    attacks_squares
+}
+
 // Rook's moves mask
 #[inline(always)]
-fn generate_move_mask_for_rook(board: &u64, source: &i8) -> u64 {
+pub fn generate_move_mask_for_rook(board: &u64, source: &i8) -> u64 {
     let rank = source / 8;
     let file = source % 8;
     let mut rank_mask = *board;
@@ -157,7 +171,7 @@ fn generate_move_mask_for_rook(board: &u64, source: &i8) -> u64 {
 
 // Bishop's moves mask
 #[inline(always)]
-fn generate_move_mask_for_bishop(board: &u64, source: &i8) -> u64 {
+pub fn generate_move_mask_for_bishop(board: &u64, source: &i8) -> u64 {
     let rank = source / 8;
     let file = source % 8;
 
@@ -169,7 +183,7 @@ fn generate_move_mask_for_bishop(board: &u64, source: &i8) -> u64 {
 
     let distance_to_anti_diag: i8 = file - anti_diagonal_reference[rank as usize];
     if distance_to_anti_diag < 0 {
-        anti_diagonal_mask <<= (-1 * distance_to_anti_diag); // Move to the right
+        anti_diagonal_mask <<= -1 * distance_to_anti_diag; // Move to the right
     } else if distance_to_anti_diag > 0 {
         anti_diagonal_mask >>= distance_to_anti_diag; // Move to the left
     }
@@ -201,7 +215,7 @@ fn generate_move_mask_for_bishop(board: &u64, source: &i8) -> u64 {
 
     // Re-position the anti-diagonal attacks
     if distance_to_anti_diag < 0 {
-        anti_diag_attacks >>= (-1 * distance_to_anti_diag); // Move to the left
+        anti_diag_attacks >>= -1 * distance_to_anti_diag; // Move to the left
     } else if distance_to_anti_diag > 0 {
         anti_diag_attacks <<= distance_to_anti_diag; // Move to the right
     }
@@ -233,7 +247,7 @@ fn generate_move_mask_for_bishop(board: &u64, source: &i8) -> u64 {
 
     let distance_to_diag: i8 = file - diagonal_reference[(7 - rank) as usize];
     if distance_to_diag < 0 {
-        diagonal_mask <<= (-1 * distance_to_diag); // Move to the right
+        diagonal_mask <<= -1 * distance_to_diag; // Move to the right
     } else if distance_to_diag > 0 {
         diagonal_mask >>= distance_to_diag; // Move to the left
     }
@@ -265,7 +279,7 @@ fn generate_move_mask_for_bishop(board: &u64, source: &i8) -> u64 {
 
     // Re-position the diagonal attacks
     if distance_to_diag < 0 {
-        diag_attacks >>= (-1 * distance_to_diag); // Move to the left
+        diag_attacks >>= -1 * distance_to_diag; // Move to the left
     } else if distance_to_diag > 0 {
         diag_attacks <<= distance_to_diag; // Move to the right
     }
@@ -292,13 +306,13 @@ fn generate_move_mask_for_bishop(board: &u64, source: &i8) -> u64 {
 
 // Knight's moves mask
 #[inline(always)]
-fn generate_move_mask_for_knight(source: &i8) -> u64 {
+pub fn generate_move_mask_for_knight(source: &i8) -> u64 {
     lookup_tables::KNIGHT_MASK[*source as usize]
 }
 
 // Pawn's moves mask
 #[inline(always)]
-fn generate_move_mask_for_pawn(board: &u64, source: &i8, color: &PieceColor) -> u64 {
+pub fn generate_move_mask_for_pawn(board: &u64, source: &i8, color: &PieceColor) -> u64 {
     let board = *board;
     let rank = 1 + source / 8;
 
@@ -345,6 +359,6 @@ fn generate_move_mask_for_pawn(board: &u64, source: &i8, color: &PieceColor) -> 
 
 // King's moves mask
 #[inline(always)]
-fn generate_move_mask_for_king(source: &i8) -> u64 {
+pub fn generate_move_mask_for_king(source: &i8) -> u64 {
     lookup_tables::KING_MASK[*source as usize]
 }

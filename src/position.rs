@@ -1,6 +1,9 @@
-use crate::moves_generator::{generate_mask_moves, generate_moves};
+use crate::moves_generator;
+use crate::moves_generator::{
+    generate_move_mask_for_bishop, generate_move_mask_for_king, generate_move_mask_for_knight,
+    generate_move_mask_for_pawn, generate_move_mask_for_rook,
+};
 use crate::utils::{Move, MoveType, Piece, PieceColor, PieceType};
-use crate::{lookup_tables, moves_generator};
 /*
     Directions and shifts
     +-----+-----+-----+
@@ -45,6 +48,9 @@ pub struct Position {
     black_rook_king_side_moves: u32,
     black_rook_queen_side_moves: u32,
     black_king_moves: u32,
+
+    // En passant square
+    en_passant: Option<i8>,
 
     // For undoing moves
     last_piece_move: Piece,
@@ -168,6 +174,17 @@ impl Position {
             }
         }
 
+        let mut en_passant = None;
+        if en_passant_part != "-" {
+            for ch in en_passant_part.chars() {
+                match ch {
+                    'a'..='z' => en_passant = Some((ch as u8 - 'a' as u8) as i8),
+                    '1'..='8' => en_passant = Some(ch.to_digit(10).unwrap() as i8 * 8),
+                    _ => {}
+                }
+            }
+        }
+
         Position {
             white_board,
             black_board,
@@ -194,6 +211,9 @@ impl Position {
             } else {
                 1
             },
+
+            en_passant,
+
             last_piece_move: Piece {
                 color: PieceColor::None,
                 piece_type: PieceType::None,
@@ -258,27 +278,51 @@ impl Position {
     }
 
     pub fn is_check(&self, color: &PieceColor) -> bool {
-        let opponent_color = match color {
-            PieceColor::None => PieceColor::None,
-            PieceColor::White => PieceColor::Black,
-            PieceColor::Black => PieceColor::White,
-        };
-
-        let opponent_coords = self.get_available_piece_coords(&opponent_color);
-        let mut opponent_masks: u64 = 0;
         let king_index = self.get_king_coord(color);
-        for coords in opponent_coords {
-            opponent_masks |= generate_mask_moves(
-                &self.white_board,
-                &self.black_board,
-                &coords,
-                &self.get_piece_on_square(&coords),
-            );
-            if ((opponent_masks >> king_index) & 1) == 1 {
-                return true;
-            }
+        let board = self.white_board | self.black_board;
+        let opponent_board = match color {
+            PieceColor::None => panic!("Invalid color"),
+            PieceColor::White => self.black_board,
+            PieceColor::Black => self.white_board,
+        };
+        let opponent_pawns_board = self.pawns_board & opponent_board;
+        let opponent_knights_board = self.knights_board & opponent_board;
+        let opponent_bishops_board = self.bishops_board & opponent_board;
+        let opponent_rooks_board = self.rooks_board & opponent_board;
+        let opponent_queens_board = self.queens_board & opponent_board;
+        let opponent_kings_board = self.kings_board & opponent_board;
+
+        let mut superior_king_mask = generate_move_mask_for_knight(&king_index);
+        if superior_king_mask & opponent_knights_board != 0 {
+            return true;
         }
-        ((opponent_masks >> king_index) & 1) == 1
+
+        superior_king_mask = generate_move_mask_for_bishop(&board, &king_index);
+        if superior_king_mask & opponent_bishops_board != 0 {
+            return true;
+        }
+
+        superior_king_mask = generate_move_mask_for_rook(&board, &king_index);
+        if superior_king_mask & opponent_rooks_board != 0 {
+            return true;
+        }
+
+        superior_king_mask = generate_move_mask_for_bishop(&board, &king_index)
+            | generate_move_mask_for_rook(&board, &king_index);
+        if superior_king_mask & opponent_queens_board != 0 {
+            return true;
+        }
+
+        superior_king_mask = generate_move_mask_for_king(&king_index);
+        if superior_king_mask & opponent_kings_board != 0 {
+            return true;
+        }
+
+        superior_king_mask = generate_move_mask_for_pawn(&board, &king_index, color);
+        if superior_king_mask & opponent_pawns_board != 0 {
+            return true;
+        }
+        false
     }
 
     pub fn make_move(&mut self, mov: &Move, is_intern_move_request: bool) {

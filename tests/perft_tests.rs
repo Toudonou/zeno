@@ -1,4 +1,4 @@
-use Zeno::moves_generator::generate_moves;
+use Zeno::moves_generator::{generate_legal_moves};
 use Zeno::position::Position;
 
 fn perft(depth: i32, position: &Position) -> u32 {
@@ -6,7 +6,7 @@ fn perft(depth: i32, position: &Position) -> u32 {
     if depth == 0 {
         number_of_move = 1;
     } else {
-    let moves = generate_moves(position, &position.get_turn());
+    let moves = generate_legal_moves(position, &position.get_turn());
         for m in moves {
             let mut temp_position = position.clone();
             temp_position.make_move(&m, true);

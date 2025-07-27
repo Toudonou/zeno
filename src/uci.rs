@@ -1,7 +1,7 @@
 use crate::position::Position;
-use crate::utils::{Move, MoveType, PieceColor, PieceType};
+use crate::utils::{Move, MoveType, PieceColor};
 use crate::zobrist_hash::ZobristHash;
-use crate::{evaluation, search};
+use crate::search;
 use regex::Regex;
 use std::io::Write;
 use std::thread::sleep;

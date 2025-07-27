@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::sync::LazyLock;
 
 pub static ROOK_RANK_MASK: LazyLock<[[u64; 255]; 8]> =
