@@ -1,5 +1,5 @@
 use crate::position::Position;
-use crate::utils::{Coord, Piece, PieceColor, PieceType};
+use crate::utils::{Piece, PieceColor, PieceType};
 
 pub fn evaluate(position: &Position) -> i32 {
     pst_evaluation(position)
@@ -8,18 +8,18 @@ pub fn evaluate(position: &Position) -> i32 {
 fn pst_evaluation(position: &Position) -> i32 {
     let mut score= simple_evaluation(position);
 
-    for rank in 1..=8 {
+    for rank in 0..=7 {
         for file in 'a'..='h' {
-            let coord = Coord { rank, file };
-            let piece = position.get_piece_on_square(&coord);
-            score = score + get_pst_value(&piece, &coord);
+            let index = (rank * 8 + file as usize) as i8;
+            let piece = position.get_piece_on_square(&index);
+            score = score + get_pst_value(&piece, &index);
         }
     }
 
     score
 }
 
-fn get_pst_value(piece: &Piece, coord: &Coord) -> i32 {
+fn get_pst_value(piece: &Piece, index: &i8) -> i32 {
     let pawn_table = vec![
         0, 0, 0, 0, 0, 0, 0, 0,
         50, 50, 50, 50, 50, 50, 50, 50,
@@ -81,16 +81,17 @@ fn get_pst_value(piece: &Piece, coord: &Coord) -> i32 {
         20, 30, 10,  0,  0, 10, 30, 200
     ];
 
-    let mut c = coord.clone();
+    let mut rank = index / 8;
+    let file = index%8;
+    
     let mut value = 0;
 
     if piece.color == PieceColor::Black {
-        c.rank = 8 - coord.rank + 1;
+        rank = 7 - rank + 1;
     }
 
-    let i = 8 - c.rank;
-    let j = c.file as u8 - 'a' as u8;
-    let index = (8 * i as u8 + j) as usize;
+    let i = 8 - rank;
+    let index = (8 * i + file) as usize;
 
     match piece.piece_type {
         PieceType::None => {}
@@ -108,9 +109,10 @@ fn get_pst_value(piece: &Piece, coord: &Coord) -> i32 {
 fn simple_evaluation(position: &Position) -> i32 {
     let mut score: i32 = 0;
 
-    for rank in 1..=8 {
+    for rank in 0..=7 {
         for file in 'a'..='h' {
-            let piece = position.get_piece_on_square(&Coord { rank, file });
+            let index = (rank * 8 + file as usize) as i8;
+            let piece = position.get_piece_on_square(&index);
             score = score + (piece.piece_type as i16 * piece.color as i16) as i32;
         }
     }

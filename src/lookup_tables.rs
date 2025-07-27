@@ -1,44 +1,32 @@
 use std::collections::HashMap;
 use std::sync::LazyLock;
 
-pub static ROOK_RANK_MASK: LazyLock<Vec<HashMap<u64, u64>>> =
+pub static ROOK_RANK_MASK: LazyLock<[[u64; 255]; 8]> =
     LazyLock::new(|| generate_rook_rank_loop_up_mask());
 
-pub static FILE_TO_RANK: LazyLock<HashMap<u64, u64>> =
-    LazyLock::new(|| generate_rook_file_to_rank_table());
+pub static ANTI_DIAG_MASK: LazyLock<[u64; 8]> = LazyLock::new(|| generate_anti_diag_mask());
 
-pub static RANK_TO_FILE: LazyLock<HashMap<u64, u64>> =
-    LazyLock::new(|| generate_rook_rank_to_file_table());
+pub static DIAG_MASK: LazyLock<[u64; 8]> = LazyLock::new(|| generate_diag_mask());
 
-pub static ANTI_DIAG_MASK: LazyLock<Vec<u64>> = LazyLock::new(|| generate_anti_diag_mask());
+pub static KNIGHT_MASK: LazyLock<[u64; 64]> = LazyLock::new(|| generate_knight_mask());
+pub static KING_MASK: LazyLock<[u64; 64]> = LazyLock::new(|| generate_king_mask());
 
-pub static DIAG_MASK: LazyLock<Vec<u64>> = LazyLock::new(|| generate_diag_mask());
-
-pub static KNIGHT_MASK: LazyLock<Vec<u64>> = LazyLock::new(|| generate_knight_mask());
-pub static KING_MASK: LazyLock<Vec<u64>> = LazyLock::new(|| generate_king_mask());
-
-pub static PAWN_WHITE_FRONT_MASK: LazyLock<Vec<u64>> =
-    LazyLock::new(|| generate_white_pawn_front_mask());
-pub static PAWN_WHITE_DIAG_MASK: LazyLock<Vec<u64>> =
+pub static PAWN_WHITE_DIAG_MASK: LazyLock<[u64; 64]> =
     LazyLock::new(|| generate_white_pawn_diag_mask());
 
-pub static PAWN_BLACK_FRONT_MASK: LazyLock<Vec<u64>> =
-    LazyLock::new(|| generate_black_pawn_front_mask());
-pub static PAWN_BLACK_DIAG_MASK: LazyLock<Vec<u64>> =
+pub static PAWN_BLACK_DIAG_MASK: LazyLock<[u64; 64]> =
     LazyLock::new(|| generate_black_pawn_diag_mask());
 
-fn generate_rook_rank_loop_up_mask() -> Vec<HashMap<u64, u64>> {
-    let mut attacks: Vec<HashMap<u64, u64>> = Vec::new();
+fn generate_rook_rank_loop_up_mask() -> [[u64; 255]; 8] {
+    let mut attacks: [[u64; 255]; 8] = [[0; 255]; 8];
 
     for index in 0..8 {
-        let mut masks_list: Vec<u64> = Vec::new();
-        let mut moves_list: HashMap<u64, u64> = HashMap::new();
+        let mut masks_list = [0u64; 255];
         for i in 0..=255 {
             if (i >> index) & 1 != 0 {
                 continue;
             }
-
-            masks_list.push(i);
+            masks_list[i] = i as u64;
         }
 
         for mask in masks_list {
@@ -53,7 +41,6 @@ fn generate_rook_rank_loop_up_mask() -> Vec<HashMap<u64, u64>> {
                 moves |= 1 << cursor;
                 cursor += 1;
             }
-
             // right side
             if index > 0 {
                 cursor = index - 1;
@@ -70,47 +57,13 @@ fn generate_rook_rank_loop_up_mask() -> Vec<HashMap<u64, u64>> {
                     cursor -= 1;
                 }
             }
-
-            moves_list.insert(mask, moves);
+            attacks[index as usize][mask as usize] = moves;
         }
-        attacks.push(moves_list);
     }
     attacks
 }
 
-fn generate_rook_file_to_rank_table() -> HashMap<u64, u64> {
-    let mut file_to_rank: HashMap<u64, u64> = HashMap::new();
-
-    for _ in 0..8 {
-        for rank_mask in 0..=255 {
-            let mut file_mask = 0;
-            for j in 0..=7u64 {
-                file_mask |= ((rank_mask >> j) & 1) << (8 * j);
-            }
-
-            file_to_rank.insert(file_mask, rank_mask);
-        }
-    }
-    file_to_rank
-}
-
-fn generate_rook_rank_to_file_table() -> HashMap<u64, u64> {
-    let mut rank_to_file: HashMap<u64, u64> = HashMap::new();
-
-    for _ in 0..8 {
-        for rank_mask in 0..=255 {
-            let mut file_mask = 0;
-            for j in 0..=7u64 {
-                file_mask |= ((rank_mask >> j) & 1) << (8 * j);
-            }
-
-            rank_to_file.insert(rank_mask, file_mask);
-        }
-    }
-    rank_to_file
-}
-
-fn generate_anti_diag_mask() -> Vec<u64> {
+fn generate_anti_diag_mask() -> [u64; 8] {
     /*
         To generate the anti-diagonal mask, you do +9 to move alongside the corresponding diagonal and -8 for the next step
         We only need to generate the upper anti-diagonal
@@ -129,7 +82,7 @@ fn generate_anti_diag_mask() -> Vec<u64> {
         File A
     */
 
-    let mut anti_diag_mask_list: Vec<u64> = Vec::new();
+    let mut anti_diag_mask_list: [u64; 8] = [0u64; 8];
     for i in 0..8 {
         let mut anti_diag_mask: u64 = 0;
         let mut bit_index = 56 - 8 * i;
@@ -137,13 +90,13 @@ fn generate_anti_diag_mask() -> Vec<u64> {
             anti_diag_mask |= 1u64 << bit_index;
             bit_index += 9;
         }
-        anti_diag_mask_list.push(anti_diag_mask);
+        anti_diag_mask_list[i] = anti_diag_mask;
     }
 
     anti_diag_mask_list
 }
 
-fn generate_diag_mask() -> Vec<u64> {
+fn generate_diag_mask() -> [u64; 8] {
     /*
         To generate the     diagonal mask, you do +7 to move alongside the corresponding diagonal and +1 for the next step
         We only need to generate the lower diagonal
@@ -162,7 +115,7 @@ fn generate_diag_mask() -> Vec<u64> {
         File A
     */
 
-    let mut diag_mask_list: Vec<u64> = Vec::new();
+    let mut diag_mask_list: [u64; 8] = [0u64; 8];
     for i in 0..8 {
         let mut diag_mask: u64 = 0;
         let mut bit_index: u64 = i;
@@ -170,20 +123,20 @@ fn generate_diag_mask() -> Vec<u64> {
             diag_mask |= 1u64 << bit_index;
             bit_index += 7;
         }
-        diag_mask_list.push(diag_mask);
+        diag_mask_list[i as usize] = diag_mask;
     }
 
     diag_mask_list
 }
 
-fn generate_knight_mask() -> Vec<u64> {
-    let mut knight_mask_list = Vec::new();
+fn generate_knight_mask() -> [u64; 64] {
+    let mut knight_mask_list: [u64; 64] = [0; 64];
 
     for rank in 1..=8 {
         for file in 'a'..='h' {
             let r = rank - 1;
             let f = (file as u8 - 'a' as u8) as i8;
-            // let index = r * 8 + f as i8;
+            let index = r * 8 + f as i8;
             let mut knight_mask: u64 = 0;
 
             if 0 <= f - 2 {
@@ -219,22 +172,21 @@ fn generate_knight_mask() -> Vec<u64> {
                     knight_mask |= 1u64 << ((r + 2) * 8 + f + 1);
                 }
             }
-
-            knight_mask_list.push(knight_mask);
+            knight_mask_list[index as usize] = knight_mask;
         }
     }
 
     knight_mask_list
 }
 
-fn generate_king_mask() -> Vec<u64> {
-    let mut king_mask_list = Vec::new();
+fn generate_king_mask() -> [u64; 64] {
+    let mut king_mask_list: [u64; 64] = [0; 64];
 
     for rank in 1..=8 {
         for file in 'a'..='h' {
             let r = rank - 1;
             let f = (file as u8 - 'a' as u8) as i8;
-            // let index = r * 8 + f as i8;
+            let index = r * 8 + f as i8;
             let mut king_mask: u64 = 0;
 
             if 0 <= f - 1 {
@@ -262,36 +214,15 @@ fn generate_king_mask() -> Vec<u64> {
             if r + 1 <= 7 {
                 king_mask |= 1u64 << ((r + 1) * 8 + f);
             }
-
-            king_mask_list.push(king_mask);
+            king_mask_list[index as usize] = king_mask;
         }
     }
 
     king_mask_list
 }
 
-fn generate_white_pawn_front_mask() -> Vec<u64> {
-    let mut white_pawn_mask_list = Vec::new();
-
-    for rank in 1..=8 {
-        for file in 'a'..='h' {
-            let r = rank - 1;
-            let f = (file as u8 - 'a' as u8) as i8;
-            let index = r * 8 + f as i8;
-            let mut mask: u64 = 0;
-            if rank < 8 {
-                // The front
-                mask |= 1 << (index + 8);
-            }
-            white_pawn_mask_list.push(mask);
-        }
-    }
-
-    white_pawn_mask_list
-}
-
-fn generate_white_pawn_diag_mask() -> Vec<u64> {
-    let mut white_pawn_mask_list = Vec::new();
+fn generate_white_pawn_diag_mask() -> [u64; 64] {
+    let mut white_pawn_mask_list: [u64; 64] = [0; 64];
 
     for rank in 1..=8 {
         for file in 'a'..='h' {
@@ -309,34 +240,14 @@ fn generate_white_pawn_diag_mask() -> Vec<u64> {
                     mask |= 1 << (index + 9);
                 }
             }
-            white_pawn_mask_list.push(mask);
+            white_pawn_mask_list[index as usize] = mask;
         }
     }
     white_pawn_mask_list
 }
 
-fn generate_black_pawn_front_mask() -> Vec<u64> {
-    let mut black_pawn_mask_list = Vec::new();
-
-    for rank in 1..=8 {
-        for file in 'a'..='h' {
-            let r = rank - 1;
-            let f = (file as u8 - 'a' as u8) as i8;
-            let index = r * 8 + f as i8;
-            let mut mask: u64 = 0;
-            if rank > 1 {
-                // The front
-                mask |= 1 << (index - 8);
-            }
-            black_pawn_mask_list.push(mask);
-        }
-    }
-
-    black_pawn_mask_list
-}
-
-fn generate_black_pawn_diag_mask() -> Vec<u64> {
-    let mut black_pawn_mask_list = Vec::new();
+fn generate_black_pawn_diag_mask() -> [u64; 64] {
+    let mut black_pawn_mask_list: [u64; 64] = [0; 64];
 
     for rank in 1..=8 {
         for file in 'a'..='h' {
@@ -354,7 +265,7 @@ fn generate_black_pawn_diag_mask() -> Vec<u64> {
                     mask |= 1 << (index - 9);
                 }
             }
-            black_pawn_mask_list.push(mask);
+            black_pawn_mask_list[index as usize] = mask;
         }
     }
 

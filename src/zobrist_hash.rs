@@ -1,4 +1,4 @@
-use crate::utils::{Coord, Piece, PieceColor, PieceType};
+use crate::utils::{Piece, PieceColor, PieceType};
 use std::collections::HashMap;
 use rand::Rng;
 use crate::position::Position;
@@ -45,9 +45,10 @@ impl ZobristHash {
     pub fn hash_position(&self, position:& Position) -> u64{
         let mut hash: u64 = 0;
 
-        for rank in 1..=8{
-            for file in 'a' ..='h'{
-                let piece = position.get_piece_on_square(&Coord{rank, file});
+        for rank in 0..=7 {
+            for file in 'a'..='h' {
+                let index = (rank * 8 + file as usize) as i8;
+                let piece = position.get_piece_on_square(&index);
                 let i = 8 - rank;
                 let j = file as u8 - 'a' as u8;
                 let piece_hash = self.keys_tables.get(&piece).unwrap()[(8 * i as u8 + j) as usize];

@@ -1,14 +1,3 @@
-use std::sync::LazyLock;
-
-pub static RANK_1: LazyLock<u64> =
-    LazyLock::new(|| 0b0000000000000000000000000000000000000000000000000000000011111111);
-pub static FILE_A: LazyLock<u64> =
-    LazyLock::new(|| 0b0000000100000001000000010000000100000001000000010000000100000001);
-pub static ANTI_DIAGONAL: LazyLock<u64> =
-    LazyLock::new(|| 0b1000000001000000001000000001000000001000000001000000001000000001);
-pub static DIAGONAL: LazyLock<u64> =
-    LazyLock::new(|| 0b0000000100000010000001000000100000010000001000000100000010000000);
-
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 #[repr(i16)]
 pub enum PieceColor {
@@ -35,11 +24,6 @@ pub struct Piece {
     pub piece_type: PieceType,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct Coord {
-    pub rank: i8,
-    pub file: char,
-}
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum MoveType {
@@ -53,7 +37,7 @@ pub enum MoveType {
 }
 #[derive(Clone, Debug, PartialEq)]
 pub struct Move {
-    pub source: Coord,
-    pub destination: Coord,
+    pub source: i8,
+    pub destination: i8,
     pub move_type: MoveType,
 }

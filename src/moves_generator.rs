@@ -1,73 +1,26 @@
-use std::time::Instant;
 use crate::lookup_tables;
 use crate::position::Position;
-use crate::utils::{
-    ANTI_DIAGONAL, Coord, DIAGONAL, FILE_A, Move, MoveType, Piece, PieceColor, PieceType, RANK_1,
-};
+use crate::utils::{Move, MoveType, Piece, PieceColor, PieceType};
 
 pub fn generate_mask_moves(
     white_board: &u64,
     black_board: &u64,
-    source: &Coord,
+    source: &i8,
     piece: &Piece,
 ) -> u64 {
     let mut attacks_squares: u64 = match piece.piece_type {
         PieceType::None => 0,
         PieceType::Pawn => {
-            let start = Instant::now();
-            let attacks = generate_move_mask_for_pawn(&(white_board | black_board), source, &piece.color);
-            let duration = start.elapsed();
-            // if duration.as_millis() > 0 {
-            //     println!("Pawns = {:?}", duration);
-            // }
-            attacks
+            generate_move_mask_for_pawn(&(white_board | black_board), source, &piece.color)
         }
-        PieceType::Knight => {
-            let start = Instant::now();
-            let attacks = generate_move_mask_for_knight(source);
-            let duration = start.elapsed();
-            // if duration.as_millis() > 0 {
-            //     println!("Knight = {:?}", duration);
-            // }
-            attacks
-        }
-        PieceType::Bishop => {
-            let start = Instant::now();
-            let attacks = generate_move_mask_for_bishop(&(white_board | black_board), source);
-            let duration = start.elapsed();
-            // if duration.as_millis() > 0 {
-            //     println!("Bishop = {:?}", duration);
-            // }
-            attacks
-        }
-        PieceType::Rook => {
-            let start = Instant::now();
-            let attacks = generate_move_mask_for_rook(&(white_board | black_board), source);
-            let duration = start.elapsed();
-            // if duration.as_millis() > 0 {
-            //     println!("Rook = {:?}", duration);
-            // }
-            attacks
-        }
+        PieceType::Knight => generate_move_mask_for_knight(source),
+        PieceType::Bishop => generate_move_mask_for_bishop(&(white_board | black_board), source),
+        PieceType::Rook => generate_move_mask_for_rook(&(white_board | black_board), source),
         PieceType::Queen => {
-            let start = Instant::now();
-            let attacks = generate_move_mask_for_rook(&(white_board | black_board), source)
-                | generate_move_mask_for_bishop(&(white_board | black_board), source);
-            let duration = start.elapsed();
-            // if duration.as_millis() > 0 {
-            //     println!("Queen = {:?}", duration);
-            // }
-            attacks
+            generate_move_mask_for_rook(&(white_board | black_board), source)
+                | generate_move_mask_for_bishop(&(white_board | black_board), source)
         }
-        PieceType::King => {
-            let start = Instant::now();
-            let attacks = generate_move_mask_for_king(source);
-            let duration = start.elapsed();
-            // if duration.as_millis() > 0 {
-            //     println!("King = {:?}", duration);
-            // }
-            attacks
-        }
+        PieceType::King => generate_move_mask_for_king(source),
     };
 
     // Avoid your own pieces in the attack
@@ -92,31 +45,32 @@ pub fn generate_moves(position: &Position, color: &PieceColor) -> Vec<Move> {
         let mut mask = generate_mask_moves(&white_board, &black_board, &source, &piece);
 
         while mask != 0 {
-            let index = mask.trailing_zeros() as u8;
-            let rank = 1 + (index / 8) as i8;
-            let file = (index % 8 + 'a' as u8) as char;
+            let index = mask.trailing_zeros() as i8;
+            let rank = 1 + (index / 8);
+            let mut no_short_castle_manage = true;
+            let mut no_long_castle_manage = true;
 
             match piece.piece_type {
                 PieceType::Pawn => {
                     if rank == 1 || rank == 8 {
                         moves.push(Move {
-                            source: source.clone(),
-                            destination: Coord { rank, file },
+                            source: *source,
+                            destination: index,
                             move_type: MoveType::PawnToKnight,
                         });
                         moves.push(Move {
-                            source: source.clone(),
-                            destination: Coord { rank, file },
+                            source: *source,
+                            destination: index,
                             move_type: MoveType::PawnToBishop,
                         });
                         moves.push(Move {
-                            source: source.clone(),
-                            destination: Coord { rank, file },
+                            source: *source,
+                            destination: index,
                             move_type: MoveType::PawnToRook,
                         });
                         moves.push(Move {
-                            source: source.clone(),
-                            destination: Coord { rank, file },
+                            source: *source,
+                            destination: index,
                             move_type: MoveType::PawnToQueen,
                         });
 
@@ -125,33 +79,29 @@ pub fn generate_moves(position: &Position, color: &PieceColor) -> Vec<Move> {
                     }
                 }
                 PieceType::King => {
-                    if position.can_short_castle(&piece.color) {
+                    if no_short_castle_manage && position.can_short_castle(&piece.color) {
                         moves.push(Move {
-                            source: source.clone(),
-                            destination: Coord {
-                                rank: source.rank,
-                                file: (source.file as u8 + 2) as char,
-                            },
+                            source: *source,
+                            destination: *source + 2,
                             move_type: MoveType::ShortCastle,
                         });
+                        no_short_castle_manage = false;
                     }
-                    if position.can_long_castle(&piece.color) {
+                    if no_long_castle_manage && position.can_long_castle(&piece.color) {
                         moves.push(Move {
-                            source: source.clone(),
-                            destination: Coord {
-                                rank: source.rank,
-                                file: (source.file as u8 - 2) as char,
-                            },
+                            source: *source,
+                            destination: *source - 2,
                             move_type: MoveType::LongCastle,
                         });
+                        no_long_castle_manage = false;
                     }
                 }
                 _ => {}
             }
 
             moves.push(Move {
-                source: source.clone(),
-                destination: Coord { rank, file },
+                source: *source,
+                destination: index,
                 move_type: MoveType::Normal,
             });
             mask &= mask - 1;
@@ -161,53 +111,70 @@ pub fn generate_moves(position: &Position, color: &PieceColor) -> Vec<Move> {
 }
 
 // Rook's moves mask
-fn generate_move_mask_for_rook(board: &u64, source: &Coord) -> u64 {
+#[inline(always)]
+fn generate_move_mask_for_rook(board: &u64, source: &i8) -> u64 {
+    let rank = source / 8;
+    let file = source % 8;
     let mut rank_mask = *board;
-    rank_mask >>= (source.rank - 1) * 8; // Move the rank to the first one
-    rank_mask &= RANK_1.clone(); // Remove everything that is not on the first rank
-    rank_mask &= !(1 << (source.file as u8 - 'a' as u8));
+    rank_mask >>= rank * 8; // Move the rank to the first one
+    rank_mask &= 0b0000000000000000000000000000000000000000000000000000000011111111; // Remove everything that is not on the first rank
+    rank_mask &= !(1 << file);
 
-    let mut rank_attacks = *lookup_tables::ROOK_RANK_MASK[(source.file as u8 - 'a' as u8) as usize]
-        .get(&rank_mask)
-        .unwrap();
-    rank_attacks <<= (source.rank - 1) * 8; // Move the rank back to its original position
+    let mut rank_attacks = lookup_tables::ROOK_RANK_MASK[file as usize][rank_mask as usize];
+    rank_attacks <<= rank * 8; // Move the rank back to its original position
 
     let mut file_mask = *board;
-    file_mask = file_mask >> (source.file as u8 - 'a' as u8); // Move toward the FILE_A
-    file_mask &= FILE_A.clone(); // Remove everything that is not on the FILE_A
+    file_mask = file_mask >> file; // Move toward the FILE_A
+    file_mask &= 0b0000000100000001000000010000000100000001000000010000000100000001; // Remove everything that is not on the FILE_A
 
     // Make a 90° anti-clock-wise rotation
-    let mut file_to_rank: u64 = lookup_tables::FILE_TO_RANK[&file_mask];
+    let mut file_to_rank: u64 = ((file_mask >> 0) & 1) << 0
+        | ((file_mask >> 8) & 1) << 1
+        | ((file_mask >> 16) & 1) << 2
+        | ((file_mask >> 24) & 1) << 3
+        | ((file_mask >> 32) & 1) << 4
+        | ((file_mask >> 40) & 1) << 5
+        | ((file_mask >> 48) & 1) << 6
+        | ((file_mask >> 56) & 1) << 7;
 
-    file_to_rank &= !(1 << (source.rank - 1));
+    file_to_rank &= !(1 << rank);
 
-    let file_rank_attack_mask = *lookup_tables::ROOK_RANK_MASK[(source.rank - 1) as usize]
-        .get(&file_to_rank)
-        .unwrap();
+    let file_rank_attack_mask = lookup_tables::ROOK_RANK_MASK[rank as usize][file_to_rank as usize];
 
     // Compute the final disposition for the file
-    let mut file_attacks = lookup_tables::RANK_TO_FILE[&file_rank_attack_mask];
-    file_attacks = file_attacks << (source.file as u8 - 'a' as u8); // Move the file back to its original position
+    let mut file_attacks = ((file_rank_attack_mask >> 0) & 1) << 0
+        | ((file_rank_attack_mask >> 1) & 1) << 8
+        | ((file_rank_attack_mask >> 2) & 1) << 16
+        | ((file_rank_attack_mask >> 3) & 1) << 24
+        | ((file_rank_attack_mask >> 4) & 1) << 32
+        | ((file_rank_attack_mask >> 5) & 1) << 40
+        | ((file_rank_attack_mask >> 6) & 1) << 48
+        | ((file_rank_attack_mask >> 7) & 1) << 56;
+    file_attacks = file_attacks << file; // Move the file back to its original position
 
     rank_attacks | file_attacks
 }
 
 // Bishop's moves mask
-fn generate_move_mask_for_bishop(board: &u64, source: &Coord) -> u64 {
+#[inline(always)]
+fn generate_move_mask_for_bishop(board: &u64, source: &i8) -> u64 {
+    let rank = source / 8;
+    let file = source % 8;
+
     // The file that contains the anti-diagonal for each rank
     // That allows us to know in which direction we will have to move to be on the anti-diagonal
-    let anti_diagonal_reference = vec!['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+    // let anti_diagonal_reference = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+    let anti_diagonal_reference = [0, 1, 2, 3, 4, 5, 6, 7];
     let mut anti_diagonal_mask = *board;
-    let anti_diag_file = anti_diagonal_reference[(source.rank - 1) as usize];
 
-    let distance_to_anti_diag: i8 = ((source.file as u8) as i8 - (anti_diag_file as u8) as i8);
+    let distance_to_anti_diag: i8 = file - anti_diagonal_reference[rank as usize];
     if distance_to_anti_diag < 0 {
         anti_diagonal_mask <<= (-1 * distance_to_anti_diag); // Move to the right
     } else if distance_to_anti_diag > 0 {
         anti_diagonal_mask >>= distance_to_anti_diag; // Move to the left
     }
 
-    anti_diagonal_mask &= ANTI_DIAGONAL.clone();
+    anti_diagonal_mask &= 0b1000000001000000001000000001000000001000000001000000001000000001;
 
     let mut anti_diag_to_rank: u64 = ((anti_diagonal_mask >> 0 & 1) << 0)
         | ((anti_diagonal_mask >> 9 & 1) << 1)
@@ -218,11 +185,10 @@ fn generate_move_mask_for_bishop(board: &u64, source: &Coord) -> u64 {
         | ((anti_diagonal_mask >> 54 & 1) << 6)
         | ((anti_diagonal_mask >> 63 & 1) << 7);
 
-    anti_diag_to_rank &= !(1 << (source.rank - 1));
+    anti_diag_to_rank &= !(1 << rank);
 
-    let anti_diag_rank_attack_mask = *lookup_tables::ROOK_RANK_MASK[(source.rank - 1) as usize]
-        .get(&anti_diag_to_rank)
-        .unwrap();
+    let anti_diag_rank_attack_mask =
+        lookup_tables::ROOK_RANK_MASK[rank as usize][anti_diag_to_rank as usize];
 
     let mut anti_diag_attacks: u64 = ((anti_diag_rank_attack_mask >> 0 & 1) << 0)
         | ((anti_diag_rank_attack_mask >> 1 & 1) << 9)
@@ -244,10 +210,9 @@ fn generate_move_mask_for_bishop(board: &u64, source: &Coord) -> u64 {
     // Anti-diag index in the lookup table: file - a + 8 - rank (for the upper anti-diagonal)
     // Anti-diag index in the lookup table: 8 - (file - a + rank) (for the lower anti-diagonal)
     let anti_diag_mask = if distance_to_anti_diag < 0 {
-        lookup_tables::ANTI_DIAG_MASK
-            [(source.file as u8 - 'a' as u8) as usize + 8 - source.rank as usize]
+        lookup_tables::ANTI_DIAG_MASK[file as usize + 7 - rank as usize]
     } else if distance_to_anti_diag > 0 {
-        let index = ('h' as u8 - source.file as u8) as i8 + source.rank - 1;
+        let index = 7 - file + rank;
         let mut temp_mask = lookup_tables::ANTI_DIAG_MASK[index as usize];
         temp_mask >>= (7 - index) * 8; // 7 - index times to the bottom
         temp_mask <<= 7 - index; // 7 - index times to the right
@@ -263,19 +228,17 @@ fn generate_move_mask_for_bishop(board: &u64, source: &Coord) -> u64 {
 
     // The file that contains the diagonal for each rank
     // That allows us to know in which direction we will have to move to be on the diagonal
-    let diagonal_reference = vec!['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+    let diagonal_reference = [0, 1, 2, 3, 4, 5, 6, 7];
     let mut diagonal_mask = *board;
-    let diag_file = diagonal_reference[(8 - source.rank) as usize];
 
-    let distance_to_diag: i8 = ((source.file as u8) as i8 - (diag_file as u8) as i8);
+    let distance_to_diag: i8 = file - diagonal_reference[(7 - rank) as usize];
     if distance_to_diag < 0 {
         diagonal_mask <<= (-1 * distance_to_diag); // Move to the right
     } else if distance_to_diag > 0 {
         diagonal_mask >>= distance_to_diag; // Move to the left
     }
 
-    diagonal_mask &= DIAGONAL.clone();
-
+    diagonal_mask &= 0b0000000100000010000001000000100000010000001000000100000010000000;
 
     let mut diag_to_rank: u64 = ((diagonal_mask >> 7 & 1) << 7)
         | ((diagonal_mask >> 14 & 1) << 6)
@@ -286,11 +249,10 @@ fn generate_move_mask_for_bishop(board: &u64, source: &Coord) -> u64 {
         | ((diagonal_mask >> 49 & 1) << 1)
         | ((diagonal_mask >> 56 & 1) << 0);
 
-    diag_to_rank &= !(1 << (8 - source.rank));
+    diag_to_rank &= !(1 << (7 - rank));
 
-    let diag_rank_attack_mask = *lookup_tables::ROOK_RANK_MASK[(8 - source.rank) as usize]
-        .get(&diag_to_rank)
-        .unwrap();
+    let diag_rank_attack_mask =
+        lookup_tables::ROOK_RANK_MASK[(7 - rank) as usize][diag_to_rank as usize];
 
     let mut diag_attacks: u64 = ((diag_rank_attack_mask >> 0 & 1) << 56)
         | ((diag_rank_attack_mask >> 1 & 1) << 49)
@@ -312,11 +274,10 @@ fn generate_move_mask_for_bishop(board: &u64, source: &Coord) -> u64 {
     // Diag index in the lookup table: file - a + rank - 1 (for the lower diagonal)
     // Diag index in the lookup table: h - file + 8 - rank (for the upper diagonal)
     let diag_mask = if distance_to_diag < 0 {
-        lookup_tables::DIAG_MASK
-            [(source.file as u8 - 'a' as u8) as usize + source.rank as usize - 1]
+        lookup_tables::DIAG_MASK[file as usize + rank as usize]
     } else if distance_to_diag > 0 {
-        let index = ('h' as u8 - source.file as u8) as usize + 8 - source.rank as usize;
-        let mut temp_mask = lookup_tables::DIAG_MASK[index];
+        let index = 7 - file + 7 - rank;
+        let mut temp_mask = lookup_tables::DIAG_MASK[index as usize];
         temp_mask <<= (7 - index) * 8; // 7 - index times to the up
         temp_mask <<= 7 - index; // 7 - index times to the right
         temp_mask
@@ -330,30 +291,26 @@ fn generate_move_mask_for_bishop(board: &u64, source: &Coord) -> u64 {
 }
 
 // Knight's moves mask
-fn generate_move_mask_for_knight(source: &Coord) -> u64 {
-    let r = source.rank - 1;
-    let f = (source.file as u8 - 'a' as u8) as i8;
-    let index = r * 8 + f;
-    lookup_tables::KNIGHT_MASK[index as usize]
+#[inline(always)]
+fn generate_move_mask_for_knight(source: &i8) -> u64 {
+    lookup_tables::KNIGHT_MASK[*source as usize]
 }
 
 // Pawn's moves mask
-fn generate_move_mask_for_pawn(board: &u64, source: &Coord, color: &PieceColor) -> u64 {
+#[inline(always)]
+fn generate_move_mask_for_pawn(board: &u64, source: &i8, color: &PieceColor) -> u64 {
     let board = *board;
-
-    let r = source.rank - 1;
-    let f = source.file as u8 - 'a' as u8;
-    let index = r * 8 + f as i8;
+    let rank = 1 + source / 8;
 
     let mut pawn_attacks_mask: u64 = 0;
     match color {
         PieceColor::None => {}
         PieceColor::White => {
-            let mut pawn_front_attacks_mask = lookup_tables::PAWN_WHITE_FRONT_MASK[index as usize];
+            let mut pawn_front_attacks_mask = 1 << (*source + 8);
             // Avoid moving forward if there is ANY piece of the front square
             pawn_front_attacks_mask &= !board;
 
-            let mut pawn_diag_attacks_mask = lookup_tables::PAWN_WHITE_DIAG_MASK[index as usize];
+            let mut pawn_diag_attacks_mask = lookup_tables::PAWN_WHITE_DIAG_MASK[*source as usize];
             // Avoid moving in the diagonal if there is no piece there
             pawn_diag_attacks_mask &= board;
 
@@ -361,19 +318,16 @@ fn generate_move_mask_for_pawn(board: &u64, source: &Coord, color: &PieceColor) 
 
             // if the pawn is at the second rank and if the two square in front od it are empty,
             // it can move two-square ahead
-            if source.rank == 2
-                && (board >> (index + 8)) & 1 == 0
-                && (board >> (index + 16)) & 1 == 0
-            {
-                pawn_attacks_mask |= 1 << (index + 16)
+            if rank == 2 && (board >> (source + 8)) & 1 == 0 && (board >> (source + 16)) & 1 == 0 {
+                pawn_attacks_mask |= 1 << (source + 16)
             }
         }
         PieceColor::Black => {
-            let mut pawn_front_attacks_mask = lookup_tables::PAWN_BLACK_FRONT_MASK[index as usize];
+            let mut pawn_front_attacks_mask = 1 << (*source - 8);
             // Avoid moving forward if there is ANY piece of the front square
             pawn_front_attacks_mask &= !board;
 
-            let mut pawn_diag_attacks_mask = lookup_tables::PAWN_BLACK_DIAG_MASK[index as usize];
+            let mut pawn_diag_attacks_mask = lookup_tables::PAWN_BLACK_DIAG_MASK[*source as usize];
             // Avoid moving in the diagonal if there is no piece there
             pawn_diag_attacks_mask &= board;
 
@@ -381,11 +335,8 @@ fn generate_move_mask_for_pawn(board: &u64, source: &Coord, color: &PieceColor) 
 
             // if the pawn is at the seven rank and if the two square in front of it are empty,
             // it can move two-square ahead
-            if source.rank == 7
-                && (board >> (index - 8)) & 1 == 0
-                && (board >> (index - 16)) & 1 == 0
-            {
-                pawn_attacks_mask |= 1 << (index - 16)
+            if rank == 7 && (board >> (source - 8)) & 1 == 0 && (board >> (source - 16)) & 1 == 0 {
+                pawn_attacks_mask |= 1 << (source - 16)
             }
         }
     }
@@ -393,9 +344,7 @@ fn generate_move_mask_for_pawn(board: &u64, source: &Coord, color: &PieceColor) 
 }
 
 // King's moves mask
-fn generate_move_mask_for_king(source: &Coord) -> u64 {
-    let r = source.rank - 1;
-    let f = (source.file as u8 - 'a' as u8) as i8;
-    let index = r * 8 + f;
-    lookup_tables::KING_MASK[index as usize]
+#[inline(always)]
+fn generate_move_mask_for_king(source: &i8) -> u64 {
+    lookup_tables::KING_MASK[*source as usize]
 }
