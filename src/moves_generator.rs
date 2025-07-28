@@ -2,7 +2,7 @@ use crate::lookup_tables;
 use crate::position::Position;
 use crate::utils::{Move, MoveType, Piece, PieceColor, PieceType};
 
-pub fn generate_legal_moves(position: &Position, color: &PieceColor) -> Vec<Move>{
+pub fn generate_legal_moves(position: &Position, color: &PieceColor) -> Vec<Move> {
     let turn = position.get_turn();
     let pseudo_legal_moves: Vec<Move> = generate_pseudo_legal_moves(position, &turn);
     let mut moves: Vec<Move> = Vec::new();
@@ -18,62 +18,70 @@ pub fn generate_legal_moves(position: &Position, color: &PieceColor) -> Vec<Move
 
 fn generate_pseudo_legal_moves(position: &Position, color: &PieceColor) -> Vec<Move> {
     let mut moves = Vec::new();
-
     let coords = position.get_available_piece_coords(color);
-    let white_board = position.get_white_board();
-    let black_board = position.get_black_board();
+    let en_passant = position.get_en_passant();
 
-    for source in &coords {
+    for source in coords {
         let piece = position.get_piece_on_square(&source);
-        let mut mask = generate_mask_moves(&white_board, &black_board, &source, &piece);
+        let mut mask = generate_mask_moves(&position, &source, &piece);
 
         while mask != 0 {
-            let index = mask.trailing_zeros() as i8;
-            let rank = 1 + (index / 8);
+            let destination = mask.trailing_zeros() as i8;
+            let destination_rank = 1 + (destination / 8);
             let mut no_short_castle_manage = true;
             let mut no_long_castle_manage = true;
 
             match piece.piece_type {
                 PieceType::Pawn => {
-                    if rank == 1 || rank == 8 {
+                    if en_passant.is_some() && destination == en_passant.unwrap(){
                         moves.push(Move {
-                            source: *source,
-                            destination: index,
-                            move_type: MoveType::PawnToKnight,
+                            source,
+                            destination,
+                            move_type: MoveType::EnPassant,
                         });
-                        moves.push(Move {
-                            source: *source,
-                            destination: index,
-                            move_type: MoveType::PawnToBishop,
-                        });
-                        moves.push(Move {
-                            source: *source,
-                            destination: index,
-                            move_type: MoveType::PawnToRook,
-                        });
-                        moves.push(Move {
-                            source: *source,
-                            destination: index,
-                            move_type: MoveType::PawnToQueen,
-                        });
-
                         mask &= mask - 1;
                         continue;
+                    }else {
+                        if destination_rank == 1 || destination_rank == 8 {
+                            moves.push(Move {
+                                source,
+                                destination,
+                                move_type: MoveType::PawnToKnight,
+                            });
+                            moves.push(Move {
+                                source,
+                                destination,
+                                move_type: MoveType::PawnToBishop,
+                            });
+                            moves.push(Move {
+                                source,
+                                destination,
+                                move_type: MoveType::PawnToRook,
+                            });
+                            moves.push(Move {
+                                source,
+                                destination,
+                                move_type: MoveType::PawnToQueen,
+                            });
+
+                            mask &= mask - 1;
+                            continue;
+                        }
                     }
                 }
                 PieceType::King => {
                     if no_short_castle_manage && position.can_short_castle(&piece.color) {
                         moves.push(Move {
-                            source: *source,
-                            destination: *source + 2,
+                            source,
+                            destination: source + 2,
                             move_type: MoveType::ShortCastle,
                         });
                         no_short_castle_manage = false;
                     }
                     if no_long_castle_manage && position.can_long_castle(&piece.color) {
                         moves.push(Move {
-                            source: *source,
-                            destination: *source - 2,
+                            source,
+                            destination: source - 2,
                             move_type: MoveType::LongCastle,
                         });
                         no_long_castle_manage = false;
@@ -83,8 +91,8 @@ fn generate_pseudo_legal_moves(position: &Position, color: &PieceColor) -> Vec<M
             }
 
             moves.push(Move {
-                source: *source,
-                destination: index,
+                source,
+                destination,
                 move_type: MoveType::Normal,
             });
             mask &= mask - 1;
@@ -93,23 +101,16 @@ fn generate_pseudo_legal_moves(position: &Position, color: &PieceColor) -> Vec<M
     moves
 }
 
-pub fn generate_mask_moves(
-    white_board: &u64,
-    black_board: &u64,
-    source: &i8,
-    piece: &Piece,
-) -> u64 {
+pub fn generate_mask_moves(position: &Position, source: &i8, piece: &Piece) -> u64 {
     let mut attacks_squares: u64 = match piece.piece_type {
         PieceType::None => 0,
-        PieceType::Pawn => {
-            generate_move_mask_for_pawn(&(white_board | black_board), source, &piece.color)
-        }
+        PieceType::Pawn => generate_move_mask_for_pawn(&position, source, &piece.color),
         PieceType::Knight => generate_move_mask_for_knight(source),
-        PieceType::Bishop => generate_move_mask_for_bishop(&(white_board | black_board), source),
-        PieceType::Rook => generate_move_mask_for_rook(&(white_board | black_board), source),
+        PieceType::Bishop => generate_move_mask_for_bishop(&position.get_board(), source),
+        PieceType::Rook => generate_move_mask_for_rook(&position.get_board(), source),
         PieceType::Queen => {
-            generate_move_mask_for_rook(&(white_board | black_board), source)
-                | generate_move_mask_for_bishop(&(white_board | black_board), source)
+            generate_move_mask_for_rook(&position.get_board(), source)
+                | generate_move_mask_for_bishop(&position.get_board(), source)
         }
         PieceType::King => generate_move_mask_for_king(source),
     };
@@ -117,8 +118,8 @@ pub fn generate_mask_moves(
     // Avoid your own pieces in the attack
     attacks_squares = match piece.color {
         PieceColor::None => attacks_squares,
-        PieceColor::White => attacks_squares & !white_board,
-        PieceColor::Black => attacks_squares & !black_board,
+        PieceColor::White => attacks_squares & !position.get_white_board(),
+        PieceColor::Black => attacks_squares & !position.get_black_board(),
     };
 
     attacks_squares
@@ -312,9 +313,10 @@ pub fn generate_move_mask_for_knight(source: &i8) -> u64 {
 
 // Pawn's moves mask
 #[inline(always)]
-pub fn generate_move_mask_for_pawn(board: &u64, source: &i8, color: &PieceColor) -> u64 {
-    let board = *board;
+pub fn generate_move_mask_for_pawn(position: &Position, source: &i8, color: &PieceColor) -> u64 {
+    let board = position.get_board();
     let rank = 1 + source / 8;
+    let en_passant = position.get_en_passant();
 
     let mut pawn_attacks_mask: u64 = 0;
     match color {
@@ -326,7 +328,11 @@ pub fn generate_move_mask_for_pawn(board: &u64, source: &i8, color: &PieceColor)
 
             let mut pawn_diag_attacks_mask = lookup_tables::PAWN_WHITE_DIAG_MASK[*source as usize];
             // Avoid moving in the diagonal if there is no piece there
-            pawn_diag_attacks_mask &= board;
+            // And adding the en-passant square, if any
+            pawn_diag_attacks_mask &= match en_passant {
+                Some(en_passant_square) => board | (1 << en_passant_square),
+                None => board,
+            };
 
             pawn_attacks_mask = pawn_front_attacks_mask | pawn_diag_attacks_mask;
 
@@ -343,7 +349,11 @@ pub fn generate_move_mask_for_pawn(board: &u64, source: &i8, color: &PieceColor)
 
             let mut pawn_diag_attacks_mask = lookup_tables::PAWN_BLACK_DIAG_MASK[*source as usize];
             // Avoid moving in the diagonal if there is no piece there
-            pawn_diag_attacks_mask &= board;
+            // And adding the en-passant square, if any
+            pawn_diag_attacks_mask &= match en_passant {
+                Some(en_passant_square) => board | (1 << en_passant_square),
+                None => board,
+            };
 
             pawn_attacks_mask = pawn_front_attacks_mask | pawn_diag_attacks_mask;
 

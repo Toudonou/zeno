@@ -1,7 +1,7 @@
 use crate::moves_generator;
 use crate::moves_generator::{
-    generate_move_mask_for_bishop, generate_move_mask_for_king, generate_move_mask_for_knight,
-    generate_move_mask_for_pawn, generate_move_mask_for_rook,
+    generate_mask_moves, generate_move_mask_for_bishop, generate_move_mask_for_king,
+    generate_move_mask_for_knight, generate_move_mask_for_pawn, generate_move_mask_for_rook,
 };
 use crate::utils::{Move, MoveType, Piece, PieceColor, PieceType};
 /*
@@ -174,12 +174,13 @@ impl Position {
             }
         }
 
-        let mut en_passant = None;
+        let mut en_passant_rank: Option<i8> = None;
+        let mut en_passant_file: Option<i8> = None;
         if en_passant_part != "-" {
             for ch in en_passant_part.chars() {
                 match ch {
-                    'a'..='z' => en_passant = Some((ch as u8 - 'a' as u8) as i8),
-                    '1'..='8' => en_passant = Some(ch.to_digit(10).unwrap() as i8 * 8),
+                    'a'..='z' => en_passant_file = Some((ch as u8 - 'a' as u8) as i8),
+                    '1'..='8' => en_passant_rank = Some((ch.to_digit(10).unwrap() as i8 - 1) * 8),
                     _ => {}
                 }
             }
@@ -203,7 +204,6 @@ impl Position {
             } else {
                 1
             },
-
             black_rook_king_side_moves: if black_can_castle_kingside { 0 } else { 1 },
             black_rook_queen_side_moves: if black_can_castle_queenside { 0 } else { 1 },
             black_king_moves: if black_can_castle_kingside | black_can_castle_queenside {
@@ -211,9 +211,11 @@ impl Position {
             } else {
                 1
             },
-
-            en_passant,
-
+            en_passant: if en_passant_rank.is_some() && en_passant_file.is_some() {
+                Some(en_passant_rank.unwrap() + en_passant_file.unwrap())
+            } else {
+                None
+            },
             last_piece_move: Piece {
                 color: PieceColor::None,
                 piece_type: PieceType::None,
@@ -246,30 +248,25 @@ impl Position {
         }
 
         match mov.move_type {
-            MoveType::Normal => {
+            MoveType::Normal | MoveType::EnPassant => {
                 // The destination square must appear as one the square that the attacker piece can reach
-                let attacks_squares = moves_generator::generate_mask_moves(
-                    &self.white_board,
-                    &self.black_board,
-                    &mov.source,
-                    &source_piece,
-                );
+                let attacks_squares = generate_mask_moves(&self, &mov.source, &source_piece);
                 if (attacks_squares >> mov.destination) & 1 == 0 {
                     return false;
                 }
-
                 true
             }
             MoveType::ShortCastle => {
                 source_piece.piece_type == PieceType::King
                     && self.can_short_castle(&self.turn)
-                    && ((mov.source).abs_diff(mov.destination) == 2)
+                    && (mov.source.abs_diff(mov.destination) == 2)
             }
             MoveType::LongCastle => {
                 source_piece.piece_type == PieceType::King
                     && self.can_long_castle(&self.turn)
-                    && ((mov.source).abs_diff(mov.destination) == 2)
+                    && (mov.source.abs_diff(mov.destination) == 2)
             }
+            // TODO: Verify promotions moves
             MoveType::PawnToKnight => true,
             MoveType::PawnToBishop => true,
             MoveType::PawnToRook => true,
@@ -318,7 +315,7 @@ impl Position {
             return true;
         }
 
-        superior_king_mask = generate_move_mask_for_pawn(&board, &king_index, color);
+        superior_king_mask = generate_move_mask_for_pawn(&self, &king_index, color);
         if superior_king_mask & opponent_pawns_board != 0 {
             return true;
         }
@@ -478,8 +475,34 @@ impl Position {
                 self.pawns_board &= !(1u64 << mov.destination); // Delete the pawn
                 self.queens_board |= 1u64 << mov.destination;
             }
+            MoveType::EnPassant => {
+                // Updating the boards (for each color)
+                match source_piece.color {
+                    PieceColor::None => {}
+                    PieceColor::White => {
+                        self.pawns_board &= !(1u64 << (mov.destination - 8));
+                        self.black_board &= !(1u64 << (mov.destination - 8));
+                    }
+                    PieceColor::Black => {
+                        self.pawns_board &= !(1u64 << (mov.destination + 8));
+                        self.white_board &= !(1u64 << (mov.destination + 8));
+                    }
+                };
+            }
         }
 
+        self.en_passant = None;
+        if source_piece.piece_type == PieceType::Pawn && mov.source.abs_diff(mov.destination) == 16 {
+            match source_piece.color {
+                PieceColor::None => {}
+                PieceColor::White => {
+                    self.en_passant = Some(mov.destination - 8);
+                }
+                PieceColor::Black => {
+                    self.en_passant = Some(mov.destination + 8);
+                }
+            }
+        }
         match self.turn {
             PieceColor::None => {}
             PieceColor::White => self.turn = PieceColor::Black,
@@ -490,7 +513,7 @@ impl Position {
         self.last_piece_capture = destination_piece;
     }
 
-    pub fn undo_last_move(&mut self, mov: &Move) {
+    /* pub fn undo_last_move(&mut self, mov: &Move) {
         // Putting 1 at the index of the last piece move
         // And removing the piece from the destination by putting 0 at the destination for the corresponding piece
         match self.last_piece_move.piece_type {
@@ -654,7 +677,7 @@ impl Position {
             color: PieceColor::None,
             piece_type: PieceType::None,
         };
-    }
+    }*/
 
     pub fn get_turn(&self) -> PieceColor {
         self.turn.clone()
@@ -780,6 +803,25 @@ impl Position {
         }
     }
 
+    pub fn get_en_passant(&self) -> Option<i8> {
+        self.en_passant
+    }
+
+    pub fn print_board(&self) {
+        for rank in (0..=7).rev() {
+            print!("{} ", rank + 1);
+            for file in 0..=7 {
+                let index = (rank * 8 + file as usize) as i8;
+                print!(
+                    "{} ",
+                    self.piece_to_unicode(&self.get_piece_on_square(&index))
+                );
+            }
+            println!();
+        }
+        println!("\n  a b c d e f g h\n");
+    }
+
     fn piece_to_unicode(&self, piece: &Piece) -> char {
         match (piece.color.clone(), piece.piece_type.clone()) {
             (PieceColor::White, PieceType::Pawn) => '♙',
@@ -798,20 +840,5 @@ impl Position {
 
             _ => '·',
         }
-    }
-
-    pub fn print_board(&self) {
-        for rank in (0..=7).rev() {
-            print!("{} ", rank + 1);
-            for file in 0..=7 {
-                let index = (rank * 8 + file as usize) as i8;
-                print!(
-                    "{} ",
-                    self.piece_to_unicode(&self.get_piece_on_square(&index))
-                );
-            }
-            println!();
-        }
-        println!("\n  a b c d e f g h\n");
     }
 }

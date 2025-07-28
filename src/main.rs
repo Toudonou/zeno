@@ -12,10 +12,11 @@
 
 // TODO: Verify that the move do not put the king in check and that the king is not in check
 // TODO: CHECKMATE TO AVOID KING BEING CAPTURE
+// TODO: Verify in the is_check() that the move doesn't live the king in check
 
 use Zeno::moves_generator::{generate_legal_moves};
 use Zeno::position::Position;
-use Zeno::utils::Move;
+use Zeno::utils::{Move, MoveType};
 use std::time::Instant;
 use thousands::Separable;
 
@@ -36,7 +37,7 @@ fn perft(depth: i32, position:  &Position) -> u32 {
 }
 
 fn main() {
-    let fen = "rnbqkbnr/pppppppp/8/8/6P1/8/PPPPPP1P/RNBQKBNR b KQkq g3 0 1";
+    let fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     Position::from_fen(fen).print_board();
 
     let mut start = Instant::now();
@@ -59,28 +60,57 @@ fn main() {
     print!("Pertf(5) = {} in ", perft(5, &mut Position::from_fen(fen)).separate_with_commas());
     duration = start.elapsed();
     println!("{:?}s", duration.as_secs());
-    print!("Pertf(6) = {} in ", perft(6, &mut Position::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")).separate_with_commas());
+    print!("Pertf(6) = {} in ", perft(6, &mut Position::from_fen(fen)).separate_with_commas());
     duration = start.elapsed();
     println!("{:?}s", duration.as_secs());
-    // print!("Pertf(7) = {} in ", perft(7, &Position::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")).separate_with_commas());
-    // duration = start.elapsed();
-    // println!("{:?}s", duration.as_secs());
+    print!("Pertf(7) = {} in ", perft(7, &Position::from_fen(fen)).separate_with_commas());
+    duration = start.elapsed();
+    println!("{:?}s", duration.as_secs());
 
     // Zeno::uci::uci_loop();
 
     // let mut board =
-    //     Position::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+    //     Position::from_fen("rnbqkbnr/ppppp1pp/8/8/5Pp1/8/PPPPP1PP/RNBQKBNR b KQkq f3 0 1");
     //
-    // // board.print_board();
-    // //
-    // // board.make_move(
-    // //     &Move {
-    // //         source: Coord { rank: 1, file: 'e' },
-    // //         destination: Coord { rank: 1, file: 'g' },
-    // //         move_type: MoveType::ShortCastle,
-    // //     },
-    // //     false,
-    // // );
+    // board.print_board();
+    //
+    // board.make_move(
+    //     &Move {
+    //         source: 30,
+    //         destination: 21,
+    //         move_type: MoveType::EnPassant,
+    //     },
+    //     false,
+    // );
+    // board.print_board();
+    // board.make_move(
+    //     &Move {
+    //         source: 12,
+    //         destination: 28,
+    //         move_type: MoveType::EnPassant,
+    //     },
+    //     false,
+    // );
+    // board.print_board();
+    // println!("{:?}", board.get_en_passant());
+    // board.make_move(
+    //     &Move {
+    //         source: 21,
+    //         destination: 13,
+    //         move_type: MoveType::EnPassant,
+    //     },
+    //     false,
+    // );
+    // board.print_board();
+    // println!("{:?}", board.get_en_passant());
+    // board.make_move(
+    //     &Move {
+    //         source: 6,
+    //         destination: 23,
+    //         move_type: MoveType::EnPassant,
+    //     },
+    //     false,
+    // );
     // board.print_board();
     //
     // for _ in 0..15 {

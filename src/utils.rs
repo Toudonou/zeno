@@ -34,6 +34,7 @@ pub enum MoveType {
     PawnToBishop,
     PawnToRook,
     PawnToQueen,
+    EnPassant,
 }
 #[derive(Clone, Debug, PartialEq)]
 pub struct Move {

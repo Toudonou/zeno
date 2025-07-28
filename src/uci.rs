@@ -138,13 +138,13 @@ fn go(position: &mut Position, zobrist_hash: &mut ZobristHash) {
     let move_type_character: char;
 
     match mov.move_type {
-        MoveType::Normal => move_type_character = ' ',
         MoveType::ShortCastle => move_type_character = 'n',
         MoveType::LongCastle => move_type_character = 'n',
         MoveType::PawnToKnight => move_type_character = 'n',
         MoveType::PawnToBishop => move_type_character = 'b',
         MoveType::PawnToRook => move_type_character = 'r',
         MoveType::PawnToQueen => move_type_character = 'q',
+        _ => move_type_character = ' ',
     }
 
     println!(
