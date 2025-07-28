@@ -31,41 +31,43 @@ fn perft(depth: i32, position:  &Position) -> u32 {
             let mut temp_position = position.clone();
             temp_position.make_move(&m, true);
             number_of_move += perft(depth - 1, &temp_position);
+            println!("{:?}", m);
+            temp_position.print_board();
         }
     }
     number_of_move
 }
 
 fn main() {
-    let fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+    let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1";
     Position::from_fen(fen).print_board();
 
     let mut start = Instant::now();
     print!("Pertf(1) = {} in ", perft(1, &mut Position::from_fen(fen)).separate_with_commas());
     let mut duration = start.elapsed();
     println!("{:?}s", duration.as_secs());
-    start = Instant::now();
-    print!("Pertf(2) = {} in ", perft(2, &mut Position::from_fen(fen)).separate_with_commas());
-    duration = start.elapsed();
-    println!("{:?}s", duration.as_secs());
-    start = Instant::now();
-    print!("Pertf(3) = {} in ", perft(3, &mut Position::from_fen(fen)).separate_with_commas());
-    duration = start.elapsed();
-    println!("{:?}s", duration.as_secs());
-    start = Instant::now();
-    print!("Pertf(4) = {} in ", perft(4, &mut Position::from_fen(fen)).separate_with_commas());
-    duration = start.elapsed();
-    println!("{:?}s", duration.as_secs());
-    start = Instant::now();
-    print!("Pertf(5) = {} in ", perft(5, &mut Position::from_fen(fen)).separate_with_commas());
-    duration = start.elapsed();
-    println!("{:?}s", duration.as_secs());
-    print!("Pertf(6) = {} in ", perft(6, &mut Position::from_fen(fen)).separate_with_commas());
-    duration = start.elapsed();
-    println!("{:?}s", duration.as_secs());
-    print!("Pertf(7) = {} in ", perft(7, &Position::from_fen(fen)).separate_with_commas());
-    duration = start.elapsed();
-    println!("{:?}s", duration.as_secs());
+    // start = Instant::now();
+    // print!("Pertf(2) = {} in ", perft(2, &mut Position::from_fen(fen)).separate_with_commas());
+    // duration = start.elapsed();
+    // println!("{:?}s", duration.as_secs());
+    // start = Instant::now();
+    // print!("Pertf(3) = {} in ", perft(3, &mut Position::from_fen(fen)).separate_with_commas());
+    // duration = start.elapsed();
+    // println!("{:?}s", duration.as_secs());
+    // start = Instant::now();
+    // print!("Pertf(4) = {} in ", perft(4, &mut Position::from_fen(fen)).separate_with_commas());
+    // duration = start.elapsed();
+    // println!("{:?}s", duration.as_secs());
+    // start = Instant::now();
+    // print!("Pertf(5) = {} in ", perft(5, &mut Position::from_fen(fen)).separate_with_commas());
+    // duration = start.elapsed();
+    // println!("{:?}s", duration.as_secs());
+    // print!("Pertf(6) = {} in ", perft(6, &mut Position::from_fen(fen)).separate_with_commas());
+    // duration = start.elapsed();
+    // println!("{:?}s", duration.as_secs());
+    // print!("Pertf(7) = {} in ", perft(7, &Position::from_fen(fen)).separate_with_commas());
+    // duration = start.elapsed();
+    // println!("{:?}s", duration.as_secs());
 
     // Zeno::uci::uci_loop();
 

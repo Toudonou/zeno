@@ -53,8 +53,8 @@ pub struct Position {
     en_passant: Option<i8>,
 
     // For undoing moves
-    last_piece_move: Piece,
-    last_piece_capture: Piece,
+    // last_piece_move: Piece,
+    // last_piece_capture: Piece,
 }
 
 impl Position {
@@ -216,14 +216,14 @@ impl Position {
             } else {
                 None
             },
-            last_piece_move: Piece {
-                color: PieceColor::None,
-                piece_type: PieceType::None,
-            },
-            last_piece_capture: Piece {
-                color: PieceColor::None,
-                piece_type: PieceType::None,
-            },
+            // last_piece_move: Piece {
+            //     color: PieceColor::None,
+            //     piece_type: PieceType::None,
+            // },
+            // last_piece_capture: Piece {
+            //     color: PieceColor::None,
+            //     piece_type: PieceType::None,
+            // },
         }
     }
 
@@ -425,7 +425,7 @@ impl Position {
         // Applying castling and promotions rules
         match mov.move_type {
             MoveType::Normal => {}
-            MoveType::ShortCastle => match self.last_piece_move.color {
+            MoveType::ShortCastle => match source_piece.color {
                 PieceColor::None => {}
                 PieceColor::White => {
                     self.rooks_board &= !(1u64 << 7);
@@ -442,7 +442,7 @@ impl Position {
                     self.black_board |= 1u64 << 61;
                 }
             },
-            MoveType::LongCastle => match self.last_piece_move.color {
+            MoveType::LongCastle => match source_piece.color {
                 PieceColor::None => {}
                 PieceColor::White => {
                     self.rooks_board &= !(1u64 << 0);
@@ -509,8 +509,8 @@ impl Position {
             PieceColor::Black => self.turn = PieceColor::White,
         }
 
-        self.last_piece_move = source_piece;
-        self.last_piece_capture = destination_piece;
+        // self.last_piece_move = source_piece;
+        // self.last_piece_capture = destination_piece;
     }
 
     /* pub fn undo_last_move(&mut self, mov: &Move) {

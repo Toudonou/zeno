@@ -24,12 +24,12 @@ fn generate_pseudo_legal_moves(position: &Position, color: &PieceColor) -> Vec<M
     for source in coords {
         let piece = position.get_piece_on_square(&source);
         let mut mask = generate_mask_moves(&position, &source, &piece);
-
+        let mut no_short_castle_manage = true;
+        let mut no_long_castle_manage = true;
+        
         while mask != 0 {
             let destination = mask.trailing_zeros() as i8;
             let destination_rank = 1 + (destination / 8);
-            let mut no_short_castle_manage = true;
-            let mut no_long_castle_manage = true;
 
             match piece.piece_type {
                 PieceType::Pawn => {
