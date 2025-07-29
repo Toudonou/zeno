@@ -1,4 +1,3 @@
-use crate::moves_generator;
 use crate::moves_generator::{
     generate_mask_moves, generate_move_mask_for_bishop, generate_move_mask_for_king,
     generate_move_mask_for_knight, generate_move_mask_for_pawn, generate_move_mask_for_rook,
@@ -51,7 +50,6 @@ pub struct Position {
 
     // En passant square
     en_passant: Option<i8>,
-
     // For undoing moves
     // last_piece_move: Piece,
     // last_piece_capture: Piece,
@@ -248,14 +246,6 @@ impl Position {
         }
 
         match mov.move_type {
-            MoveType::Normal | MoveType::EnPassant => {
-                // The destination square must appear as one the square that the attacker piece can reach
-                let attacks_squares = generate_mask_moves(&self, &mov.source, &source_piece);
-                if (attacks_squares >> mov.destination) & 1 == 0 {
-                    return false;
-                }
-                true
-            }
             MoveType::ShortCastle => {
                 source_piece.piece_type == PieceType::King
                     && self.can_short_castle(&self.turn)
@@ -266,60 +256,79 @@ impl Position {
                     && self.can_long_castle(&self.turn)
                     && (mov.source.abs_diff(mov.destination) == 2)
             }
-            // TODO: Verify promotions moves
-            MoveType::PawnToKnight => true,
-            MoveType::PawnToBishop => true,
-            MoveType::PawnToRook => true,
-            MoveType::PawnToQueen => true,
+            _ => {
+                // The destination square must appear as one the square that the attacker piece can reach
+                let attacks_squares = generate_mask_moves(&self, &mov.source, &source_piece);
+                if (attacks_squares & (1u64 << mov.destination)) == 0 {
+                    return false;
+                }
+                true
+            }
         }
     }
 
-    pub fn is_check(&self, color: &PieceColor) -> bool {
-        let king_index = self.get_king_coord(color);
+    pub fn is_square_attack_by(&self, index: &i8, attacker_color: &PieceColor) -> bool {
         let board = self.white_board | self.black_board;
-        let opponent_board = match color {
+        let your_color = match attacker_color {
             PieceColor::None => panic!("Invalid color"),
-            PieceColor::White => self.black_board,
-            PieceColor::Black => self.white_board,
+            PieceColor::White => PieceColor::Black,
+            PieceColor::Black => PieceColor::White,
         };
-        let opponent_pawns_board = self.pawns_board & opponent_board;
-        let opponent_knights_board = self.knights_board & opponent_board;
-        let opponent_bishops_board = self.bishops_board & opponent_board;
-        let opponent_rooks_board = self.rooks_board & opponent_board;
-        let opponent_queens_board = self.queens_board & opponent_board;
-        let opponent_kings_board = self.kings_board & opponent_board;
 
-        let mut superior_king_mask = generate_move_mask_for_knight(&king_index);
-        if superior_king_mask & opponent_knights_board != 0 {
+        let attacker_board = match attacker_color {
+            PieceColor::None => panic!("Invalid color"),
+            PieceColor::White => self.white_board,
+            PieceColor::Black => self.black_board,
+        };
+        let attacker_pawns_board = self.pawns_board & attacker_board;
+        let attacker_knights_board = self.knights_board & attacker_board;
+        let attacker_bishops_board = self.bishops_board & attacker_board;
+        let attacker_rooks_board = self.rooks_board & attacker_board;
+        let attacker_queens_board = self.queens_board & attacker_board;
+        let attacker_kings_board = self.kings_board & attacker_board;
+
+        let mut superior_king_mask = generate_move_mask_for_knight(&index);
+        if superior_king_mask & attacker_knights_board != 0 {
             return true;
         }
 
-        superior_king_mask = generate_move_mask_for_bishop(&board, &king_index);
-        if superior_king_mask & opponent_bishops_board != 0 {
+        superior_king_mask = generate_move_mask_for_bishop(&board, &index);
+        if superior_king_mask & attacker_bishops_board != 0 {
             return true;
         }
 
-        superior_king_mask = generate_move_mask_for_rook(&board, &king_index);
-        if superior_king_mask & opponent_rooks_board != 0 {
+        superior_king_mask = generate_move_mask_for_rook(&board, &index);
+        if superior_king_mask & attacker_rooks_board != 0 {
             return true;
         }
 
-        superior_king_mask = generate_move_mask_for_bishop(&board, &king_index)
-            | generate_move_mask_for_rook(&board, &king_index);
-        if superior_king_mask & opponent_queens_board != 0 {
+        superior_king_mask = generate_move_mask_for_bishop(&board, &index)
+            | generate_move_mask_for_rook(&board, &index);
+        if superior_king_mask & attacker_queens_board != 0 {
             return true;
         }
 
-        superior_king_mask = generate_move_mask_for_king(&king_index);
-        if superior_king_mask & opponent_kings_board != 0 {
+        superior_king_mask = generate_move_mask_for_king(&index);
+        if superior_king_mask & attacker_kings_board != 0 {
             return true;
         }
 
-        superior_king_mask = generate_move_mask_for_pawn(&self, &king_index, color);
-        if superior_king_mask & opponent_pawns_board != 0 {
+        superior_king_mask = generate_move_mask_for_pawn(&self, &index, &your_color);
+        if superior_king_mask & attacker_pawns_board != 0 {
             return true;
         }
         false
+    }
+
+    pub fn is_check(&self, color: &PieceColor) -> bool {
+        let opponent_color = match color {
+            PieceColor::None => {
+                panic!("Invalid color")
+            }
+            PieceColor::White => PieceColor::Black,
+            PieceColor::Black => PieceColor::White,
+        };
+        self.is_square_attack_by(&self.get_king_coord(color), &opponent_color)
     }
 
     pub fn make_move(&mut self, mov: &Move, is_intern_move_request: bool) {
@@ -392,14 +401,10 @@ impl Position {
                 match source_piece.color {
                     PieceColor::None => {}
                     PieceColor::White => {
-                        if mov.source == 4 {
-                            self.white_king_moves += 1;
-                        }
+                        self.white_king_moves += 1;
                     }
                     PieceColor::Black => {
-                        if mov.source == 60 {
-                            self.black_king_moves += 1;
-                        }
+                        self.black_king_moves += 1;
                     }
                 }
             }
@@ -492,7 +497,8 @@ impl Position {
         }
 
         self.en_passant = None;
-        if source_piece.piece_type == PieceType::Pawn && mov.source.abs_diff(mov.destination) == 16 {
+        if source_piece.piece_type == PieceType::Pawn && mov.source.abs_diff(mov.destination) == 16
+        {
             match source_piece.color {
                 PieceColor::None => {}
                 PieceColor::White => {
@@ -684,25 +690,25 @@ impl Position {
     }
 
     pub fn get_piece_on_square(&self, index: &i8) -> Piece {
-        let color = if (self.white_board >> index) & 1 != 0 {
+        let color = if self.white_board & (1u64 << index) != 0 {
             PieceColor::White
-        } else if (self.black_board >> index) & 1 != 0 {
+        } else if self.black_board & (1u64 << index) != 0 {
             PieceColor::Black
         } else {
             PieceColor::None
         };
 
-        let piece_type = if (self.pawns_board >> index) & 1 != 0 {
+        let piece_type = if self.pawns_board & (1u64 << index) != 0 {
             PieceType::Pawn
-        } else if (self.knights_board >> index) & 1 != 0 {
+        } else if self.knights_board & (1u64 << index) != 0 {
             PieceType::Knight
-        } else if (self.bishops_board >> index) & 1 != 0 {
+        } else if self.bishops_board & (1u64 << index) != 0 {
             PieceType::Bishop
-        } else if (self.rooks_board >> index) & 1 != 0 {
+        } else if self.rooks_board & (1u64 << index) != 0 {
             PieceType::Rook
-        } else if (self.queens_board >> index) & 1 != 0 {
+        } else if self.queens_board & (1u64 << index) != 0 {
             PieceType::Queen
-        } else if (self.kings_board >> index) & 1 != 0 {
+        } else if self.kings_board & (1u64 << index) != 0 {
             PieceType::King
         } else {
             PieceType::None
@@ -750,55 +756,60 @@ impl Position {
 
     pub fn can_short_castle(&self, color: &PieceColor) -> bool {
         let board = self.white_board | self.black_board;
-
-        let king_index = match color {
-            PieceColor::None => {
-                panic!("Invalid color")
-            }
-            PieceColor::White => (self.white_board & self.kings_board).trailing_zeros(),
-            PieceColor::Black => (self.black_board & self.kings_board).trailing_zeros(),
-        };
+        let king_index = self.get_king_coord(color);
 
         match color {
             PieceColor::None => false,
             PieceColor::White => {
                 (self.white_king_moves == 0)
                     && (self.white_rook_king_side_moves == 0)
-                    && ((board >> (king_index + 1) & 1) == 0)
-                    && ((board >> (king_index + 2) & 1) == 0)
+                    && (self.white_board & self.rooks_board & (1u64 << 7)) != 0
+                    && (board & (1u64 << (king_index + 1))) == 0
+                    && (board & (1u64 << (king_index + 2))) == 0
+                    && !self.is_square_attack_by(&king_index, &PieceColor::Black)
+                    && !self.is_square_attack_by(&(king_index + 1), &PieceColor::Black)
+                    && !self.is_square_attack_by(&(king_index + 2), &PieceColor::Black)
             }
             PieceColor::Black => {
                 (self.black_king_moves == 0)
                     && (self.black_rook_king_side_moves == 0)
-                    && ((board >> (king_index + 1) & 1) == 0)
-                    && ((board >> (king_index + 2) & 1) == 0)
+                    && (self.black_board & self.rooks_board & (1u64 << 63)) != 0
+                    && (board & (1u64 << (king_index + 1))) == 0
+                    && (board & (1u64 << (king_index + 2))) == 0
+                    && !self.is_square_attack_by(&king_index, &PieceColor::White)
+                    && !self.is_square_attack_by(&(king_index + 1), &PieceColor::White)
+                    && !self.is_square_attack_by(&(king_index + 2), &PieceColor::White)
             }
         }
     }
 
     pub fn can_long_castle(&self, color: &PieceColor) -> bool {
         let board = self.white_board | self.black_board;
-        let king_index: i32 = match color {
-            PieceColor::None => {
-                panic!("Invalid color")
-            }
-            PieceColor::White => (self.white_board & self.kings_board).trailing_zeros() as i32,
-            PieceColor::Black => (self.black_board & self.kings_board).trailing_zeros() as i32,
-        };
+        let king_index = self.get_king_coord(color);
 
         match color {
             PieceColor::None => false,
             PieceColor::White => {
                 (self.white_king_moves == 0)
                     && (self.white_rook_queen_side_moves == 0)
-                    && ((board >> (king_index - 1) & 1) == 0)
-                    && ((board >> (king_index - 2) & 1) == 0)
+                    && (self.white_board & self.rooks_board & (1u64 << 0)) != 0
+                    && (board & (1u64 << (king_index - 1))) == 0
+                    && (board & (1u64 << (king_index - 2))) == 0
+                    && (board & (1u64 << (king_index - 3))) == 0
+                    && !self.is_square_attack_by(&king_index, &PieceColor::Black)
+                    && !self.is_square_attack_by(&(king_index - 1), &PieceColor::Black)
+                    && !self.is_square_attack_by(&(king_index - 2), &PieceColor::Black)
             }
             PieceColor::Black => {
                 (self.black_king_moves == 0)
                     && (self.black_rook_queen_side_moves == 0)
-                    && ((board >> (king_index - 1) & 1) == 0)
-                    && ((board >> (king_index - 2) & 1) == 0)
+                    && (self.black_board & self.rooks_board & (1u64 << 56)) != 0
+                    && (board & (1u64 << (king_index - 1))) == 0
+                    && (board & (1u64 << (king_index - 2))) == 0
+                    && (board & (1u64 << (king_index - 3))) == 0
+                    && !self.is_square_attack_by(&king_index, &PieceColor::White)
+                    && !self.is_square_attack_by(&(king_index - 1), &PieceColor::White)
+                    && !self.is_square_attack_by(&(king_index - 2), &PieceColor::White)
             }
         }
     }

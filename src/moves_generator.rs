@@ -26,14 +26,14 @@ fn generate_pseudo_legal_moves(position: &Position, color: &PieceColor) -> Vec<M
         let mut mask = generate_mask_moves(&position, &source, &piece);
         let mut no_short_castle_manage = true;
         let mut no_long_castle_manage = true;
-        
+
         while mask != 0 {
             let destination = mask.trailing_zeros() as i8;
             let destination_rank = 1 + (destination / 8);
 
             match piece.piece_type {
                 PieceType::Pawn => {
-                    if en_passant.is_some() && destination == en_passant.unwrap(){
+                    if en_passant.is_some() && destination == en_passant.unwrap() {
                         moves.push(Move {
                             source,
                             destination,
@@ -41,7 +41,7 @@ fn generate_pseudo_legal_moves(position: &Position, color: &PieceColor) -> Vec<M
                         });
                         mask &= mask - 1;
                         continue;
-                    }else {
+                    } else {
                         if destination_rank == 1 || destination_rank == 8 {
                             moves.push(Move {
                                 source,
@@ -338,7 +338,10 @@ pub fn generate_move_mask_for_pawn(position: &Position, source: &i8, color: &Pie
 
             // if the pawn is at the second rank and if the two square in front od it are empty,
             // it can move two-square ahead
-            if rank == 2 && (board >> (source + 8)) & 1 == 0 && (board >> (source + 16)) & 1 == 0 {
+            if rank == 2
+                && (board & (1u64 << (source + 8))) == 0
+                && (board & (1u64 << (source + 16))) == 0
+            {
                 pawn_attacks_mask |= 1 << (source + 16)
             }
         }
@@ -359,7 +362,10 @@ pub fn generate_move_mask_for_pawn(position: &Position, source: &i8, color: &Pie
 
             // if the pawn is at the seven rank and if the two square in front of it are empty,
             // it can move two-square ahead
-            if rank == 7 && (board >> (source - 8)) & 1 == 0 && (board >> (source - 16)) & 1 == 0 {
+            if rank == 7
+                && (board & (1u64 << (source - 8))) == 0
+                && (board & (1u64 << (source - 16))) == 0
+            {
                 pawn_attacks_mask |= 1 << (source - 16)
             }
         }
