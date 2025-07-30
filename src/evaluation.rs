@@ -20,6 +20,7 @@ fn pst_evaluation(position: &Position) -> i32 {
 }
 
 fn get_pst_value(piece: &Piece, index: &i8) -> i32 {
+    // #[Rustfmt::skip]
     let pawn_table = vec![
         0, 0, 0, 0, 0, 0, 0, 0,
         50, 50, 50, 50, 50, 50, 50, 50,

@@ -42,3 +42,13 @@ pub struct Move {
     pub destination: i8,
     pub move_type: MoveType,
 }
+
+// #[derive(Clone, Debug, PartialEq)]
+// pub struct UndoMove {
+//     pub source: i8,
+//     pub destination: i8,
+//     pub piece_moved: Piece,
+//     pub piece_captured: Option<Piece>,
+//     pub move_type: MoveType,
+//     pub en_passant: Option<i8>
+// }

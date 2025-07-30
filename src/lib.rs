@@ -6,3 +6,4 @@ pub mod search;
 pub mod uci;
 pub mod utils;
 pub mod zobrist_hash;
+pub mod perft;

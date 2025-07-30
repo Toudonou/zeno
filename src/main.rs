@@ -8,64 +8,68 @@
 // https://lichess.org/@/likeawizard/blog/review-of-different-board-representations-in-computer-chess/S9eQCAWa
 // https://github.com/jhonnold/berserk
 // Use x & (x - 1) to clear the least significant bit: this is faster than x &= ~(1 << from)
-
+// https://markus7800.github.io/blog/AI/chess_engine.html
 
 // TODO: Verify in the is_check() that the move doesn't live the king in check
 // TODO: Undo function
 // TODO: CHECKMATE TO AVOID KING BEING CAPTURE
 
-use Zeno::moves_generator::{generate_legal_moves};
+use std::mem;
+use Zeno::moves_generator::generate_legal_moves;
 use Zeno::position::Position;
-use Zeno::utils::{Move, MoveType};
+use Zeno::perft;
+use Zeno::utils::{Move, MoveType, Piece, PieceColor, PieceType};
 use std::time::Instant;
 use thousands::Separable;
 
-fn perft(depth: i32, position:  &Position) -> u64 {
-    let mut number_of_move: u64 = 0;
-    if depth == 0 {
-        number_of_move = 1;
-    } else {
-        let turn = position.get_turn();
-        let moves: Vec<Move> = generate_legal_moves(position, &turn);
-        for m in moves {
-            let mut temp_position = position.clone();
-            temp_position.make_move(&m, true);
-            number_of_move += perft(depth - 1, &temp_position);
-            // println!("{:?}", m);
-            // temp_position.print_board();
-        }
-    }
-    number_of_move
-}
+
 
 fn main() {
     let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1";
     Position::from_fen(fen).print_board();
 
     let mut start = Instant::now();
-    print!("Pertf(1) = {} in ", perft(1, &mut Position::from_fen(fen)).separate_with_commas());
+    print!(
+        "Pertf(1) = {} in ",
+        perft::perft(1, &Position::from_fen(fen)).separate_with_commas()
+    );
     let mut duration = start.elapsed();
     println!("{:?}s", duration.as_secs());
     start = Instant::now();
-    print!("Pertf(2) = {} in ", perft(2, &mut Position::from_fen(fen)).separate_with_commas());
+    print!(
+        "Pertf(2) = {} in ",
+        perft::perft(2, &Position::from_fen(fen)).separate_with_commas()
+    );
     duration = start.elapsed();
     println!("{:?}s", duration.as_secs());
     start = Instant::now();
-    print!("Pertf(3) = {} in ", perft(3, &mut Position::from_fen(fen)).separate_with_commas());
+    print!(
+        "Pertf(3) = {} in ",
+        perft::perft(3, &Position::from_fen(fen)).separate_with_commas()
+    );
     duration = start.elapsed();
     println!("{:?}s", duration.as_secs());
     start = Instant::now();
-    print!("Pertf(4) = {} in ", perft(4, &mut Position::from_fen(fen)).separate_with_commas());
+    print!(
+        "Pertf(4) = {} in ",
+        perft::perft(4, &Position::from_fen(fen)).separate_with_commas()
+    );
     duration = start.elapsed();
     println!("{:?}s", duration.as_secs());
     start = Instant::now();
-    print!("Pertf(5) = {} in ", perft(5, &mut Position::from_fen(fen)).separate_with_commas());
+    print!(
+        "Pertf(5) = {} in ",
+        perft::perft(5, &Position::from_fen(fen)).separate_with_commas()
+    );
     duration = start.elapsed();
     println!("{:?}s", duration.as_secs());
-    // print!("Pertf(6) = {} in ", perft(6, &mut Position::from_fen(fen)).separate_with_commas());
+    // print!("Pertf(6) = {} in ", perft::perft(6, &Position::from_fen(fen)).separate_with_commas());
     // duration = start.elapsed();
     // println!("{:?}s", duration.as_secs());
-    // print!("Pertf(7) = {} in ", perft(7, &Position::from_fen(fen)).separate_with_commas());
+    // print!("Pertf(7) = {} in ", perft::perft(7, &Position::from_fen(fen), &mut history).separate_with_commas());
+    // duration = start.elapsed();
+    // println!("{:?}s", duration.as_secs());
+    // print!("Pertf(8) = {} in ", perft::perft(8, &Position::from_fen(fen), &mut history).separate_with_commas());
     // duration = start.elapsed();
     // println!("{:?}s", duration.as_secs());
 
