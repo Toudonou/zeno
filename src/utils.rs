@@ -1,0 +1,54 @@
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[repr(i16)]
+pub enum PieceColor {
+    None = 0,
+    White = 1,
+    Black = -1,
+}
+
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[repr(i16)]
+pub enum PieceType {
+    None = 0,
+    Pawn = 100,
+    Knight = 320,
+    Bishop = 330,
+    Rook = 500,
+    Queen = 900,
+    King = 20000,
+}
+
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub struct Piece {
+    pub color: PieceColor,
+    pub piece_type: PieceType,
+}
+
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum MoveType {
+    Normal,
+    ShortCastle,
+    LongCastle,
+    PawnToKnight,
+    PawnToBishop,
+    PawnToRook,
+    PawnToQueen,
+    EnPassant,
+}
+#[derive(Clone, Debug, PartialEq)]
+pub struct Move {
+    pub source: i8,
+    pub destination: i8,
+    pub move_type: MoveType,
+}
+
+// #[derive(Clone, Debug, PartialEq)]
+// pub struct UndoMove {
+//     pub source: i8,
+//     pub destination: i8,
+//     pub piece_moved: Piece,
+//     pub piece_captured: Option<Piece>,
+//     pub move_type: MoveType,
+//     pub en_passant: Option<i8>
+// }
