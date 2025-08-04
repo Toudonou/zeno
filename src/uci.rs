@@ -8,9 +8,7 @@ use std::thread::sleep;
 use std::{io, time};
 
 pub fn uci_loop() {
-    // let mut position = Position::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-    let mut position = Position::from_fen("5k2/1rn2p2/3pb1p1/7p/p3PP2/PnNBK2P/3N2P1/1R6 w - - 0 1");
-    let mut zobrist_hash: ZobristHash = ZobristHash::new();
+    let mut position = Position::from_fen("2k5/8/8/4R3/3Q4/4r3/2K5/8 w - - 0 1");
 
     loop {
         let mut command = String::new();
@@ -23,16 +21,12 @@ pub fn uci_loop() {
             "ucinewgame" => {}
             c if c.starts_with("position") => uci_position(command, &mut position),
             c if c.starts_with("move") => uci_make_move(command, &mut position),
-            c if c.starts_with("go") => go(&mut position, &mut zobrist_hash),
+            c if c.starts_with("go") => go(&mut position),
             "stop" => {}
             "quit" => break,
             _ => println!("Command not found {}", command),
         }
-
         io::stdout().flush().unwrap();
-
-        sleep(time::Duration::from_millis(1000));
-        // position.print_board();
     }
 }
 
@@ -126,14 +120,14 @@ fn uci_move(move_string: &str, position: &Position) -> Move {
     }
 
     Move {
-        source: (((source_rank - 1) * 8) as u8 + source_file as u8) as i8,
-        destination: (((destination_rank - 1) * 8) as u8 + destination_file as u8) as i8,
+        source: (((source_rank - 1) * 8) as u8 + source_file as u8 - 'a' as u8) as i8,
+        destination: (((destination_rank - 1) * 8) as u8 + destination_file as u8 - 'a' as u8) as i8,
         move_type,
     }
 }
 
-fn go(position: &mut Position, zobrist_hash: &mut ZobristHash) {
-    // for _ in 0..100{
+fn go(position: &mut Position) {
+    position.print_board();
     let mov = search::best_move(position);
     let move_type_character: char;
 
@@ -149,14 +143,10 @@ fn go(position: &mut Position, zobrist_hash: &mut ZobristHash) {
 
     println!(
         "bestmove {}{}{}{}{}",
-        1 + mov.source / 8,
         ('a' as u8 + (mov.source % 8) as u8) as char,
-        1 + mov.destination / 8,
+        1 + mov.source / 8,
         ('a' as u8 + (mov.destination % 8) as u8) as char,
+        1 + mov.destination / 8,
         move_type_character
     );
-
-    position.make_move(&mov, false);
-    // position.print_board();
-    // }
 }
