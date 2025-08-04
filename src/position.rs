@@ -215,9 +215,6 @@ impl Position {
     }
 
     pub fn is_legal_move(&self, mov: &Move) -> bool {
-        // TODO: Pawn moves (En-passant)
-        // TODO: Can not castle if in check And promotions moves
-
         let source_piece = self.get_piece_on_square(&mov.source);
         let destination_piece = self.get_piece_on_square(&mov.destination);
 

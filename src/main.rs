@@ -10,15 +10,12 @@
 // Use x & (x - 1) to clear the least significant bit: this is faster than x &= ~(1 << from)
 // https://markus7800.github.io/blog/AI/chess_engine.html
 
-// TODO: Verify in the is_check() that the move doesn't live the king in check
-// TODO: Undo function
-// TODO: CHECKMATE TO AVOID KING BEING CAPTURE
 
 use std::mem;
-use Zeno::moves_generator::generate_legal_moves;
-use Zeno::position::Position;
-use Zeno::perft;
-use Zeno::utils::{Move, MoveType, Piece, PieceColor, PieceType};
+use zeno::moves_generator::generate_legal_moves;
+use zeno::position::Position;
+use zeno::perft;
+use zeno::utils::{Move, MoveType, Piece, PieceColor, PieceType};
 use std::time::Instant;
 use thousands::Separable;
 
@@ -73,7 +70,7 @@ fn main() {
     // duration = start.elapsed();
     // println!("{:?}s", duration.as_secs());
 
-    // Zeno::uci::uci_loop();
+    // zeno::uci::uci_loop();
 
     // let mut board =
     //     Position::from_fen("rnbqkbnr/ppppp1pp/8/8/5Pp1/8/PPPPP1PP/RNBQKBNR b KQkq f3 0 1");

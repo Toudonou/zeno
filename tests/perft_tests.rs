@@ -1,5 +1,5 @@
-use Zeno::perft::perft;
-use Zeno::position::Position;
+use zeno::perft::perft;
+use zeno::position::Position;
 
 #[test]
 fn perft_startpos_depth_1() {
