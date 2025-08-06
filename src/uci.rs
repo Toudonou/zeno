@@ -6,6 +6,7 @@ use regex::Regex;
 use std::io::Write;
 use std::thread::sleep;
 use std::{io, time};
+use crate::evaluation::evaluate;
 
 pub fn uci_loop() {
     let mut position = Position::from_fen("2k5/8/8/4R3/3Q4/4r3/2K5/8 w - - 0 1");
@@ -132,8 +133,8 @@ fn go(position: &mut Position) {
     let move_type_character: char;
 
     match mov.move_type {
-        MoveType::ShortCastle => move_type_character = 'n',
-        MoveType::LongCastle => move_type_character = 'n',
+        MoveType::ShortCastle => move_type_character = ' ',
+        MoveType::LongCastle => move_type_character = ' ',
         MoveType::PawnToKnight => move_type_character = 'n',
         MoveType::PawnToBishop => move_type_character = 'b',
         MoveType::PawnToRook => move_type_character = 'r',

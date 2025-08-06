@@ -502,7 +502,6 @@ impl Position {
         }
     }
 
-
     pub fn get_turn(&self) -> PieceColor {
         self.turn.clone()
     }
@@ -562,15 +561,14 @@ impl Position {
         }
     }
 
-    pub fn get_board(&self) -> u64 {
-        self.white_board | self.black_board
-    }
-    pub fn get_white_board(&self) -> u64 {
-        self.white_board
-    }
-    pub fn get_black_board(&self) -> u64 {
-        self.black_board
-    }
+    pub fn get_board(&self) -> u64 { self.white_board | self.black_board }
+    pub fn get_white_board(&self) -> u64 { self.white_board }
+    pub fn get_black_board(&self) -> u64 { self.black_board }
+    pub fn get_pawns_board(&self) -> u64 {self.pawns_board }
+    pub fn get_knight_board(&self) -> u64 {self.knights_board }
+    pub fn get_bishops_board(&self) -> u64 {self.bishops_board}
+    pub fn get_rook_board(&self) -> u64 {self.rooks_board }
+    pub fn get_queens_board(&self) -> u64 {self.queens_board }
 
     pub fn can_short_castle(&self, color: &PieceColor) -> bool {
         let board = self.white_board | self.black_board;

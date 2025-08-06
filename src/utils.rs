@@ -43,12 +43,12 @@ pub struct Move {
     pub move_type: MoveType,
 }
 
-// #[derive(Clone, Debug, PartialEq)]
-// pub struct UndoMove {
-//     pub source: i8,
-//     pub destination: i8,
-//     pub piece_moved: Piece,
-//     pub piece_captured: Option<Piece>,
-//     pub move_type: MoveType,
-//     pub en_passant: Option<i8>
-// }
+pub fn count_set_bit(value: u64) -> u8 {
+    let mut count = 0;
+    let mut value = value;
+    while value != 0 {
+        count += 1;
+        value &= value - 1;
+    }
+    count
+}

@@ -1,19 +1,36 @@
 use crate::position::Position;
-use crate::utils::{Piece, PieceColor, PieceType};
+use crate::utils::{Piece, PieceColor, PieceType, count_set_bit};
 
 pub fn evaluate(position: &Position) -> f64 {
     pst_evaluation(position)
 }
 
 fn pst_evaluation(position: &Position) -> f64 {
-    let mut score = simple_evaluation(position);
+    let mut score = 0.0;
+    let white_board = position.get_white_board();
+    let black_board = position.get_black_board();
+    let pawns_board = position.get_pawns_board();
+    let knights_board = position.get_knight_board();
+    let bishops_board = position.get_bishops_board();
+    let rooks_board = position.get_rook_board();
+    let queens_board = position.get_queens_board();
+
+    score += (PieceType::Pawn as i16) as f64 * (count_set_bit(white_board & pawns_board) as f64
+        - count_set_bit(black_board & pawns_board) as f64);
+    score += (PieceType::Knight as i16) as f64 * (count_set_bit(white_board & knights_board) as f64
+        - count_set_bit(black_board & knights_board) as f64);
+    score += (PieceType::Bishop as i16) as f64 * (count_set_bit(white_board & bishops_board) as f64
+        - count_set_bit(black_board & bishops_board) as f64);
+    score += (PieceType::Rook as i16) as f64 * (count_set_bit(white_board & rooks_board) as f64
+        - count_set_bit(black_board & rooks_board) as f64);
+    score += (PieceType::Queen as i16) as f64 * (count_set_bit(white_board & queens_board) as f64
+        - count_set_bit(black_board & queens_board) as f64);
+
     let mut board = position.get_board();
     while board != 0 {
         let index = board.trailing_zeros() as i8;
         let piece = position.get_piece_on_square(&index);
-        score = score
-            + ((piece.piece_type.clone() as i16) * (piece.color.clone() as i16)) as f64
-            + get_pst_value(&piece.clone(), &index);
+        score += get_pst_value(&piece.clone(), &index);
         board &= board - 1;
     }
     score
