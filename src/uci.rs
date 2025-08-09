@@ -88,9 +88,9 @@ fn uci_move(move_string: &str, position: &Position) -> Move {
     }
 
     let part: Vec<char> = move_string.chars().collect();
-    let source_rank = part[1].to_digit(10).unwrap();
+    let source_rank = part[1].to_digit(10).unwrap() - 1;
     let source_file = part[0];
-    let destination_rank = part[3].to_digit(10).unwrap();
+    let destination_rank = part[3].to_digit(10).unwrap() - 1;
     let destination_file = part[2];
     let mut move_type = MoveType::Normal;
 
@@ -108,9 +108,7 @@ fn uci_move(move_string: &str, position: &Position) -> Move {
         if position.can_long_castle(&PieceColor::Black) && move_string == "e8c8" {
             move_type = MoveType::LongCastle;
         }
-    }
-
-    if part.len() == 5 {
+    } else if part.len() == 5 {
         match part[4] {
             'n' => move_type = MoveType::PawnToKnight,
             'b' => move_type = MoveType::PawnToBishop,
@@ -118,12 +116,21 @@ fn uci_move(move_string: &str, position: &Position) -> Move {
             'q' => move_type = MoveType::PawnToQueen,
             _ => {}
         }
+    } else if position.get_en_passant().is_some() {
+        println!("{}", (8 * destination_rank as i8 + (destination_file as u8 - 'a' as u8) as i8));
+        if 8 * destination_rank as i8 + (destination_file as u8 - 'a' as u8) as i8
+            == position.get_en_passant().unwrap()
+        {
+            move_type = MoveType::EnPassant;
+        }
     }
 
     Move {
-        source: (((source_rank - 1) * 8) as u8 + source_file as u8 - 'a' as u8) as i8,
-        destination: (((destination_rank - 1) * 8) as u8 + destination_file as u8 - 'a' as u8) as i8,
+        source: ((source_rank * 8) as u8 + source_file as u8 - 'a' as u8) as i8,
+        destination: ((destination_rank * 8) as u8 + destination_file as u8 - 'a' as u8)
+            as i8,
         move_type,
+        move_score: 0,
     }
 }
 
