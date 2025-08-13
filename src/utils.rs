@@ -1,6 +1,4 @@
-use std::cmp::Ordering;
-
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq, Copy)]
 #[repr(i16)]
 pub enum PieceColor {
     None = 0,
@@ -8,7 +6,7 @@ pub enum PieceColor {
     Black = -1,
 }
 
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq, Copy)]
 #[repr(i16)]
 pub enum PieceType {
     None = 0,
@@ -45,13 +43,14 @@ pub struct Move {
     pub move_score: i32,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Copy)]
 pub struct UndoMove {
     pub source: i8,
     pub destination: i8,
     pub move_type: MoveType,
     pub piece_moved: PieceType,
     pub piece_captured: PieceType,
+    pub castling_rights: u8,
     pub turn: PieceColor,
     pub en_passant: Option<i8>,
 }

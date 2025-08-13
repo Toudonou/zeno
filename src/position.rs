@@ -39,19 +39,14 @@ pub struct Position {
     kings_board: u64,
 
     turn: PieceColor,
-    number_of_move: u32,
-    // Clearly not the best way to keep track of castling rights
-    white_rook_king_side_moves: u8,
-    white_rook_queen_side_moves: u8,
-    white_king_moves: u8,
-    black_rook_king_side_moves: u8,
-    black_rook_queen_side_moves: u8,
-    black_king_moves: u8,
+    number_of_move: u16,
+    castling_rights: u8, // 0 0 0 0 0(q) 0(k) 0(Q) 0(K)
 
     // En passant square
     en_passant: Option<i8>,
 
-    history: Vec<UndoMove>,
+    history: [Option<UndoMove>; 512],
+    history_index: usize,
 }
 
 impl Position {
@@ -154,18 +149,15 @@ impl Position {
             _ => panic!("Invalid turn character in FEN: {}", turn_part),
         };
 
-        let mut white_can_castle_kingside = false;
-        let mut white_can_castle_queenside = false;
-        let mut black_can_castle_kingside = false;
-        let mut black_can_castle_queenside = false;
+        let mut castling_rights: u8 = 0;
 
         if castling_part != "-" {
             for ch in castling_part.chars() {
                 match ch {
-                    'K' => white_can_castle_kingside = true,
-                    'Q' => white_can_castle_queenside = true,
-                    'k' => black_can_castle_kingside = true,
-                    'q' => black_can_castle_queenside = true,
+                    'K' => castling_rights |= 1u8 << 0,
+                    'Q' => castling_rights |= 1u8 << 1,
+                    'k' => castling_rights |= 1u8 << 2,
+                    'q' => castling_rights |= 1u8 << 3,
                     _ => {}
                 }
             }
@@ -194,26 +186,14 @@ impl Position {
             kings_board,
             turn,
             number_of_move: number_of_moves_move_part.parse().unwrap(),
-            white_rook_king_side_moves: if white_can_castle_kingside { 0 } else { 1 },
-            white_rook_queen_side_moves: if white_can_castle_queenside { 0 } else { 1 },
-            white_king_moves: if white_can_castle_kingside | white_can_castle_queenside {
-                0
-            } else {
-                1
-            },
-            black_rook_king_side_moves: if black_can_castle_kingside { 0 } else { 1 },
-            black_rook_queen_side_moves: if black_can_castle_queenside { 0 } else { 1 },
-            black_king_moves: if black_can_castle_kingside | black_can_castle_queenside {
-                0
-            } else {
-                1
-            },
+            castling_rights,
             en_passant: if en_passant_rank.is_some() && en_passant_file.is_some() {
                 Some(en_passant_rank.unwrap() + en_passant_file.unwrap())
             } else {
                 None
             },
-            history: Vec::new(),
+            history: [None; 512],
+            history_index: 0,
         }
     }
 
@@ -281,18 +261,17 @@ impl Position {
             return true;
         }
 
-        superior_king_mask = generate_move_mask_for_bishop(&board, &index);
-        if superior_king_mask & attacker_bishops_board != 0 {
+        let superior_bishop_mask = generate_move_mask_for_bishop(&board, &index);
+        if superior_bishop_mask & attacker_bishops_board != 0 {
             return true;
         }
 
-        superior_king_mask = generate_move_mask_for_rook(&board, &index);
-        if superior_king_mask & attacker_rooks_board != 0 {
+        let superior_rook_mask = generate_move_mask_for_rook(&board, &index);
+        if superior_rook_mask & attacker_rooks_board != 0 {
             return true;
         }
 
-        superior_king_mask = generate_move_mask_for_bishop(&board, &index)
-            | generate_move_mask_for_rook(&board, &index);
+        superior_king_mask = superior_bishop_mask | superior_rook_mask;
         if superior_king_mask & attacker_queens_board != 0 {
             return true;
         }
@@ -333,15 +312,17 @@ impl Position {
         let source_piece = self.get_piece_on_square(&mov.source);
         let destination_piece = self.get_piece_on_square(&mov.destination);
 
-        self.history.push(UndoMove {
+        self.history[self.history_index] = Some(UndoMove {
             source: mov.source,
             destination: mov.destination,
             move_type: mov.move_type,
             piece_moved: source_piece.piece_type.clone(),
             piece_captured: destination_piece.piece_type.clone(),
+            castling_rights: self.castling_rights,
             turn: self.get_turn(),
             en_passant: self.en_passant,
         });
+        self.history_index += 1;
 
         // Putting 0 at the index of the destination
         match destination_piece.piece_type {
@@ -377,16 +358,16 @@ impl Position {
                     PieceColor::None => {}
                     PieceColor::White => {
                         if mov.source == 7 {
-                            self.white_rook_king_side_moves += 1;
+                            self.castling_rights &= !(1u8 << 0);
                         } else if mov.source == 0 {
-                            self.white_rook_queen_side_moves += 1;
+                            self.castling_rights &= !(1u8 << 1);
                         }
                     }
                     PieceColor::Black => {
                         if mov.source == 63 {
-                            self.black_rook_king_side_moves += 1;
+                            self.castling_rights &= !(1u8 << 2);
                         } else if mov.source == 56 {
-                            self.black_rook_queen_side_moves += 1;
+                            self.castling_rights &= !(1u8 << 3);
                         }
                     }
                 }
@@ -401,10 +382,12 @@ impl Position {
                 match source_piece.color {
                     PieceColor::None => {}
                     PieceColor::White => {
-                        self.white_king_moves += 1;
+                        self.castling_rights &= !(1u8 << 0);
+                        self.castling_rights &= !(1u8 << 1);
                     }
                     PieceColor::Black => {
-                        self.black_king_moves += 1;
+                        self.castling_rights &= !(1u8 << 2);
+                        self.castling_rights &= !(1u8 << 3);
                     }
                 }
             }
@@ -517,7 +500,8 @@ impl Position {
     }
 
     pub fn undo_last_move(&mut self) {
-        let last_move_info = self.history.pop();
+        self.history_index -= 1;
+        let last_move_info = self.history[self.history_index];
         let last_move_info = match last_move_info {
             None => {
                 println!("No last move to undo");
@@ -545,23 +529,6 @@ impl Position {
             PieceType::Rook => {
                 self.rooks_board &= !(1u64 << last_move_info.destination);
                 self.rooks_board |= 1u64 << last_move_info.source;
-                match last_move_info.turn {
-                    PieceColor::None => {}
-                    PieceColor::White => {
-                        if last_move_info.source == 7 {
-                            self.white_rook_king_side_moves -= 1;
-                        } else if last_move_info.source == 0 {
-                            self.white_rook_queen_side_moves -= 1;
-                        }
-                    }
-                    PieceColor::Black => {
-                        if last_move_info.source == 63 {
-                            self.black_rook_king_side_moves -= 1;
-                        } else if last_move_info.source == 56 {
-                            self.black_rook_queen_side_moves -= 1;
-                        }
-                    }
-                }
             }
             PieceType::Queen => {
                 self.queens_board &= !(1u64 << last_move_info.destination);
@@ -570,15 +537,6 @@ impl Position {
             PieceType::King => {
                 self.kings_board &= !(1u64 << last_move_info.destination);
                 self.kings_board |= 1u64 << last_move_info.source;
-                match last_move_info.turn {
-                    PieceColor::None => {}
-                    PieceColor::White => {
-                        self.white_king_moves -= 1;
-                    }
-                    PieceColor::Black => {
-                        self.black_king_moves -= 1;
-                    }
-                }
             }
         }
 
@@ -685,6 +643,7 @@ impl Position {
             PieceType::King => self.kings_board |= 1u64 << last_move_info.destination,
         }
 
+        self.castling_rights = last_move_info.castling_rights;
         self.en_passant = last_move_info.en_passant;
         self.turn = last_move_info.turn.clone();
     }
@@ -782,8 +741,7 @@ impl Position {
         match color {
             PieceColor::None => false,
             PieceColor::White => {
-                (self.white_king_moves == 0)
-                    && (self.white_rook_king_side_moves == 0)
+                ((self.castling_rights >> 0 & 1) == 1)
                     && (self.white_board & self.rooks_board & (1u64 << 7)) != 0
                     && (board & (1u64 << (king_index + 1))) == 0
                     && (board & (1u64 << (king_index + 2))) == 0
@@ -792,8 +750,7 @@ impl Position {
                     && !self.is_square_attack_by(&(king_index + 2), &PieceColor::Black)
             }
             PieceColor::Black => {
-                (self.black_king_moves == 0)
-                    && (self.black_rook_king_side_moves == 0)
+                ((self.castling_rights >> 2 & 1) == 1)
                     && (self.black_board & self.rooks_board & (1u64 << 63)) != 0
                     && (board & (1u64 << (king_index + 1))) == 0
                     && (board & (1u64 << (king_index + 2))) == 0
@@ -811,8 +768,7 @@ impl Position {
         match color {
             PieceColor::None => false,
             PieceColor::White => {
-                (self.white_king_moves == 0)
-                    && (self.white_rook_queen_side_moves == 0)
+                ((self.castling_rights >> 1 & 1) == 1)
                     && (self.white_board & self.rooks_board & (1u64 << 0)) != 0
                     && (board & (1u64 << (king_index - 1))) == 0
                     && (board & (1u64 << (king_index - 2))) == 0
@@ -822,8 +778,7 @@ impl Position {
                     && !self.is_square_attack_by(&(king_index - 2), &PieceColor::Black)
             }
             PieceColor::Black => {
-                (self.black_king_moves == 0)
-                    && (self.black_rook_queen_side_moves == 0)
+                ((self.castling_rights >> 3 & 1) == 1)
                     && (self.black_board & self.rooks_board & (1u64 << 56)) != 0
                     && (board & (1u64 << (king_index - 1))) == 0
                     && (board & (1u64 << (king_index - 2))) == 0
