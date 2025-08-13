@@ -42,9 +42,9 @@ pub struct Position {
     number_of_move: u32,
     // Clearly not the best way to keep track of castling rights
     white_rook_king_side_moves: u8,
-    white_rook_qu een_side_moves: u8,
+    white_rook_queen_side_moves: u8,
     white_king_moves: u8,
-    black_rook_ king_side_moves: u8,
+    black_rook_king_side_moves: u8,
     black_rook_queen_side_moves: u8,
     black_king_moves: u8,
 
