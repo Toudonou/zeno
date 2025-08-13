@@ -1,17 +1,18 @@
+use crate::evaluation::evaluate;
 use crate::position::Position;
+use crate::search;
 use crate::utils::{Move, MoveType, PieceColor};
 use crate::zobrist_hash::ZobristHash;
-use crate::search;
 use regex::Regex;
 use std::io::Write;
 use std::thread::sleep;
 use std::{io, time};
-use crate::evaluation::evaluate;
 
 pub fn uci_loop() {
-    let mut position = Position::from_fen("2k5/8/8/4R3/3Q4/4r3/2K5/8 w - - 0 1");
+    let mut position = Position::from_fen("r4r1k/pQ5p/5p2/2p5/2q5/8/PP2nPPP/4RK1R b - - 4 3");
 
     loop {
+        position.print_board();
         let mut command = String::new();
         io::stdin().read_line(&mut command).unwrap();
         let command = command.trim();
@@ -117,7 +118,6 @@ fn uci_move(move_string: &str, position: &Position) -> Move {
             _ => {}
         }
     } else if position.get_en_passant().is_some() {
-        println!("{}", (8 * destination_rank as i8 + (destination_file as u8 - 'a' as u8) as i8));
         if 8 * destination_rank as i8 + (destination_file as u8 - 'a' as u8) as i8
             == position.get_en_passant().unwrap()
         {
@@ -127,34 +127,39 @@ fn uci_move(move_string: &str, position: &Position) -> Move {
 
     Move {
         source: ((source_rank * 8) as u8 + source_file as u8 - 'a' as u8) as i8,
-        destination: ((destination_rank * 8) as u8 + destination_file as u8 - 'a' as u8)
-            as i8,
+        destination: ((destination_rank * 8) as u8 + destination_file as u8 - 'a' as u8) as i8,
         move_type,
         move_score: 0,
     }
 }
 
 fn go(position: &mut Position) {
-    position.print_board();
     let mov = search::best_move(position);
-    let move_type_character: char;
+    match mov {
+        None => {
+            println!("No move found")
+        }
+        Some(mov) => {
+            let move_type_character: char;
 
-    match mov.move_type {
-        MoveType::ShortCastle => move_type_character = ' ',
-        MoveType::LongCastle => move_type_character = ' ',
-        MoveType::PawnToKnight => move_type_character = 'n',
-        MoveType::PawnToBishop => move_type_character = 'b',
-        MoveType::PawnToRook => move_type_character = 'r',
-        MoveType::PawnToQueen => move_type_character = 'q',
-        _ => move_type_character = ' ',
+            match mov.move_type {
+                MoveType::ShortCastle => move_type_character = ' ',
+                MoveType::LongCastle => move_type_character = ' ',
+                MoveType::PawnToKnight => move_type_character = 'n',
+                MoveType::PawnToBishop => move_type_character = 'b',
+                MoveType::PawnToRook => move_type_character = 'r',
+                MoveType::PawnToQueen => move_type_character = 'q',
+                _ => move_type_character = ' ',
+            }
+
+            println!(
+                "bestmove {}{}{}{}{}",
+                ('a' as u8 + (mov.source % 8) as u8) as char,
+                1 + mov.source / 8,
+                ('a' as u8 + (mov.destination % 8) as u8) as char,
+                1 + mov.destination / 8,
+                move_type_character
+            );
+        }
     }
-
-    println!(
-        "bestmove {}{}{}{}{}",
-        ('a' as u8 + (mov.source % 8) as u8) as char,
-        1 + mov.source / 8,
-        ('a' as u8 + (mov.destination % 8) as u8) as char,
-        1 + mov.destination / 8,
-        move_type_character
-    );
 }

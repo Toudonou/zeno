@@ -2,7 +2,7 @@ use crate::moves_generator::{
     generate_mask_moves, generate_move_mask_for_bishop, generate_move_mask_for_king,
     generate_move_mask_for_knight, generate_move_mask_for_pawn, generate_move_mask_for_rook,
 };
-use crate::utils::{Move, MoveType, Piece, PieceColor, PieceType};
+use crate::utils::{Move, MoveType, Piece, PieceColor, PieceType, UndoMove};
 /*
     Directions and shifts
     +-----+-----+-----+
@@ -41,15 +41,17 @@ pub struct Position {
     turn: PieceColor,
     number_of_move: u32,
     // Clearly not the best way to keep track of castling rights
-    white_rook_king_side_moves: u32,
-    white_rook_queen_side_moves: u32,
-    white_king_moves: u32,
-    black_rook_king_side_moves: u32,
-    black_rook_queen_side_moves: u32,
-    black_king_moves: u32,
+    white_rook_king_side_moves: u8,
+    white_rook_qu een_side_moves: u8,
+    white_king_moves: u8,
+    black_rook_ king_side_moves: u8,
+    black_rook_queen_side_moves: u8,
+    black_king_moves: u8,
 
     // En passant square
     en_passant: Option<i8>,
+
+    history: Vec<UndoMove>,
 }
 
 impl Position {
@@ -211,6 +213,7 @@ impl Position {
             } else {
                 None
             },
+            history: Vec::new(),
         }
     }
 
@@ -323,11 +326,22 @@ impl Position {
         // That is unnecessary and may slow down the process
         if !is_intern_move_request && !self.is_legal_move(&mov) {
             println!("Illegal move {:?}", mov);
+            self.print_board();
             return;
         }
 
         let source_piece = self.get_piece_on_square(&mov.source);
         let destination_piece = self.get_piece_on_square(&mov.destination);
+
+        self.history.push(UndoMove {
+            source: mov.source,
+            destination: mov.destination,
+            move_type: mov.move_type,
+            piece_moved: source_piece.piece_type.clone(),
+            piece_captured: destination_piece.piece_type.clone(),
+            turn: self.get_turn(),
+            en_passant: self.en_passant,
+        });
 
         // Putting 0 at the index of the destination
         match destination_piece.piece_type {
@@ -502,6 +516,179 @@ impl Position {
         }
     }
 
+    pub fn undo_last_move(&mut self) {
+        let last_move_info = self.history.pop();
+        let last_move_info = match last_move_info {
+            None => {
+                println!("No last move to undo");
+                return;
+            }
+            Some(_) => last_move_info.unwrap(),
+        };
+
+        // Delete source from the destination
+        // And putting back at the source
+        match last_move_info.piece_moved {
+            PieceType::None => {}
+            PieceType::Pawn => {
+                self.pawns_board &= !(1u64 << last_move_info.destination);
+                self.pawns_board |= 1u64 << last_move_info.source;
+            }
+            PieceType::Knight => {
+                self.knights_board &= !(1u64 << last_move_info.destination);
+                self.knights_board |= 1u64 << last_move_info.source;
+            }
+            PieceType::Bishop => {
+                self.bishops_board &= !(1u64 << last_move_info.destination);
+                self.bishops_board |= 1u64 << last_move_info.source;
+            }
+            PieceType::Rook => {
+                self.rooks_board &= !(1u64 << last_move_info.destination);
+                self.rooks_board |= 1u64 << last_move_info.source;
+                match last_move_info.turn {
+                    PieceColor::None => {}
+                    PieceColor::White => {
+                        if last_move_info.source == 7 {
+                            self.white_rook_king_side_moves -= 1;
+                        } else if last_move_info.source == 0 {
+                            self.white_rook_queen_side_moves -= 1;
+                        }
+                    }
+                    PieceColor::Black => {
+                        if last_move_info.source == 63 {
+                            self.black_rook_king_side_moves -= 1;
+                        } else if last_move_info.source == 56 {
+                            self.black_rook_queen_side_moves -= 1;
+                        }
+                    }
+                }
+            }
+            PieceType::Queen => {
+                self.queens_board &= !(1u64 << last_move_info.destination);
+                self.queens_board |= 1u64 << last_move_info.source;
+            }
+            PieceType::King => {
+                self.kings_board &= !(1u64 << last_move_info.destination);
+                self.kings_board |= 1u64 << last_move_info.source;
+                match last_move_info.turn {
+                    PieceColor::None => {}
+                    PieceColor::White => {
+                        self.white_king_moves -= 1;
+                    }
+                    PieceColor::Black => {
+                        self.black_king_moves -= 1;
+                    }
+                }
+            }
+        }
+
+        // Updating the boards (for each color)
+        match last_move_info.turn {
+            PieceColor::None => {}
+            PieceColor::White => {
+                self.white_board &= !(1u64 << last_move_info.destination);
+                self.white_board |= 1u64 << last_move_info.source;
+
+                match last_move_info.piece_captured {
+                    PieceType::None => {}
+                    _ => {
+                        self.black_board |= 1u64 << last_move_info.destination;
+                    }
+                }
+            }
+            PieceColor::Black => {
+                self.black_board &= !(1u64 << last_move_info.destination);
+                self.black_board |= 1u64 << last_move_info.source;
+
+                match last_move_info.piece_captured {
+                    PieceType::None => {}
+                    _ => {
+                        self.white_board |= 1u64 << last_move_info.destination;
+                    }
+                }
+            }
+        };
+
+        // Un-applying castling and promotions rules
+        match last_move_info.move_type {
+            MoveType::Normal => {}
+            MoveType::ShortCastle => match last_move_info.turn {
+                PieceColor::None => {}
+                PieceColor::White => {
+                    self.rooks_board &= !(1u64 << 5);
+                    self.rooks_board |= 1u64 << 7;
+
+                    self.white_board &= !(1u64 << 5);
+                    self.white_board |= 1u64 << 7;
+                }
+                PieceColor::Black => {
+                    self.rooks_board &= !(1u64 << 61);
+                    self.rooks_board |= 1u64 << 63;
+
+                    self.black_board &= !(1u64 << 61);
+                    self.black_board |= 1u64 << 63;
+                }
+            },
+            MoveType::LongCastle => match last_move_info.turn {
+                PieceColor::None => {}
+                PieceColor::White => {
+                    self.rooks_board &= !(1u64 << 3);
+                    self.rooks_board |= 1u64 << 0;
+
+                    self.white_board &= !(1u64 << 3);
+                    self.white_board |= 1u64 << 0;
+                }
+                PieceColor::Black => {
+                    self.rooks_board &= !(1u64 << 59);
+                    self.rooks_board |= 1u64 << 56;
+
+                    self.black_board &= !(1u64 << 59);
+                    self.black_board |= 1u64 << 56;
+                }
+            },
+            MoveType::PawnToKnight => {
+                self.knights_board &= !(1u64 << last_move_info.destination);
+            }
+            MoveType::PawnToBishop => {
+                self.bishops_board &= !(1u64 << last_move_info.destination);
+            }
+            MoveType::PawnToRook => {
+                self.rooks_board &= !(1u64 << last_move_info.destination);
+            }
+            MoveType::PawnToQueen => {
+                self.queens_board &= !(1u64 << last_move_info.destination);
+            }
+            MoveType::EnPassant => {
+                // Updating the boards (for each color)
+                match last_move_info.turn {
+                    PieceColor::None => {}
+                    PieceColor::White => {
+                        self.pawns_board |= 1u64 << (last_move_info.destination - 8);
+                        self.black_board |= 1u64 << (last_move_info.destination - 8);
+                    }
+                    PieceColor::Black => {
+                        self.pawns_board |= 1u64 << (last_move_info.destination + 8);
+                        self.white_board |= 1u64 << (last_move_info.destination + 8);
+                    }
+                };
+            }
+        }
+
+        // Putting the captured piece back
+        match last_move_info.piece_captured {
+            PieceType::None => {}
+            PieceType::Pawn => self.pawns_board |= 1u64 << last_move_info.destination,
+            PieceType::Knight => self.knights_board |= 1u64 << last_move_info.destination,
+            PieceType::Bishop => self.bishops_board |= 1u64 << last_move_info.destination,
+            PieceType::Rook => self.rooks_board |= 1u64 << last_move_info.destination,
+            PieceType::Queen => self.queens_board |= 1u64 << last_move_info.destination,
+            PieceType::King => self.kings_board |= 1u64 << last_move_info.destination,
+        }
+
+        self.en_passant = last_move_info.en_passant;
+        self.turn = last_move_info.turn.clone();
+    }
+
     pub fn get_turn(&self) -> PieceColor {
         self.turn.clone()
     }
@@ -534,16 +721,18 @@ impl Position {
         Piece { color, piece_type }
     }
 
-    pub fn get_available_piece_coords(&self, piece_color: &PieceColor) -> Vec<i8> {
-        let mut coords = Vec::new();
+    pub fn get_available_piece_coords(&self, piece_color: &PieceColor) -> [Option<i8>; 64] {
+        let mut coords = [None; 64];
         let mut board = match piece_color {
             PieceColor::None => 0,
             PieceColor::White => self.white_board,
             PieceColor::Black => self.black_board,
         };
+        let mut cursor = 0;
         while board != 0 {
-            coords.push(board.trailing_zeros() as i8);
+            coords[cursor] = Some(board.trailing_zeros() as i8);
             board &= board - 1;
+            cursor += 1;
         }
         coords
     }
@@ -561,14 +750,30 @@ impl Position {
         }
     }
 
-    pub fn get_board(&self) -> u64 { self.white_board | self.black_board }
-    pub fn get_white_board(&self) -> u64 { self.white_board }
-    pub fn get_black_board(&self) -> u64 { self.black_board }
-    pub fn get_pawns_board(&self) -> u64 {self.pawns_board }
-    pub fn get_knight_board(&self) -> u64 {self.knights_board }
-    pub fn get_bishops_board(&self) -> u64 {self.bishops_board}
-    pub fn get_rook_board(&self) -> u64 {self.rooks_board }
-    pub fn get_queens_board(&self) -> u64 {self.queens_board }
+    pub fn get_board(&self) -> u64 {
+        self.white_board | self.black_board
+    }
+    pub fn get_white_board(&self) -> u64 {
+        self.white_board
+    }
+    pub fn get_black_board(&self) -> u64 {
+        self.black_board
+    }
+    pub fn get_pawns_board(&self) -> u64 {
+        self.pawns_board
+    }
+    pub fn get_knight_board(&self) -> u64 {
+        self.knights_board
+    }
+    pub fn get_bishops_board(&self) -> u64 {
+        self.bishops_board
+    }
+    pub fn get_rook_board(&self) -> u64 {
+        self.rooks_board
+    }
+    pub fn get_queens_board(&self) -> u64 {
+        self.queens_board
+    }
 
     pub fn can_short_castle(&self, color: &PieceColor) -> bool {
         let board = self.white_board | self.black_board;

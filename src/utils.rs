@@ -1,3 +1,5 @@
+use std::cmp::Ordering;
+
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 #[repr(i16)]
 pub enum PieceColor {
@@ -24,8 +26,7 @@ pub struct Piece {
     pub piece_type: PieceType,
 }
 
-
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Copy)]
 pub enum MoveType {
     Normal,
     ShortCastle,
@@ -36,11 +37,23 @@ pub enum MoveType {
     PawnToQueen,
     EnPassant,
 }
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Copy)]
 pub struct Move {
     pub source: i8,
     pub destination: i8,
     pub move_type: MoveType,
+    pub move_score: i32,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct UndoMove {
+    pub source: i8,
+    pub destination: i8,
+    pub move_type: MoveType,
+    pub piece_moved: PieceType,
+    pub piece_captured: PieceType,
+    pub turn: PieceColor,
+    pub en_passant: Option<i8>,
 }
 
 pub fn count_set_bit(value: u64) -> u8 {

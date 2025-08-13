@@ -1,69 +1,90 @@
+use crate::evaluation::{evaluate_move, get_pst_value};
 use crate::lookup_tables;
 use crate::position::Position;
 use crate::utils::{Move, MoveType, Piece, PieceColor, PieceType};
 
-pub fn generate_legal_moves(position: &Position, color: &PieceColor) -> Vec<Move> {
+pub fn generate_legal_moves(position: &mut Position, color: &PieceColor) -> [Option<Move>; 256] {
     let turn = position.get_turn();
-    let pseudo_legal_moves: Vec<Move> = generate_pseudo_legal_moves(position, &turn);
-    let mut moves: Vec<Move> = Vec::new();
-    for m in pseudo_legal_moves {
-        let mut temp_position = position.clone();
-        temp_position.make_move(&m, false);
-        if !temp_position.is_check(&turn) {
-            moves.push(m);
+    let pseudo_legal_moves = generate_pseudo_legal_moves(position, &turn);
+    let mut moves = [None; 256];
+    let mut cursor  = 0;
+    for mov in pseudo_legal_moves {
+        match mov {
+            None => break,
+            Some(m) => {
+                position.make_move(&m, false);
+                if !position.is_check(&turn) {
+                    moves[cursor] = mov;
+                    cursor = cursor + 1;
+                }
+                position.undo_last_move();
+            }
         }
     }
     moves
 }
 
-fn generate_pseudo_legal_moves(position: &Position, color: &PieceColor) -> Vec<Move> {
-    let mut moves = Vec::new();
+pub fn generate_pseudo_legal_moves(position: &Position, color: &PieceColor) -> [Option<Move>; 256] {
+    let mut moves = [None; 256];
+    let mut cursor = 0;
     let coords = position.get_available_piece_coords(color);
     let en_passant = position.get_en_passant();
 
     for source in coords {
+        let source = match source {
+            None => break,
+            Some(s) => s,
+        };
+
         let piece = position.get_piece_on_square(&source);
         let mut mask = generate_mask_moves(&position, &source, &piece);
         let mut no_short_castle_manage = true;
         let mut no_long_castle_manage = true;
-
         while mask != 0 {
             let destination = mask.trailing_zeros() as i8;
             let destination_rank = 1 + (destination / 8);
-
             match piece.piece_type {
                 PieceType::Pawn => {
                     if en_passant.is_some() && destination == en_passant.unwrap() {
-                        moves.push(Move {
+                        moves[cursor] = Some(Move {
                             source,
                             destination,
                             move_type: MoveType::EnPassant,
+                            move_score: evaluate_move(position, &source, &destination),
                         });
                         mask &= mask - 1;
+                        cursor += 1;
                         continue;
                     } else {
                         if destination_rank == 1 || destination_rank == 8 {
-                            moves.push(Move {
+                            moves[cursor] = Some(Move {
                                 source,
                                 destination,
                                 move_type: MoveType::PawnToKnight,
+                                move_score: evaluate_move(position, &source, &destination),
                             });
-                            moves.push(Move {
+                            cursor += 1;
+                            moves[cursor] = Some(Move {
                                 source,
                                 destination,
                                 move_type: MoveType::PawnToBishop,
+                                move_score: evaluate_move(position, &source, &destination),
                             });
-                            moves.push(Move {
+                            cursor += 1;
+                            moves[cursor] = Some(Move {
                                 source,
                                 destination,
                                 move_type: MoveType::PawnToRook,
+                                move_score: evaluate_move(position, &source, &destination),
                             });
-                            moves.push(Move {
+                            cursor += 1;
+                            moves[cursor] = Some(Move {
                                 source,
                                 destination,
                                 move_type: MoveType::PawnToQueen,
+                                move_score: evaluate_move(position, &source, &destination),
                             });
-
+                            cursor += 1;
                             mask &= mask - 1;
                             continue;
                         }
@@ -71,30 +92,36 @@ fn generate_pseudo_legal_moves(position: &Position, color: &PieceColor) -> Vec<M
                 }
                 PieceType::King => {
                     if no_short_castle_manage && position.can_short_castle(&piece.color) {
-                        moves.push(Move {
+                        moves[cursor] = Some(Move {
                             source,
                             destination: source + 2,
                             move_type: MoveType::ShortCastle,
+                            move_score: evaluate_move(position, &source, &destination),
                         });
+                        cursor += 1;
                         no_short_castle_manage = false;
                     }
                     if no_long_castle_manage && position.can_long_castle(&piece.color) {
-                        moves.push(Move {
+                        moves[cursor] = Some(Move {
                             source,
                             destination: source - 2,
                             move_type: MoveType::LongCastle,
+                            move_score: evaluate_move(position, &source, &destination),
                         });
+                        cursor += 1;
                         no_long_castle_manage = false;
                     }
                 }
                 _ => {}
             }
 
-            moves.push(Move {
+            moves[cursor] = Some(Move {
                 source,
                 destination,
                 move_type: MoveType::Normal,
+                move_score: evaluate_move(position, &source, &destination),
             });
+            cursor += 1;
             mask &= mask - 1;
         }
     }
