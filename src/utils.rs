@@ -1,3 +1,5 @@
+use rand::Rng;
+
 #[derive(Clone, Debug, Eq, Hash, PartialEq, Copy)]
 #[repr(i16)]
 pub enum PieceColor {
@@ -64,3 +66,18 @@ pub fn count_set_bit(value: u64) -> u8 {
     }
     count
 }
+
+pub fn random_u64() -> u64 {
+    // https://www.chessprogramming.org/index.php?title=Looking_for_Magics&oldid=2272
+    let mut rng = rand::rng();
+    let u1 = rng.random::<u64>() & 0xFFFF;
+    let u2 = rng.random::<u64>() & 0xFFFF;
+    let u3 = rng.random::<u64>() & 0xFFFF;
+    let u4 = rng.random::<u64>() & 0xFFFF;
+    u1 | (u2 << 16) | (u3 << 32) | (u4 << 48)
+}
+
+pub fn random_u64_few_bits() -> u64 {
+    random_u64() & random_u64() & random_u64()
+}
+

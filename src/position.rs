@@ -1,6 +1,7 @@
+use crate::lookup_tables;
 use crate::moves_generator::{
-    generate_mask_moves, generate_move_mask_for_bishop, generate_move_mask_for_king,
-    generate_move_mask_for_knight, generate_move_mask_for_pawn, generate_move_mask_for_rook,
+    generate_mask_moves, generate_move_mask_for_bishop, generate_move_mask_for_pawn,
+    generate_move_mask_for_rook,
 };
 use crate::utils::{Move, MoveType, Piece, PieceColor, PieceType, UndoMove};
 /*
@@ -256,8 +257,23 @@ impl Position {
         let attacker_queens_board = self.queens_board & attacker_board;
         let attacker_kings_board = self.kings_board & attacker_board;
 
-        let mut superior_king_mask = generate_move_mask_for_knight(&index);
+        let mut superior_king_mask = lookup_tables::LOOK_UP_TABLE.knight_attacks[*index as usize];
         if superior_king_mask & attacker_knights_board != 0 {
+            return true;
+        }
+
+        superior_king_mask = lookup_tables::LOOK_UP_TABLE.king_attacks[*index as usize];
+        if superior_king_mask & attacker_kings_board != 0 {
+            return true;
+        }
+
+        superior_king_mask = match your_color {
+            PieceColor::None => panic!("Invalid color"),
+            PieceColor::White => lookup_tables::LOOK_UP_TABLE.white_pawn_attacks[*index as usize],
+            PieceColor::Black => lookup_tables::LOOK_UP_TABLE.black_pawn_attacks[*index as usize],
+        };
+
+        if superior_king_mask & attacker_pawns_board != 0 {
             return true;
         }
 
@@ -276,15 +292,6 @@ impl Position {
             return true;
         }
 
-        superior_king_mask = generate_move_mask_for_king(&index);
-        if superior_king_mask & attacker_kings_board != 0 {
-            return true;
-        }
-
-        superior_king_mask = generate_move_mask_for_pawn(&self, &index, &your_color);
-        if superior_king_mask & attacker_pawns_board != 0 {
-            return true;
-        }
         false
     }
 
