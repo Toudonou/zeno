@@ -151,7 +151,7 @@ pub fn generate_bishop_occupancy_combos(square: &u8) -> HashSet<(u64, u64)> {
     let rank = square / 8;
 
     let reference = [0, 1, 2, 3, 4, 5, 6, 7];
-    let distance_to_anti_diag: i8 = (file - reference[rank as usize]) as i8;
+    let distance_to_anti_diag: i8 = file as i8 - reference[rank as usize] as i8;
     let anti_diag_occupancy = generate_bishop_anti_diag_occupancy(&(rank));
 
     let mut final_anti_diag_occupancy = [(0, 0); 64];
@@ -172,7 +172,7 @@ pub fn generate_bishop_occupancy_combos(square: &u8) -> HashSet<(u64, u64)> {
         i += 1;
     }
 
-    let distance_to_diag: i8 = (file - reference[(7 - rank) as usize]) as i8;
+    let distance_to_diag: i8 = file as i8 - reference[(7 - rank) as usize] as i8;
     let diag_occupancy = generate_bishop_diag_occupancy(&(7 - rank));
 
     let mut final_diag_occupancy = [(0, 0); 64];

@@ -3,27 +3,6 @@ use crate::lookup_tables;
 use crate::position::Position;
 use crate::utils::{Move, MoveType, Piece, PieceColor, PieceType};
 
-pub fn generate_legal_moves(position: &mut Position, color: &PieceColor) -> [Option<Move>; 256] {
-    let turn = position.get_turn();
-    let pseudo_legal_moves = generate_pseudo_legal_moves(position, &turn);
-    let mut moves = [None; 256];
-    let mut cursor = 0;
-    for mov in pseudo_legal_moves {
-        match mov {
-            None => break,
-            Some(m) => {
-                position.make_move(&m, false);
-                if !position.is_check(&turn) {
-                    moves[cursor] = mov;
-                    cursor = cursor + 1;
-                }
-                position.undo_last_move();
-            }
-        }
-    }
-    moves
-}
-
 pub fn generate_pseudo_legal_moves(position: &Position, color: &PieceColor) -> [Option<Move>; 256] {
     let mut moves = [None; 256];
     let mut cursor = 0;
