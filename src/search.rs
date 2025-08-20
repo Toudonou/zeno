@@ -1,21 +1,29 @@
+use crate::evaluation;
+use crate::moves_generator::generate_pseudo_legal_moves;
 use crate::position::Position;
 use crate::utils::{Move, PieceColor};
-use crate::{evaluation, moves_generator};
 
 pub fn best_move(position: &mut Position) -> Option<Move> {
-    let moves = moves_generator::generate_pseudo_legal_moves(position, &position.get_turn());
+    let moves = generate_pseudo_legal_moves(position, &position.get_turn());
+    let mut best_move = None;
     let turn = position.get_turn();
-    let mut best_move = moves[0].clone();
     let mut best_score = -1_000_000 * turn.clone() as i32;
-    let depth: usize = 5;
+    let depth: usize = 6;
+
     for mov in moves {
         match mov {
             None => break,
             Some(m) => {
+                position.make_move(&m, true);
                 if !position.is_check(&turn) {
-                    let mut temp_position = position.clone();
-                    temp_position.make_move(&m, true);
-                    let score = alpha_beta(&mut temp_position, depth - 1, -1_000_000, 1_000_000);
+                    let score = alpha_beta(position, depth - 1, -1_000_000, 1_000_000);
+                    position.undo_last_move();
+
+                    if score * turn.clone() as i32 == 1_000_000 {
+                        best_move = mov;
+                        break;
+                    }
+
                     match turn {
                         PieceColor::White => {
                             if score > best_score {
@@ -31,6 +39,8 @@ pub fn best_move(position: &mut Position) -> Option<Move> {
                         }
                         _ => {}
                     }
+                } else {
+                    position.undo_last_move();
                 }
             }
         }
@@ -42,63 +52,51 @@ fn alpha_beta(position: &mut Position, depth: usize, mut alpha: i32, mut beta: i
     if depth == 0 {
         return evaluation::evaluate(position);
     }
+    let turn = position.get_turn();
+    let moves = generate_pseudo_legal_moves(position, &turn);
+    let mut no_legal_moves = true;
 
-    let mut moves = moves_generator::generate_pseudo_legal_moves(position, &position.get_turn());
-    if moves.is_empty() {
-        return if position.is_check(&position.get_turn()) {
-            if position.get_turn() == PieceColor::White {
-                -1_000_000
-            } else {
-                1_000_000
-            }
-        } else {
-            0 // stalemate
-        };
-    }
-
-    match position.get_turn() {
-        PieceColor::None => 0,
-        PieceColor::White => {
-            let mut score = -100_000;
-            for mov in moves {
-                match mov {
-                    None => break,
-                    Some(m) => {
-                        if !position.is_check(&PieceColor::White) {
-                            let mut temp_position = position.clone();
-                            temp_position.make_move(&m, true);
-                            score =
-                                score.max(alpha_beta(&mut temp_position, depth - 1, alpha, beta));
+    let mut score = -100_000 * turn.clone() as i32;
+    for mov in moves {
+        match mov {
+            None => break,
+            Some(m) => {
+                position.make_move(&m, true);
+                if !position.is_check(&turn) {
+                    no_legal_moves = false;
+                    let eval = alpha_beta(position, depth - 1, alpha, beta);
+                    position.undo_last_move();
+                    match turn {
+                        PieceColor::White => {
+                            score = score.max(eval);
                             alpha = alpha.max(score);
                             if beta <= alpha {
                                 break;
                             }
                         }
-                    }
-                }
-            }
-            score
-        }
-        PieceColor::Black => {
-            let mut score = 100_000;
-            for mov in moves {
-                match mov {
-                    None => {}
-                    Some(m) => {
-                        if !position.is_check(&PieceColor::Black) {
-                            let mut temp_position = position.clone();
-                            temp_position.make_move(&m, true);
-                            score =
-                                score.min(alpha_beta(&mut temp_position, depth - 1, alpha, beta));
+                        PieceColor::Black => {
+                            score = score.min(eval);
                             beta = beta.min(score);
                             if beta <= alpha {
                                 break;
                             }
                         }
+                        _ => {}
                     }
+                } else {
+                    position.undo_last_move();
                 }
             }
-            score
         }
     }
+
+    if no_legal_moves {
+        return if position.is_check(&turn) {
+            -1_000_000 * turn as i32 // Checkmate
+        } else {
+            0 // stalemate
+        };
+    }
+
+    score
 }
