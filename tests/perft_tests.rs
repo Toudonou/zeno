@@ -56,7 +56,9 @@ fn perft_startpos_depth_6() {
 fn perft_kiwipete_depth_1() {
     let result = perft(
         1,
-        &mut Position::from_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1"),
+        &mut Position::from_fen(
+            "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
+        ),
     );
     assert_eq!(result, 48);
 }
@@ -64,7 +66,9 @@ fn perft_kiwipete_depth_1() {
 fn perft_kiwipete_depth_2() {
     let result = perft(
         2,
-        &mut Position::from_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1"),
+        &mut Position::from_fen(
+            "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
+        ),
     );
     assert_eq!(result, 2039);
 }
@@ -72,7 +76,9 @@ fn perft_kiwipete_depth_2() {
 fn perft_kiwipete_depth_3() {
     let result = perft(
         3,
-        &mut Position::from_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1"),
+        &mut Position::from_fen(
+            "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
+        ),
     );
     assert_eq!(result, 97_862);
 }
@@ -81,7 +87,9 @@ fn perft_kiwipete_depth_3() {
 fn perft_kiwipete_depth_4() {
     let result = perft(
         4,
-        &mut Position::from_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1"),
+        &mut Position::from_fen(
+            "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
+        ),
     );
     assert_eq!(result, 4_085_603);
 }
@@ -90,7 +98,9 @@ fn perft_kiwipete_depth_4() {
 fn perft_kiwipete_depth_5() {
     let result = perft(
         5,
-        &mut Position::from_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1"),
+        &mut Position::from_fen(
+            "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
+        ),
     );
     assert_eq!(result, 193_690_690);
 }
@@ -98,7 +108,9 @@ fn perft_kiwipete_depth_5() {
 fn perft_kiwipete_depth_6() {
     let result = perft(
         6,
-        &mut Position::from_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1"),
+        &mut Position::from_fen(
+            "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
+        ),
     );
     assert_eq!(result, 8_031_647_685);
 }

@@ -252,9 +252,9 @@ impl Position {
         };
         let attacker_pawns_board = self.pawns_board & attacker_board;
         let attacker_knights_board = self.knights_board & attacker_board;
-        let attacker_bishops_board = self.bishops_board & attacker_board;
-        let attacker_rooks_board = self.rooks_board & attacker_board;
         let attacker_queens_board = self.queens_board & attacker_board;
+        let attacker_bishops_board = (self.bishops_board & attacker_board) | attacker_queens_board;
+        let attacker_rooks_board = (self.rooks_board & attacker_board) | attacker_queens_board;
         let attacker_kings_board = self.kings_board & attacker_board;
 
         let mut superior_king_mask = lookup_tables::LOOK_UP_TABLE.knight_attacks[*index as usize];
@@ -287,11 +287,6 @@ impl Position {
             return true;
         }
 
-        superior_king_mask = superior_bishop_mask | superior_rook_mask;
-        if superior_king_mask & attacker_queens_board != 0 {
-            return true;
-        }
-
         false
     }
 
@@ -304,6 +299,112 @@ impl Position {
             PieceColor::Black => PieceColor::White,
         };
         self.is_square_attack_by(&self.get_king_coord(color), &opponent_color)
+    }
+
+    pub fn get_pin_pieces_for(&self, color: &PieceColor) -> [u64; 64] {
+        let mut pins = [0u64; 64];
+        let board = self.white_board | self.black_board;
+        let king_index = self.get_king_coord(color);
+        let your_board = match color {
+            PieceColor::None => panic!("Invalid color"),
+            PieceColor::White => self.white_board,
+            PieceColor::Black => self.black_board,
+        };
+
+        let attacker_board = match color {
+            PieceColor::None => panic!("Invalid color"),
+            PieceColor::White => self.black_board,
+            PieceColor::Black => self.white_board,
+        };
+
+        let mut relevant_bishops = (self.bishops_board | self.queens_board) & attacker_board;
+        let superior_bishop_mask = generate_move_mask_for_bishop(&board, &king_index);
+        while relevant_bishops != 0 {
+            let bishop_index = relevant_bishops.trailing_zeros() as i8;
+            let bishop_attacks = generate_move_mask_for_bishop(&board, &bishop_index);
+
+            if superior_bishop_mask & bishop_attacks & your_board != 0 {
+                pins[(superior_bishop_mask & bishop_attacks & your_board).trailing_zeros()
+                    as usize] |= superior_bishop_mask | bishop_attacks;
+            }
+
+            relevant_bishops &= relevant_bishops - 1;
+        }
+
+        let mut relevant_rooks = (self.rooks_board | self.queens_board) & attacker_board;
+        let superior_rook_mask = generate_move_mask_for_rook(&board, &king_index);
+        while relevant_rooks != 0 {
+            let rook_index = relevant_rooks.trailing_zeros() as i8;
+            let rook_attacks = generate_move_mask_for_rook(&board, &rook_index);
+
+            if superior_rook_mask & rook_attacks & your_board != 0 {
+                pins[(superior_rook_mask & rook_attacks & your_board).trailing_zeros() as usize] |=
+                    superior_rook_mask | rook_attacks;
+            }
+
+            relevant_rooks &= relevant_rooks - 1;
+        }
+
+        pins
+    }
+
+    pub fn get_attackers_of_square(
+        &self,
+        square: &i8,
+        color: &PieceColor,
+    ) -> Vec<(PieceType, i8, u64)> {
+        let mut attackers = Vec::with_capacity(64);
+        let board = self.white_board | self.black_board;
+
+        let attacker_board = match color {
+            PieceColor::None => panic!("Invalid color"),
+            PieceColor::White => self.black_board,
+            PieceColor::Black => self.white_board,
+        };
+        let attacker_pawns_board = self.pawns_board & attacker_board;
+        let attacker_knights_board = self.knights_board & attacker_board;
+
+        let mut superior_king_mask = lookup_tables::LOOK_UP_TABLE.knight_attacks[*square as usize];
+        let mut relevant_attacker = superior_king_mask & attacker_knights_board;
+        while relevant_attacker != 0 {
+            attackers.push((
+                PieceType::Knight,
+                relevant_attacker.trailing_zeros() as i8,
+                0,
+            ));
+            relevant_attacker &= relevant_attacker - 1;
+        }
+
+        superior_king_mask = generate_move_mask_for_pawn(self, square, color);
+        relevant_attacker = superior_king_mask & attacker_pawns_board;
+        while relevant_attacker != 0 {
+            attackers.push((PieceType::Pawn, relevant_attacker.trailing_zeros() as i8, 0));
+            relevant_attacker &= relevant_attacker - 1;
+        }
+
+        superior_king_mask = generate_move_mask_for_bishop(&board, square);
+        relevant_attacker =
+            superior_king_mask & (self.bishops_board | self.queens_board) & attacker_board;
+        while relevant_attacker != 0 {
+            let bishop_square = relevant_attacker.trailing_zeros() as i8;
+            let ray = (generate_move_mask_for_bishop(&board, &bishop_square) & superior_king_mask)
+                | (1u64 << bishop_square);
+            attackers.push((PieceType::Bishop, bishop_square, ray));
+            relevant_attacker &= relevant_attacker - 1;
+        }
+
+        superior_king_mask = generate_move_mask_for_rook(&board, square);
+        relevant_attacker =
+            superior_king_mask & (self.rooks_board | self.queens_board) & attacker_board;
+        while relevant_attacker != 0 {
+            let rook_square = relevant_attacker.trailing_zeros() as i8;
+            let ray = (generate_move_mask_for_rook(&board, &rook_square) & superior_king_mask)
+                | (1u64 << rook_square);
+            attackers.push((PieceType::Rook, rook_square, ray));
+            relevant_attacker &= relevant_attacker - 1;
+        }
+
+        attackers
     }
 
     pub fn make_move(&mut self, mov: &Move, is_intern_move_request: bool) {
@@ -323,8 +424,8 @@ impl Position {
             source: mov.source,
             destination: mov.destination,
             move_type: mov.move_type,
-            piece_moved: source_piece.piece_type.clone(),
-            piece_captured: destination_piece.piece_type.clone(),
+            piece_moved: source_piece.piece_type,
+            piece_captured: destination_piece.piece_type,
             castling_rights: self.castling_rights,
             turn: self.get_turn(),
             en_passant: self.en_passant,
@@ -652,11 +753,11 @@ impl Position {
 
         self.castling_rights = last_move_info.castling_rights;
         self.en_passant = last_move_info.en_passant;
-        self.turn = last_move_info.turn.clone();
+        self.turn = last_move_info.turn;
     }
 
     pub fn get_turn(&self) -> PieceColor {
-        self.turn.clone()
+        self.turn
     }
 
     pub fn get_piece_on_square(&self, index: &i8) -> Piece {
@@ -703,6 +804,7 @@ impl Position {
         coords
     }
 
+    #[inline(always)]
     pub fn get_king_coord(&self, color: &PieceColor) -> i8 {
         if *color == PieceColor::None {
             panic!("Trying to get a king with the color None")
@@ -817,7 +919,7 @@ impl Position {
     }
 
     fn piece_to_unicode(&self, piece: &Piece) -> char {
-        match (piece.color.clone(), piece.piece_type.clone()) {
+        match (piece.color, piece.piece_type) {
             (PieceColor::White, PieceType::Pawn) => '♙',
             (PieceColor::White, PieceType::Knight) => '♘',
             (PieceColor::White, PieceType::Bishop) => '♗',

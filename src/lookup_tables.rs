@@ -1,6 +1,6 @@
+use crate::utils::random_u64_few_bits;
 use std::collections::HashSet;
 use std::sync::LazyLock;
-use crate::utils::random_u64_few_bits;
 
 pub static LOOK_UP_TABLE: LazyLock<LookUpTable> = LazyLock::new(|| LookUpTable::init());
 
@@ -47,7 +47,6 @@ impl LookUpTable {
         }
     }
 }
-
 
 pub fn generate_rook_attacks() -> ([u64; 64], Box<[[u64; 4096]; 64]>) {
     let mut magic_numbers = [0u64; 64];

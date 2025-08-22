@@ -1,4 +1,4 @@
-use crate::moves_generator::generate_pseudo_legal_moves;
+use crate::moves_generator::{generate_legal_moves, generate_pseudo_legal_moves};
 use crate::position::Position;
 
 pub fn perft(depth: i32, position: &mut Position) -> u64 {
@@ -7,15 +7,13 @@ pub fn perft(depth: i32, position: &mut Position) -> u64 {
         number_of_move = 1;
     } else {
         let turn = position.get_turn();
-        let moves = generate_pseudo_legal_moves(position, &turn);
+        let moves = generate_legal_moves(position, &turn);
         for mov in &moves {
             match mov {
                 None => break,
                 Some(m) => {
                     position.make_move(&m, true);
-                    if !position.is_check(&turn) {
-                        number_of_move += perft(depth - 1, position);
-                    }
+                    number_of_move += perft(depth - 1, position);
                     position.undo_last_move();
                 }
             }

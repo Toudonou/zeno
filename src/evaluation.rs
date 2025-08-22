@@ -37,7 +37,7 @@ fn pst_evaluation(position: &Position) -> i32 {
     while board != 0 {
         let index = board.trailing_zeros() as i8;
         let piece = position.get_piece_on_square(&index);
-        score += get_pst_value(&piece.clone(), &index);
+        score += get_pst_value(&piece, &index);
         board &= board - 1;
     }
     score
@@ -131,7 +131,7 @@ pub fn get_pst_value(piece: &Piece, index: &i8) -> i32 {
         PieceType::Queen => queen_table[index],
         PieceType::King => king_table[index],
     };
-    value as i32 * (piece.color.clone() as i16) as i32
+    value as i32 * (piece.color as i16) as i32
 }
 
 pub fn evaluate_move(position: &Position, source: &i8, destination: &i8) -> i32 {
