@@ -27,7 +27,7 @@ pub fn perft(depth: i32, position: &mut Position) -> u64 {
 // pub fn pertf_divide(depth: i32, position: &Position) {
 //     let moves: Vec<Move> = generate_legal_moves(position, &position.get_turn());
 //     for m in moves {
-//         let mut temp_position = position.clone();
+//         let mut temp_position = position;
 //         temp_position.make_move(&m, true);
 //         let start = Instant::now();
 //         let number_of_move = perft(depth - 1, &temp_position);

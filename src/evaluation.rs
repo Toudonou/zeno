@@ -1,10 +1,12 @@
 use crate::position::Position;
 use crate::utils::{Piece, PieceColor, PieceType, count_set_bit};
 
+#[inline(always)]
 pub fn evaluate(position: &Position) -> i32 {
     pst_evaluation(position)
 }
 
+#[inline(always)]
 fn pst_evaluation(position: &Position) -> i32 {
     let mut score = 0;
     let white_board = position.get_white_board();
@@ -37,12 +39,13 @@ fn pst_evaluation(position: &Position) -> i32 {
     while board != 0 {
         let index = board.trailing_zeros() as i8;
         let piece = position.get_piece_on_square(&index);
-        score += get_pst_value(&piece.clone(), &index);
+        score += get_pst_value(&piece, &index);
         board &= board - 1;
     }
     score
 }
 
+#[inline(always)]
 pub fn get_pst_value(piece: &Piece, index: &i8) -> i32 {
     #[rustfmt::skip]
     let pawn_table = vec![
@@ -131,9 +134,10 @@ pub fn get_pst_value(piece: &Piece, index: &i8) -> i32 {
         PieceType::Queen => queen_table[index],
         PieceType::King => king_table[index],
     };
-    value as i32 * (piece.color.clone() as i16) as i32
+    value as i32 * (piece.color as i16) as i32
 }
 
+#[inline(always)]
 pub fn evaluate_move(position: &Position, source: &i8, destination: &i8) -> i32 {
     let source_piece = position.get_piece_on_square(source);
     let destination_piece = position.get_piece_on_square(&destination);
@@ -162,6 +166,7 @@ pub fn evaluate_move(position: &Position, source: &i8, destination: &i8) -> i32 
     move_score
 }
 
+#[inline(always)]
 pub fn simple_evaluation(position: &Position) -> i32 {
     let mut score: i32 = 0;
     let mut board = position.get_board();

@@ -7,7 +7,7 @@ pub fn best_move(position: &mut Position) -> Option<Move> {
     let moves = generate_pseudo_legal_moves(position, &position.get_turn());
     let mut best_move = None;
     let turn = position.get_turn();
-    let mut best_score = -1_000_000 * turn.clone() as i32;
+    let mut best_score = -1_000_000 * turn as i32;
     let depth: usize = 6;
 
     for mov in moves {
@@ -19,7 +19,7 @@ pub fn best_move(position: &mut Position) -> Option<Move> {
                     let score = alpha_beta(position, depth - 1, -1_000_000, 1_000_000);
                     position.undo_last_move();
 
-                    if score * turn.clone() as i32 == 1_000_000 {
+                    if score * turn as i32 == 1_000_000 {
                         best_move = mov;
                         break;
                     }
@@ -56,7 +56,7 @@ fn alpha_beta(position: &mut Position, depth: usize, mut alpha: i32, mut beta: i
     let moves = generate_pseudo_legal_moves(position, &turn);
     let mut no_legal_moves = true;
 
-    let mut score = -100_000 * turn.clone() as i32;
+    let mut score = -100_000 * turn as i32;
     for mov in moves {
         match mov {
             None => break,

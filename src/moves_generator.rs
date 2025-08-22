@@ -3,11 +3,15 @@ use crate::lookup_tables;
 use crate::position::Position;
 use crate::utils::{Move, MoveType, Piece, PieceColor, PieceType};
 
+#[inline(always)]
 pub fn generate_pseudo_legal_moves(position: &Position, color: &PieceColor) -> [Option<Move>; 256] {
     let mut moves = [None; 256];
     let mut cursor = 0;
     let coords = position.get_available_piece_coords(color);
-    let en_passant = position.get_en_passant();
+    let en_passant = position.get_en_passant().unwrap_or(-1);
+
+    let mut no_short_castle_manage = position.can_short_castle(color);
+    let mut no_long_castle_manage = position.can_long_castle(color);
 
     for source in coords {
         let source = match source {
@@ -17,19 +21,17 @@ pub fn generate_pseudo_legal_moves(position: &Position, color: &PieceColor) -> [
 
         let piece = position.get_piece_on_square(&source);
         let mut mask = generate_mask_moves(&position, &source, &piece);
-        let mut no_short_castle_manage = true;
-        let mut no_long_castle_manage = true;
         while mask != 0 {
             let destination = mask.trailing_zeros() as i8;
             let destination_rank = 1 + (destination / 8);
             match piece.piece_type {
                 PieceType::Pawn => {
-                    if en_passant.is_some() && destination == en_passant.unwrap() {
+                    if destination == en_passant {
                         moves[cursor] = Some(Move {
                             source,
                             destination,
                             move_type: MoveType::EnPassant,
-                            move_score: evaluate_move(position, &source, &destination),
+                            move_score: 0,
                         });
                         mask &= mask - 1;
                         cursor += 1;
@@ -40,28 +42,28 @@ pub fn generate_pseudo_legal_moves(position: &Position, color: &PieceColor) -> [
                                 source,
                                 destination,
                                 move_type: MoveType::PawnToKnight,
-                                move_score: evaluate_move(position, &source, &destination),
+                                move_score: 0,
                             });
                             cursor += 1;
                             moves[cursor] = Some(Move {
                                 source,
                                 destination,
                                 move_type: MoveType::PawnToBishop,
-                                move_score: evaluate_move(position, &source, &destination),
+                                move_score: 0,
                             });
                             cursor += 1;
                             moves[cursor] = Some(Move {
                                 source,
                                 destination,
                                 move_type: MoveType::PawnToRook,
-                                move_score: evaluate_move(position, &source, &destination),
+                                move_score: 0,
                             });
                             cursor += 1;
                             moves[cursor] = Some(Move {
                                 source,
                                 destination,
                                 move_type: MoveType::PawnToQueen,
-                                move_score: evaluate_move(position, &source, &destination),
+                                move_score: 0,
                             });
                             cursor += 1;
                             mask &= mask - 1;
@@ -70,22 +72,22 @@ pub fn generate_pseudo_legal_moves(position: &Position, color: &PieceColor) -> [
                     }
                 }
                 PieceType::King => {
-                    if no_short_castle_manage && position.can_short_castle(&piece.color) {
+                    if no_short_castle_manage {
                         moves[cursor] = Some(Move {
                             source,
                             destination: source + 2,
                             move_type: MoveType::ShortCastle,
-                            move_score: evaluate_move(position, &source, &destination),
+                            move_score: 0,
                         });
                         cursor += 1;
                         no_short_castle_manage = false;
                     }
-                    if no_long_castle_manage && position.can_long_castle(&piece.color) {
+                    if no_long_castle_manage {
                         moves[cursor] = Some(Move {
                             source,
                             destination: source - 2,
                             move_type: MoveType::LongCastle,
-                            move_score: evaluate_move(position, &source, &destination),
+                            move_score: 0,
                         });
                         cursor += 1;
                         no_long_castle_manage = false;
@@ -98,7 +100,7 @@ pub fn generate_pseudo_legal_moves(position: &Position, color: &PieceColor) -> [
                 source,
                 destination,
                 move_type: MoveType::Normal,
-                move_score: evaluate_move(position, &source, &destination),
+                move_score: 0,
             });
             cursor += 1;
             mask &= mask - 1;
@@ -107,6 +109,7 @@ pub fn generate_pseudo_legal_moves(position: &Position, color: &PieceColor) -> [
     moves
 }
 
+#[inline(always)]
 pub fn generate_mask_moves(position: &Position, source: &i8, piece: &Piece) -> u64 {
     let mut attacks_squares: u64 = match piece.piece_type {
         PieceType::None => 0,
@@ -164,7 +167,8 @@ pub fn generate_move_mask_for_pawn(position: &Position, source: &i8, color: &Pie
             // Avoid moving forward if there is ANY piece of the front square
             pawn_front_attacks_mask &= !board;
 
-            let mut pawn_diag_attacks_mask = lookup_tables::LOOK_UP_TABLE.white_pawn_attacks[*source as usize];
+            let mut pawn_diag_attacks_mask =
+                lookup_tables::LOOK_UP_TABLE.white_pawn_attacks[*source as usize];
             // Avoid moving in the diagonal if there is no piece there
             // And adding the en-passant square, if any
             pawn_diag_attacks_mask &= match en_passant {
@@ -188,7 +192,8 @@ pub fn generate_move_mask_for_pawn(position: &Position, source: &i8, color: &Pie
             // Avoid moving forward if there is ANY piece of the front square
             pawn_front_attacks_mask &= !board;
 
-            let mut pawn_diag_attacks_mask = lookup_tables::LOOK_UP_TABLE.black_pawn_attacks[*source as usize];
+            let mut pawn_diag_attacks_mask =
+                lookup_tables::LOOK_UP_TABLE.black_pawn_attacks[*source as usize];
             // Avoid moving in the diagonal if there is no piece there
             // And adding the en-passant square, if any
             pawn_diag_attacks_mask &= match en_passant {

@@ -237,13 +237,9 @@ impl Position {
         }
     }
 
+    #[inline(always)]
     pub fn is_square_attack_by(&self, index: &i8, attacker_color: &PieceColor) -> bool {
         let board = self.white_board | self.black_board;
-        let your_color = match attacker_color {
-            PieceColor::None => panic!("Invalid color"),
-            PieceColor::White => PieceColor::Black,
-            PieceColor::Black => PieceColor::White,
-        };
 
         let attacker_board = match attacker_color {
             PieceColor::None => panic!("Invalid color"),
@@ -252,9 +248,6 @@ impl Position {
         };
         let attacker_pawns_board = self.pawns_board & attacker_board;
         let attacker_knights_board = self.knights_board & attacker_board;
-        let attacker_bishops_board = self.bishops_board & attacker_board;
-        let attacker_rooks_board = self.rooks_board & attacker_board;
-        let attacker_queens_board = self.queens_board & attacker_board;
         let attacker_kings_board = self.kings_board & attacker_board;
 
         let mut superior_king_mask = lookup_tables::LOOK_UP_TABLE.knight_attacks[*index as usize];
@@ -267,34 +260,29 @@ impl Position {
             return true;
         }
 
-        superior_king_mask = match your_color {
+        superior_king_mask = match attacker_color {
             PieceColor::None => panic!("Invalid color"),
-            PieceColor::White => lookup_tables::LOOK_UP_TABLE.white_pawn_attacks[*index as usize],
-            PieceColor::Black => lookup_tables::LOOK_UP_TABLE.black_pawn_attacks[*index as usize],
+            PieceColor::White => lookup_tables::LOOK_UP_TABLE.black_pawn_attacks[*index as usize],
+            PieceColor::Black => lookup_tables::LOOK_UP_TABLE.white_pawn_attacks[*index as usize],
         };
-
         if superior_king_mask & attacker_pawns_board != 0 {
             return true;
         }
 
         let superior_bishop_mask = generate_move_mask_for_bishop(&board, &index);
-        if superior_bishop_mask & attacker_bishops_board != 0 {
+        if superior_bishop_mask & (self.bishops_board | self.queens_board) & attacker_board != 0 {
             return true;
         }
 
         let superior_rook_mask = generate_move_mask_for_rook(&board, &index);
-        if superior_rook_mask & attacker_rooks_board != 0 {
-            return true;
-        }
-
-        superior_king_mask = superior_bishop_mask | superior_rook_mask;
-        if superior_king_mask & attacker_queens_board != 0 {
+        if superior_rook_mask & (self.rooks_board | self.queens_board) & attacker_board != 0 {
             return true;
         }
 
         false
     }
 
+    #[inline(always)]
     pub fn is_check(&self, color: &PieceColor) -> bool {
         let opponent_color = match color {
             PieceColor::None => {
@@ -306,6 +294,7 @@ impl Position {
         self.is_square_attack_by(&self.get_king_coord(color), &opponent_color)
     }
 
+    #[inline(always)]
     pub fn make_move(&mut self, mov: &Move, is_intern_move_request: bool) {
         // The verification of the origin of the move request helps to avoid the double mask generation well performing move selection:
         // The function generate_mask in move_generator will be call for move generation and for the verification of the move
@@ -323,8 +312,8 @@ impl Position {
             source: mov.source,
             destination: mov.destination,
             move_type: mov.move_type,
-            piece_moved: source_piece.piece_type.clone(),
-            piece_captured: destination_piece.piece_type.clone(),
+            piece_moved: source_piece.piece_type,
+            piece_captured: destination_piece.piece_type,
             castling_rights: self.castling_rights,
             turn: self.get_turn(),
             en_passant: self.en_passant,
@@ -506,6 +495,7 @@ impl Position {
         }
     }
 
+    #[inline(always)]
     pub fn undo_last_move(&mut self) {
         self.history_index -= 1;
         let last_move_info = self.history[self.history_index];
@@ -652,13 +642,15 @@ impl Position {
 
         self.castling_rights = last_move_info.castling_rights;
         self.en_passant = last_move_info.en_passant;
-        self.turn = last_move_info.turn.clone();
+        self.turn = last_move_info.turn;
     }
 
+    #[inline(always)]
     pub fn get_turn(&self) -> PieceColor {
-        self.turn.clone()
+        self.turn
     }
 
+    #[inline(always)]
     pub fn get_piece_on_square(&self, index: &i8) -> Piece {
         let color = if self.white_board & (1u64 << index) != 0 {
             PieceColor::White
@@ -703,6 +695,7 @@ impl Position {
         coords
     }
 
+    #[inline(always)]
     pub fn get_king_coord(&self, color: &PieceColor) -> i8 {
         if *color == PieceColor::None {
             panic!("Trying to get a king with the color None")
@@ -716,24 +709,37 @@ impl Position {
         }
     }
 
+    #[inline(always)]
     pub fn get_board(&self) -> u64 {
         self.white_board | self.black_board
     }
+
+    #[inline(always)]
     pub fn get_white_board(&self) -> u64 {
         self.white_board
     }
+
+    #[inline(always)]
     pub fn get_black_board(&self) -> u64 {
         self.black_board
     }
+
+    #[inline(always)]
     pub fn get_pawns_board(&self) -> u64 {
         self.pawns_board
     }
+
+    #[inline(always)]
     pub fn get_knight_board(&self) -> u64 {
         self.knights_board
     }
+
+    #[inline(always)]
     pub fn get_bishops_board(&self) -> u64 {
         self.bishops_board
     }
+
+    #[inline(always)]
     pub fn get_rook_board(&self) -> u64 {
         self.rooks_board
     }
@@ -741,6 +747,7 @@ impl Position {
         self.queens_board
     }
 
+    #[inline(always)]
     pub fn can_short_castle(&self, color: &PieceColor) -> bool {
         let board = self.white_board | self.black_board;
         let king_index = self.get_king_coord(color);
@@ -748,7 +755,7 @@ impl Position {
         match color {
             PieceColor::None => false,
             PieceColor::White => {
-                ((self.castling_rights >> 0 & 1) == 1)
+                (self.castling_rights >> 0 & 1) == 1
                     && (self.white_board & self.rooks_board & (1u64 << 7)) != 0
                     && (board & (1u64 << (king_index + 1))) == 0
                     && (board & (1u64 << (king_index + 2))) == 0
@@ -757,7 +764,7 @@ impl Position {
                     && !self.is_square_attack_by(&(king_index + 2), &PieceColor::Black)
             }
             PieceColor::Black => {
-                ((self.castling_rights >> 2 & 1) == 1)
+                (self.castling_rights >> 2 & 1) == 1
                     && (self.black_board & self.rooks_board & (1u64 << 63)) != 0
                     && (board & (1u64 << (king_index + 1))) == 0
                     && (board & (1u64 << (king_index + 2))) == 0
@@ -768,6 +775,7 @@ impl Position {
         }
     }
 
+    #[inline(always)]
     pub fn can_long_castle(&self, color: &PieceColor) -> bool {
         let board = self.white_board | self.black_board;
         let king_index = self.get_king_coord(color);
@@ -775,7 +783,7 @@ impl Position {
         match color {
             PieceColor::None => false,
             PieceColor::White => {
-                ((self.castling_rights >> 1 & 1) == 1)
+                (self.castling_rights >> 1 & 1) == 1
                     && (self.white_board & self.rooks_board & (1u64 << 0)) != 0
                     && (board & (1u64 << (king_index - 1))) == 0
                     && (board & (1u64 << (king_index - 2))) == 0
@@ -785,7 +793,7 @@ impl Position {
                     && !self.is_square_attack_by(&(king_index - 2), &PieceColor::Black)
             }
             PieceColor::Black => {
-                ((self.castling_rights >> 3 & 1) == 1)
+                (self.castling_rights >> 3 & 1) == 1
                     && (self.black_board & self.rooks_board & (1u64 << 56)) != 0
                     && (board & (1u64 << (king_index - 1))) == 0
                     && (board & (1u64 << (king_index - 2))) == 0
@@ -797,6 +805,7 @@ impl Position {
         }
     }
 
+    #[inline(always)]
     pub fn get_en_passant(&self) -> Option<i8> {
         self.en_passant
     }
@@ -817,7 +826,7 @@ impl Position {
     }
 
     fn piece_to_unicode(&self, piece: &Piece) -> char {
-        match (piece.color.clone(), piece.piece_type.clone()) {
+        match (piece.color, piece.piece_type) {
             (PieceColor::White, PieceType::Pawn) => '♙',
             (PieceColor::White, PieceType::Knight) => '♘',
             (PieceColor::White, PieceType::Bishop) => '♗',

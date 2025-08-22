@@ -20,7 +20,7 @@ pub enum PieceType {
     King = 20000,
 }
 
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq, Copy)]
 pub struct Piece {
     pub color: PieceColor,
     pub piece_type: PieceType,
