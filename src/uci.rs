@@ -1,12 +1,9 @@
-use crate::evaluation::evaluate;
 use crate::position::Position;
 use crate::search;
 use crate::utils::{Move, MoveType, PieceColor};
-use crate::zobrist_hash::ZobristHash;
 use regex::Regex;
-use std::io::Write;
-use std::thread::sleep;
-use std::{io, time};
+use std::io;
+
 
 pub fn uci_loop() {
     let mut position = Position::from_fen("r4r1k/pQ5p/5p2/2p5/2q5/8/PP2nPPP/4RK1R b - - 4 3");
@@ -28,7 +25,6 @@ pub fn uci_loop() {
             "quit" => break,
             _ => println!("Command not found {}", command),
         }
-        io::stdout().flush().unwrap();
     }
 }
 
@@ -67,19 +63,19 @@ pub fn uci_make_move(command: &str, position: &mut Position) {
 }
 
 fn uci_position(command: &str, position: &mut Position) {
-    if command.starts_with("position fen") {
-        *position = Position::from_fen(&command[13usize..])
-    }
-
-    if command.starts_with("position startpos") {
-        *position = Position::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
-    }
-
-    if command.starts_with("position startpos moves") {
-        let moves = command[23usize..].split_whitespace();
-
-        moves.for_each(|move_string| position.make_move(&uci_move(move_string, position), false))
-    }
+    // if command.starts_with("position fen") {
+    //     *position = Position::from_fen(&command[13usize..])
+    // }
+    // 
+    // if command.starts_with("position startpos") {
+    //     *position = Position::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+    // }
+    // 
+    // if command.starts_with("position startpos moves") {
+    //     let moves = command[23usize..].split_whitespace();
+    // 
+    //     moves.for_each(|move_string| position.make_move(&uci_move(move_string, position), false))
+    // }
 }
 
 fn uci_move(move_string: &str, position: &Position) -> Move {

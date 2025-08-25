@@ -3,7 +3,7 @@ use crate::moves_generator::generate_pseudo_legal_moves;
 use crate::position::Position;
 use crate::utils::{Move, PieceColor};
 
-pub fn best_move(position: &mut Position) -> Option<Move> {
+pub fn best_move(position: &Position) -> Option<Move> {
     let moves = generate_pseudo_legal_moves(position, &position.get_turn());
     let mut best_move = None;
     let turn = position.get_turn();
@@ -14,10 +14,10 @@ pub fn best_move(position: &mut Position) -> Option<Move> {
         match mov {
             None => break,
             Some(m) => {
-                position.make_move(&m, true);
-                if !position.is_check(&turn) {
-                    let score = alpha_beta(position, depth - 1, -1_000_000, 1_000_000);
-                    position.undo_last_move();
+                let mut temp_position = position.clone();
+                temp_position.make_move(&m, true);
+                if !temp_position.is_check(&turn) {
+                    let score = alpha_beta(&temp_position, depth - 1, -1_000_000, 1_000_000);
 
                     if score * turn as i32 == 1_000_000 {
                         best_move = mov;
@@ -39,8 +39,6 @@ pub fn best_move(position: &mut Position) -> Option<Move> {
                         }
                         _ => {}
                     }
-                } else {
-                    position.undo_last_move();
                 }
             }
         }
@@ -48,7 +46,7 @@ pub fn best_move(position: &mut Position) -> Option<Move> {
     best_move
 }
 
-fn alpha_beta(position: &mut Position, depth: usize, mut alpha: i32, mut beta: i32) -> i32 {
+fn alpha_beta(position: &Position, depth: usize, mut alpha: i32, mut beta: i32) -> i32 {
     if depth == 0 {
         return evaluation::evaluate(position);
     }
@@ -61,11 +59,11 @@ fn alpha_beta(position: &mut Position, depth: usize, mut alpha: i32, mut beta: i
         match mov {
             None => break,
             Some(m) => {
-                position.make_move(&m, true);
-                if !position.is_check(&turn) {
+                let mut temp_position = position.clone();
+                temp_position.make_move(&m, true);
+                if !temp_position.is_check(&turn) {
                     no_legal_moves = false;
-                    let eval = alpha_beta(position, depth - 1, alpha, beta);
-                    position.undo_last_move();
+                    let eval = alpha_beta(&temp_position, depth - 1, alpha, beta);
                     match turn {
                         PieceColor::White => {
                             score = score.max(eval);
@@ -83,8 +81,6 @@ fn alpha_beta(position: &mut Position, depth: usize, mut alpha: i32, mut beta: i
                         }
                         _ => {}
                     }
-                } else {
-                    position.undo_last_move();
                 }
             }
         }

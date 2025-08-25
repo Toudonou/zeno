@@ -33,8 +33,6 @@ fn pst_evaluation(position: &Position) -> i32 {
         * (count_set_bit(white_board & queens_board) as i32
             - count_set_bit(black_board & queens_board) as i32);
 
-    // score += 10 * (generate_legal_moves(position, &PieceColor::White).len() as i32 - generate_legal_moves(position, &PieceColor::Black).len() as i32);
-
     let mut board = position.get_board();
     while board != 0 {
         let index = board.trailing_zeros() as i8;

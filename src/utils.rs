@@ -8,6 +8,17 @@ pub enum PieceColor {
     Black = -1,
 }
 
+impl PieceColor {
+    #[inline(always)]
+    pub fn opposite(&self) -> Self {
+        match self {
+            PieceColor::None => PieceColor::None,
+            PieceColor::White => PieceColor::Black,
+            PieceColor::Black => PieceColor::White,
+        }
+    }
+}
+
 #[derive(Clone, Debug, Eq, Hash, PartialEq, Copy)]
 #[repr(i16)]
 pub enum PieceType {

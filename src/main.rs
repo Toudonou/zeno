@@ -7,10 +7,25 @@
 // https://raytran.net/projects/protochess
 // https://lichess.org/@/likeawizard/blog/review-of-different-board-representations-in-computer-chess/S9eQCAWa
 // https://github.com/jhonnold/berserk
-// Use x & (x - 1) to clear the least significant bit: this is faster than x &= ~(1 << from)
 // https://markus7800.github.io/blog/AI/chess_engine.html
+// https://joeyrobert.org/2016/01/06/optimizing-move-generation/
 
+use std::time::Instant;
+use zeno::perft;
+use zeno::position::Position;
 
 fn main() {
+    let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1";
+    let p = Position::from_fen(fen);
+    for i in 1..=6 {
+        let start = Instant::now();
+        print!(
+            "Pertf({i}) = {} in ",
+            perft::perft(i, &p)
+        );
+        let duration = start.elapsed();
+        println!("{:?}s", duration);
+    }
+    return;
     zeno::uci::uci_loop()
 }

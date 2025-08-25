@@ -1,4 +1,3 @@
-use crate::evaluation::{evaluate_move, get_pst_value};
 use crate::lookup_tables;
 use crate::position::Position;
 use crate::utils::{Move, MoveType, Piece, PieceColor, PieceType};
@@ -21,8 +20,7 @@ pub fn generate_pseudo_legal_moves(position: &Position, color: &PieceColor) -> [
 
         let piece = position.get_piece_on_square(&source);
         let mut mask = generate_mask_moves(&position, &source, &piece);
-        while mask != 0 {
-            let destination = mask.trailing_zeros() as i8;
+        while let Some(destination) = (mask != 0).then(|| mask.trailing_zeros() as i8) {
             let destination_rank = 1 + (destination / 8);
             match piece.piece_type {
                 PieceType::Pawn => {
@@ -38,34 +36,20 @@ pub fn generate_pseudo_legal_moves(position: &Position, color: &PieceColor) -> [
                         continue;
                     } else {
                         if destination_rank == 1 || destination_rank == 8 {
-                            moves[cursor] = Some(Move {
-                                source,
-                                destination,
-                                move_type: MoveType::PawnToKnight,
-                                move_score: 0,
-                            });
-                            cursor += 1;
-                            moves[cursor] = Some(Move {
-                                source,
-                                destination,
-                                move_type: MoveType::PawnToBishop,
-                                move_score: 0,
-                            });
-                            cursor += 1;
-                            moves[cursor] = Some(Move {
-                                source,
-                                destination,
-                                move_type: MoveType::PawnToRook,
-                                move_score: 0,
-                            });
-                            cursor += 1;
-                            moves[cursor] = Some(Move {
-                                source,
-                                destination,
-                                move_type: MoveType::PawnToQueen,
-                                move_score: 0,
-                            });
-                            cursor += 1;
+                            for promo in [
+                                MoveType::PawnToKnight,
+                                MoveType::PawnToBishop,
+                                MoveType::PawnToRook,
+                                MoveType::PawnToQueen,
+                            ] {
+                                moves[cursor] = Some(Move {
+                                    source,
+                                    destination,
+                                    move_type: promo,
+                                    move_score: 0,
+                                });
+                                cursor += 1;
+                            }
                             mask &= mask - 1;
                             continue;
                         }
@@ -126,7 +110,7 @@ pub fn generate_mask_moves(position: &Position, source: &i8, piece: &Piece) -> u
 
     // Avoid your own pieces in the attack
     attacks_squares = match piece.color {
-        PieceColor::None => attacks_squares,
+        PieceColor::None => 0,
         PieceColor::White => attacks_squares & !position.get_white_board(),
         PieceColor::Black => attacks_squares & !position.get_black_board(),
     };

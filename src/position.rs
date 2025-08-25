@@ -1,9 +1,9 @@
 use crate::lookup_tables;
 use crate::moves_generator::{
-    generate_mask_moves, generate_move_mask_for_bishop, generate_move_mask_for_pawn,
+    generate_mask_moves, generate_move_mask_for_bishop,
     generate_move_mask_for_rook,
 };
-use crate::utils::{Move, MoveType, Piece, PieceColor, PieceType, UndoMove};
+use crate::utils::{Move, MoveType, Piece, PieceColor, PieceType};
 /*
     Directions and shifts
     +-----+-----+-----+
@@ -45,9 +45,6 @@ pub struct Position {
 
     // En passant square
     en_passant: Option<i8>,
-
-    history: [Option<UndoMove>; 512],
-    history_index: usize,
 }
 
 impl Position {
@@ -193,8 +190,6 @@ impl Position {
             } else {
                 None
             },
-            history: [None; 512],
-            history_index: 0,
         }
     }
 
@@ -284,14 +279,7 @@ impl Position {
 
     #[inline(always)]
     pub fn is_check(&self, color: &PieceColor) -> bool {
-        let opponent_color = match color {
-            PieceColor::None => {
-                panic!("Invalid color")
-            }
-            PieceColor::White => PieceColor::Black,
-            PieceColor::Black => PieceColor::White,
-        };
-        self.is_square_attack_by(&self.get_king_coord(color), &opponent_color)
+        self.is_square_attack_by(&self.get_king_coord(color), &color.opposite())
     }
 
     #[inline(always)]
@@ -305,51 +293,40 @@ impl Position {
             return;
         }
 
+        let source_mask = 1u64 << mov.source;
+        let destination_mask = 1u64 << mov.destination;
         let source_piece = self.get_piece_on_square(&mov.source);
         let destination_piece = self.get_piece_on_square(&mov.destination);
 
-        self.history[self.history_index] = Some(UndoMove {
-            source: mov.source,
-            destination: mov.destination,
-            move_type: mov.move_type,
-            piece_moved: source_piece.piece_type,
-            piece_captured: destination_piece.piece_type,
-            castling_rights: self.castling_rights,
-            turn: self.get_turn(),
-            en_passant: self.en_passant,
-        });
-        self.history_index += 1;
-
         // Putting 0 at the index of the destination
         match destination_piece.piece_type {
-            PieceType::None => {}
-            PieceType::Pawn => self.pawns_board &= !(1u64 << mov.destination),
-            PieceType::Knight => self.knights_board &= !(1u64 << mov.destination),
-            PieceType::Bishop => self.bishops_board &= !(1u64 << mov.destination),
-            PieceType::Rook => self.rooks_board &= !(1u64 << mov.destination),
-            PieceType::Queen => self.queens_board &= !(1u64 << mov.destination),
-            PieceType::King => self.kings_board &= !(1u64 << mov.destination),
+            PieceType::Pawn => self.pawns_board &= !destination_mask,
+            PieceType::Knight => self.knights_board &= !destination_mask,
+            PieceType::Bishop => self.bishops_board &= !destination_mask,
+            PieceType::Rook => self.rooks_board &= !destination_mask,
+            PieceType::Queen => self.queens_board &= !destination_mask,
+            PieceType::King => self.kings_board &= !destination_mask,
+            _ => {}
         }
 
         // Putting 0 at the index of the source
         // And moving the piece at the destination by putting 1 at the destination for the corresponding piece
         match source_piece.piece_type {
-            PieceType::None => {}
             PieceType::Pawn => {
-                self.pawns_board &= !(1u64 << mov.source);
-                self.pawns_board |= 1u64 << mov.destination;
+                self.pawns_board &= !source_mask;
+                self.pawns_board |= destination_mask;
             }
             PieceType::Knight => {
-                self.knights_board &= !(1u64 << mov.source);
-                self.knights_board |= 1u64 << mov.destination;
+                self.knights_board &= !source_mask;
+                self.knights_board |= destination_mask;
             }
             PieceType::Bishop => {
-                self.bishops_board &= !(1u64 << mov.source);
-                self.bishops_board |= 1u64 << mov.destination;
+                self.bishops_board &= !source_mask;
+                self.bishops_board |= destination_mask;
             }
             PieceType::Rook => {
-                self.rooks_board &= !(1u64 << mov.source);
-                self.rooks_board |= 1u64 << mov.destination;
+                self.rooks_board &= !source_mask;
+                self.rooks_board |= destination_mask;
                 match source_piece.color {
                     PieceColor::None => {}
                     PieceColor::White => {
@@ -369,12 +346,12 @@ impl Position {
                 }
             }
             PieceType::Queen => {
-                self.queens_board &= !(1u64 << mov.source);
-                self.queens_board |= 1u64 << mov.destination;
+                self.queens_board &= !source_mask;
+                self.queens_board |= destination_mask;
             }
             PieceType::King => {
-                self.kings_board &= !(1u64 << mov.source);
-                self.kings_board |= 1u64 << mov.destination;
+                self.kings_board &= !source_mask;
+                self.kings_board |= destination_mask;
                 match source_piece.color {
                     PieceColor::None => {}
                     PieceColor::White => {
@@ -387,28 +364,28 @@ impl Position {
                     }
                 }
             }
+            _ => {}
         }
 
         // Updating the boards (for each color)
         match source_piece.color {
-            PieceColor::None => {}
             PieceColor::White => {
-                self.white_board &= !(1u64 << mov.source);
-                self.white_board |= 1u64 << mov.destination;
+                self.white_board &= !source_mask;
+                self.white_board |= destination_mask;
 
-                self.black_board &= !(1u64 << mov.destination);
+                self.black_board &= !destination_mask;
             }
             PieceColor::Black => {
-                self.black_board &= !(1u64 << mov.source);
-                self.black_board |= 1u64 << mov.destination;
+                self.black_board &= !source_mask;
+                self.black_board |= destination_mask;
 
-                self.white_board &= !(1u64 << mov.destination);
+                self.white_board &= !(destination_mask);
             }
+            _ => {}
         };
 
         // Applying castling and promotions rules
         match mov.move_type {
-            MoveType::Normal => {}
             MoveType::ShortCastle => match source_piece.color {
                 PieceColor::None => {}
                 PieceColor::White => {
@@ -444,20 +421,20 @@ impl Position {
                 }
             },
             MoveType::PawnToKnight => {
-                self.pawns_board &= !(1u64 << mov.destination); // Delete the pawn
-                self.knights_board |= 1u64 << mov.destination;
+                self.pawns_board &= !destination_mask; // Delete the pawn
+                self.knights_board |= destination_mask;
             }
             MoveType::PawnToBishop => {
-                self.pawns_board &= !(1u64 << mov.destination); // Delete the pawn
-                self.bishops_board |= 1u64 << mov.destination;
+                self.pawns_board &= !destination_mask; // Delete the pawn
+                self.bishops_board |= destination_mask;
             }
             MoveType::PawnToRook => {
-                self.pawns_board &= !(1u64 << mov.destination); // Delete the pawn
-                self.rooks_board |= 1u64 << mov.destination;
+                self.pawns_board &= !destination_mask; // Delete the pawn
+                self.rooks_board |= destination_mask;
             }
             MoveType::PawnToQueen => {
-                self.pawns_board &= !(1u64 << mov.destination); // Delete the pawn
-                self.queens_board |= 1u64 << mov.destination;
+                self.pawns_board &= !destination_mask; // Delete the pawn
+                self.queens_board |= destination_mask;
             }
             MoveType::EnPassant => {
                 // Updating the boards (for each color)
@@ -473,6 +450,7 @@ impl Position {
                     }
                 };
             }
+            _ => {}
         }
 
         self.en_passant = None;
@@ -488,161 +466,7 @@ impl Position {
                 }
             }
         }
-        match self.turn {
-            PieceColor::None => {}
-            PieceColor::White => self.turn = PieceColor::Black,
-            PieceColor::Black => self.turn = PieceColor::White,
-        }
-    }
-
-    #[inline(always)]
-    pub fn undo_last_move(&mut self) {
-        self.history_index -= 1;
-        let last_move_info = self.history[self.history_index];
-        let last_move_info = match last_move_info {
-            None => {
-                println!("No last move to undo");
-                return;
-            }
-            Some(_) => last_move_info.unwrap(),
-        };
-
-        // Delete source from the destination
-        // And putting back at the source
-        match last_move_info.piece_moved {
-            PieceType::None => {}
-            PieceType::Pawn => {
-                self.pawns_board &= !(1u64 << last_move_info.destination);
-                self.pawns_board |= 1u64 << last_move_info.source;
-            }
-            PieceType::Knight => {
-                self.knights_board &= !(1u64 << last_move_info.destination);
-                self.knights_board |= 1u64 << last_move_info.source;
-            }
-            PieceType::Bishop => {
-                self.bishops_board &= !(1u64 << last_move_info.destination);
-                self.bishops_board |= 1u64 << last_move_info.source;
-            }
-            PieceType::Rook => {
-                self.rooks_board &= !(1u64 << last_move_info.destination);
-                self.rooks_board |= 1u64 << last_move_info.source;
-            }
-            PieceType::Queen => {
-                self.queens_board &= !(1u64 << last_move_info.destination);
-                self.queens_board |= 1u64 << last_move_info.source;
-            }
-            PieceType::King => {
-                self.kings_board &= !(1u64 << last_move_info.destination);
-                self.kings_board |= 1u64 << last_move_info.source;
-            }
-        }
-
-        // Updating the boards (for each color)
-        match last_move_info.turn {
-            PieceColor::None => {}
-            PieceColor::White => {
-                self.white_board &= !(1u64 << last_move_info.destination);
-                self.white_board |= 1u64 << last_move_info.source;
-
-                match last_move_info.piece_captured {
-                    PieceType::None => {}
-                    _ => {
-                        self.black_board |= 1u64 << last_move_info.destination;
-                    }
-                }
-            }
-            PieceColor::Black => {
-                self.black_board &= !(1u64 << last_move_info.destination);
-                self.black_board |= 1u64 << last_move_info.source;
-
-                match last_move_info.piece_captured {
-                    PieceType::None => {}
-                    _ => {
-                        self.white_board |= 1u64 << last_move_info.destination;
-                    }
-                }
-            }
-        };
-
-        // Un-applying castling and promotions rules
-        match last_move_info.move_type {
-            MoveType::Normal => {}
-            MoveType::ShortCastle => match last_move_info.turn {
-                PieceColor::None => {}
-                PieceColor::White => {
-                    self.rooks_board &= !(1u64 << 5);
-                    self.rooks_board |= 1u64 << 7;
-
-                    self.white_board &= !(1u64 << 5);
-                    self.white_board |= 1u64 << 7;
-                }
-                PieceColor::Black => {
-                    self.rooks_board &= !(1u64 << 61);
-                    self.rooks_board |= 1u64 << 63;
-
-                    self.black_board &= !(1u64 << 61);
-                    self.black_board |= 1u64 << 63;
-                }
-            },
-            MoveType::LongCastle => match last_move_info.turn {
-                PieceColor::None => {}
-                PieceColor::White => {
-                    self.rooks_board &= !(1u64 << 3);
-                    self.rooks_board |= 1u64 << 0;
-
-                    self.white_board &= !(1u64 << 3);
-                    self.white_board |= 1u64 << 0;
-                }
-                PieceColor::Black => {
-                    self.rooks_board &= !(1u64 << 59);
-                    self.rooks_board |= 1u64 << 56;
-
-                    self.black_board &= !(1u64 << 59);
-                    self.black_board |= 1u64 << 56;
-                }
-            },
-            MoveType::PawnToKnight => {
-                self.knights_board &= !(1u64 << last_move_info.destination);
-            }
-            MoveType::PawnToBishop => {
-                self.bishops_board &= !(1u64 << last_move_info.destination);
-            }
-            MoveType::PawnToRook => {
-                self.rooks_board &= !(1u64 << last_move_info.destination);
-            }
-            MoveType::PawnToQueen => {
-                self.queens_board &= !(1u64 << last_move_info.destination);
-            }
-            MoveType::EnPassant => {
-                // Updating the boards (for each color)
-                match last_move_info.turn {
-                    PieceColor::None => {}
-                    PieceColor::White => {
-                        self.pawns_board |= 1u64 << (last_move_info.destination - 8);
-                        self.black_board |= 1u64 << (last_move_info.destination - 8);
-                    }
-                    PieceColor::Black => {
-                        self.pawns_board |= 1u64 << (last_move_info.destination + 8);
-                        self.white_board |= 1u64 << (last_move_info.destination + 8);
-                    }
-                };
-            }
-        }
-
-        // Putting the captured piece back
-        match last_move_info.piece_captured {
-            PieceType::None => {}
-            PieceType::Pawn => self.pawns_board |= 1u64 << last_move_info.destination,
-            PieceType::Knight => self.knights_board |= 1u64 << last_move_info.destination,
-            PieceType::Bishop => self.bishops_board |= 1u64 << last_move_info.destination,
-            PieceType::Rook => self.rooks_board |= 1u64 << last_move_info.destination,
-            PieceType::Queen => self.queens_board |= 1u64 << last_move_info.destination,
-            PieceType::King => self.kings_board |= 1u64 << last_move_info.destination,
-        }
-
-        self.castling_rights = last_move_info.castling_rights;
-        self.en_passant = last_move_info.en_passant;
-        self.turn = last_move_info.turn;
+        self.turn = self.turn.opposite();
     }
 
     #[inline(always)]
