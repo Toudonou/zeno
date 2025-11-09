@@ -1,0 +1,8 @@
+[package]
+name = "zeno"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+regex = "1.3.9"
+rand = "0.9.1"
