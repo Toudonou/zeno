@@ -2,11 +2,12 @@ use crate::position::Position;
 use regex::Regex;
 use std::io;
 use crate::moves::{Move, MoveType};
-use crate::search;
+use crate::search::Searcher;
 use crate::utils::START_POSITION;
 
 pub fn uci_loop() {
     let mut position = Position::from_fen(START_POSITION);
+    let mut searcher = Searcher::new();
 
     loop {
         position.print_board();
@@ -21,7 +22,7 @@ pub fn uci_loop() {
                 position = Position::from_fen(START_POSITION)
             }
             c if c.starts_with("position") => uci_position(command, &mut position),
-            c if c.starts_with("go") => go(&mut position),
+            c if c.starts_with("go") => go(&mut position, &mut searcher),
             "stop" => {}
             "quit" => break,
             _ => println!("Command not found {}", command),
@@ -127,10 +128,10 @@ fn uci_move(move_string: &str, position: &Position) -> Move {
     Move::new(source, destination, move_type)
 }
 
-fn go(position: &mut Position) {
-    let best_move = search::best_move(position);
+fn go(position: &mut Position, searcher: &mut Searcher) {
+    let best_move = searcher.search(position);
     match best_move {
-        None => {}
+        None => println!("No move found"),
         Some(mov) => {
             println!("bestmove {}", mov.to_uci_string())
         }

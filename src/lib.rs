@@ -6,3 +6,5 @@ pub mod uci;
 pub mod utils;
 pub mod perft;
 pub mod search;
+pub mod evaluation;
+pub mod material_count;

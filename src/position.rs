@@ -1,3 +1,4 @@
+use crate::material_count::MaterialCount;
 use crate::moves::{Move, MoveType};
 use crate::moves_generator::{generate_move_mask_for_bishop, generate_move_mask_for_rook};
 use crate::utils::{BLACK_PAWNS_ATTACKS, KING_ATTACKS, KNIGHT_ATTACKS, Piece, PieceColor, PieceType, WHITE_PAWNS_ATTACKS};
@@ -40,12 +41,14 @@ pub struct Position {
 
     white_king_coord: u8,
     black_king_coord: u8,
+    castling_rights: u8, // 0 0 0 0 0(q) 0(k) 0(Q) 0(K)
+    en_passant: u8,
 
     turn: PieceColor,
     number_of_move: u8,
     half_move_clock: u8,
-    castling_rights: u8, // 0 0 0 0 0(q) 0(k) 0(Q) 0(K)
-    en_passant: u8,
+
+    material_count: MaterialCount,
 }
 
 impl Position {
@@ -69,6 +72,8 @@ impl Position {
         let half_move_part = parts.next().expect("Missing half move part");
         let number_of_moves_move_part = parts.next().expect("Missing number of moves part");
 
+        let mut material_count: MaterialCount = MaterialCount::new();
+
         for ch in board_part.chars() {
             match ch {
                 '/' => {
@@ -85,8 +90,10 @@ impl Position {
                     pawns_board |= 1u64 << board_index;
                     if ch == 'P' {
                         white_board |= 1u64 << board_index;
+                        material_count.add_piece(&PieceColor::White, &PieceType::Pawn);
                     } else {
                         black_board |= 1u64 << board_index;
+                        material_count.add_piece(&PieceColor::Black, &PieceType::Pawn);
                     }
                 }
 
@@ -94,8 +101,10 @@ impl Position {
                     knights_board |= 1u64 << board_index;
                     if ch == 'N' {
                         white_board |= 1u64 << board_index;
+                        material_count.add_piece(&PieceColor::White, &PieceType::Knight);
                     } else {
                         black_board |= 1u64 << board_index;
+                        material_count.add_piece(&PieceColor::Black, &PieceType::Knight);
                     }
                 }
 
@@ -103,8 +112,10 @@ impl Position {
                     bishops_board |= 1u64 << board_index;
                     if ch == 'B' {
                         white_board |= 1u64 << board_index;
+                        material_count.add_piece(&PieceColor::White, &PieceType::Bishop);
                     } else {
                         black_board |= 1u64 << board_index;
+                        material_count.add_piece(&PieceColor::Black, &PieceType::Bishop);
                     }
                 }
 
@@ -112,8 +123,10 @@ impl Position {
                     rooks_board |= 1u64 << board_index;
                     if ch == 'R' {
                         white_board |= 1u64 << board_index;
+                        material_count.add_piece(&PieceColor::White, &PieceType::Rook);
                     } else {
                         black_board |= 1u64 << board_index;
+                        material_count.add_piece(&PieceColor::Black, &PieceType::Rook);
                     }
                 }
 
@@ -121,8 +134,10 @@ impl Position {
                     queens_board |= 1u64 << board_index;
                     if ch == 'Q' {
                         white_board |= 1u64 << board_index;
+                        material_count.add_piece(&PieceColor::White, &PieceType::Queen);
                     } else {
                         black_board |= 1u64 << board_index;
+                        material_count.add_piece(&PieceColor::Black, &PieceType::Queen);
                     }
                 }
 
@@ -185,15 +200,16 @@ impl Position {
             kings_board,
             white_king_coord: (white_board & kings_board).trailing_zeros() as u8,
             black_king_coord: (black_board & kings_board).trailing_zeros() as u8,
-            turn,
-            number_of_move: number_of_moves_move_part.parse().unwrap(),
-            half_move_clock: half_move_part.parse().unwrap(),
             castling_rights,
             en_passant: if en_passant_rank.is_some() && en_passant_file.is_some() {
                 en_passant_rank.unwrap() + en_passant_file.unwrap()
             } else {
                 255
             },
+            turn,
+            number_of_move: number_of_moves_move_part.parse().unwrap(),
+            half_move_clock: half_move_part.parse().unwrap(),
+            material_count,
         }
     }
 
@@ -275,10 +291,14 @@ impl Position {
             PieceColor::White => {
                 self.white_board ^= source_mask | destination_mask;
                 self.black_board &= !destination_mask;
+
+                self.material_count.remove_piece(&PieceColor::Black, &destination_piece.piece_type);
             }
             PieceColor::Black => {
                 self.black_board ^= source_mask | destination_mask;
                 self.white_board &= !destination_mask;
+
+                self.material_count.remove_piece(&PieceColor::White, &destination_piece.piece_type);
             }
             _ => {}
         };
@@ -313,15 +333,27 @@ impl Position {
         } else if move_type == MoveType::PawnToKnight {
             self.pawns_board &= !destination_mask;
             self.knights_board |= destination_mask;
+
+            self.material_count.remove_piece(&source_piece.color, &PieceType::Pawn);
+            self.material_count.add_piece(&source_piece.color, &PieceType::Knight);
         } else if move_type == MoveType::PawnToBishop {
             self.pawns_board &= !destination_mask;
             self.bishops_board |= destination_mask;
+
+            self.material_count.remove_piece(&source_piece.color, &PieceType::Pawn);
+            self.material_count.add_piece(&source_piece.color, &PieceType::Bishop);
         } else if move_type == MoveType::PawnToRook {
             self.pawns_board &= !destination_mask;
             self.rooks_board |= destination_mask;
+
+            self.material_count.remove_piece(&source_piece.color, &PieceType::Pawn);
+            self.material_count.add_piece(&source_piece.color, &PieceType::Rook);
         } else if move_type == MoveType::PawnToQueen {
             self.pawns_board &= !destination_mask;
             self.queens_board |= destination_mask;
+
+            self.material_count.remove_piece(&source_piece.color, &PieceType::Pawn);
+            self.material_count.add_piece(&source_piece.color, &PieceType::Queen);
         } else if move_type == MoveType::EnPassant {
             // Updating the boards (for each color)
             match source_piece.color {
@@ -329,10 +361,14 @@ impl Position {
                 PieceColor::White => {
                     self.pawns_board &= !(1u64 << (destination - 8));
                     self.black_board &= !(1u64 << (destination - 8));
+
+                    self.material_count.remove_piece(&PieceColor::Black, &PieceType::Pawn);
                 }
                 PieceColor::Black => {
                     self.pawns_board &= !(1u64 << (destination + 8));
                     self.white_board &= !(1u64 << (destination + 8));
+
+                    self.material_count.remove_piece(&PieceColor::White, &PieceType::Pawn);
                 }
             };
         }
@@ -409,6 +445,10 @@ impl Position {
 
     #[inline(always)]
     pub fn get_turn(&self) -> PieceColor { self.turn }
+
+    pub fn get_piece_count(&self, piece_color: &PieceColor, piece_type: &PieceType) -> i32 {
+        self.material_count.get_piece_count(piece_color, piece_type)
+    }
 
     #[inline(always)]
     pub fn get_piece_on_square(&self, square: &u8) -> Piece {
