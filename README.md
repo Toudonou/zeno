@@ -12,7 +12,7 @@ including castling and en passant.
 - [x] [UCI protocol support (partially)](https://backscattering.de/chess/uci/#engine-info-hashfull)
 - [x] Perft testing
 - [ ] Evaluation
-    - [ ] Material evaluation
+    - [x] Material evaluation
     - [ ] Piece-square tables evaluation
     - [ ] Piece Mobility
     - [ ] [Tapered evaluation](https://www.chessprogramming.org/Tapered_Eval)
