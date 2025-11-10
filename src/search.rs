@@ -63,7 +63,7 @@ impl Searcher {
 
         if no_legal_moves {
             if position.is_check(&turn) {
-                return PosEval { best_move: None, score: -(MATE_SCORE + depth) };
+                return PosEval { best_move: None, score: -MATE_SCORE + depth };
             }
             return PosEval { best_move: None, score: 0 };
         }
