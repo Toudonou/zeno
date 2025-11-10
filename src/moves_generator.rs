@@ -24,11 +24,11 @@ pub fn generate_pseudo_legal_moves(position: &Position) -> Vec<Move> {
     match position.get_turn() {
         PieceColor::White => {
             let white_board = position.get_white_board();
-            pieces_board[0] = white_board & position.get_knight_board();
+            pieces_board[0] = white_board & position.get_knights_board();
             pieces_board[1] = white_board & position.get_bishops_board();
-            pieces_board[2] = white_board & position.get_rook_board();
+            pieces_board[2] = white_board & position.get_rooks_board();
             pieces_board[3] = white_board & position.get_queens_board();
-            pieces_board[4] = white_board & position.get_king_board();
+            pieces_board[4] = white_board & position.get_kings_board();
 
             non_own_pieces = !position.get_white_board();
             generate_moves_pawn(position, &PieceColor::White, &en_passant, &mut moves);
@@ -51,11 +51,11 @@ pub fn generate_pseudo_legal_moves(position: &Position) -> Vec<Move> {
         }
         PieceColor::Black => {
             let black_board = position.get_black_board();
-            pieces_board[0] = black_board & position.get_knight_board();
+            pieces_board[0] = black_board & position.get_knights_board();
             pieces_board[1] = black_board & position.get_bishops_board();
-            pieces_board[2] = black_board & position.get_rook_board();
+            pieces_board[2] = black_board & position.get_rooks_board();
             pieces_board[3] = black_board & position.get_queens_board();
-            pieces_board[4] = black_board & position.get_king_board();
+            pieces_board[4] = black_board & position.get_kings_board();
 
             non_own_pieces = !position.get_black_board();
             generate_moves_pawn(position, &PieceColor::Black, &en_passant, &mut moves);

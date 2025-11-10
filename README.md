@@ -13,7 +13,7 @@ including castling and en passant.
 - [x] Perft testing
 - [ ] Evaluation
     - [x] Material evaluation
-    - [ ] Piece-square tables evaluation
+    - [x] Piece-square tables evaluation
     - [ ] Piece Mobility
     - [ ] [Tapered evaluation](https://www.chessprogramming.org/Tapered_Eval)
     - [ ] King Safety
