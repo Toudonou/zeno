@@ -1,13 +1,16 @@
 use crate::position::Position;
 use regex::Regex;
 use std::io;
+use std::time::Instant;
 use crate::moves::{Move, MoveType};
+use crate::perft;
 use crate::search::Searcher;
 use crate::utils::START_POSITION;
 
 pub fn uci_loop() {
     let mut position = Position::from_fen(START_POSITION);
     let mut searcher = Searcher::new();
+    perft::perft(1, &position); // To init the lookup tables
 
     loop {
         position.print_board();
@@ -129,7 +132,17 @@ fn uci_move(move_string: &str, position: &Position) -> Move {
 }
 
 fn go(position: &mut Position, searcher: &mut Searcher) {
-    let best_move = searcher.search(position);
+    let it = Instant::now();
+    let best_move = searcher.search(&position);
+
+    println!("Evaluation: {}", searcher.get_evaluation());
+    println!("Number of nodes evaluated: {} in {:?}", searcher.get_number_of_nodes_evaluated(), it.elapsed());
+    print!("PV Line: ");
+    for mov in searcher.get_pv_line() {
+        print!("{} ", mov.to_uci_string());
+    }
+    println!();
+
     match best_move {
         None => println!("No move found"),
         Some(mov) => {

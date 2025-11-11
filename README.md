@@ -25,7 +25,7 @@ including castling and en passant.
     - [ ] [Alpha-beta pruning](https://en.wikipedia.org/wiki/Alpha%E2%80%93beta_pruning)
     - [ ] Move Ordering
       - [ ] `PV_MOVE` → `TT_MOVE` → `GOOD_CAPTURES` → `KILLER_MOVES` → `GOOD_QUIET_MOVES` → `BAD_CAPTURES` → `BAD_QUIET_MOVES`
-       - [ ] MVV_LVA
+       - [x] MVV_LVA
       - [ ] Static exchange evaluation
     - [ ] Iterative deepening
     - [ ] Transposition table

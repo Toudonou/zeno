@@ -10,7 +10,6 @@ static QUEEN_VALUE: i32 = 1_025;
 static KING_VALUE: i32 = 10_000;
 
 pub static PIECES_VALUES: [i32; 6] = [PAWN_VALUE, KNIGHT_VALUE, BISHOP_VALUE, ROOK_VALUE, QUEEN_VALUE, KING_VALUE];
-pub static MATE_SCORE: i32 = 1000_000;
 
 #[inline(always)]
 pub fn evaluate(position: &Position) -> i32 {
