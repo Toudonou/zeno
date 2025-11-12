@@ -24,7 +24,7 @@ pub struct Searcher {
 }
 
 impl Searcher {
-    pub fn new() -> Searcher { Searcher { game_state: GameState::InProgress, timer: Instant::now(), max_thinking_time: 1000, max_depth: 6, number_of_nodes_evaluated: 0, evaluation: Evaluation::Score(0), pv_line: vec![] } }
+    pub fn new() -> Searcher { Searcher { game_state: GameState::InProgress, timer: Instant::now(), max_thinking_time: 2000, max_depth: 6, number_of_nodes_evaluated: 0, evaluation: Evaluation::Score(0), pv_line: vec![] } }
 
     pub fn search(&mut self, position: &Position) -> Option<Move> {
         self.number_of_nodes_evaluated = 0;
@@ -32,7 +32,7 @@ impl Searcher {
 
         let result = self.negamax_alpha_beta(position, 1, self.max_depth, -i32::MAX, i32::MAX, position.get_turn() as i32);
         self.pv_line = result.pv_line.clone();
-        self.evaluation = Evaluation::Score(result.score.value() * position.get_turn() as i32);
+        self.evaluation = result.score * position.get_turn() as i32;
 
         result.best_move
     }
@@ -59,7 +59,7 @@ impl Searcher {
                 no_legal_moves = false;
 
                 let mut eval = self.negamax_alpha_beta(&temp_position, current_ply + 1, max_ply, -beta, -alpha, -point_of_view);
-                eval.score = Evaluation::Score(eval.score.value() * -1);
+                eval.score *= -1;
 
                 if best_eval.score.value() < eval.score.value() {
                     best_eval.best_move = Some(mov.clone());
