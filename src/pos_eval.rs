@@ -1,5 +1,5 @@
 use std::fmt::{Display, Formatter};
-use std::ops::{Mul, MulAssign};
+use std::ops::{Div, Mul, MulAssign};
 use crate::moves::Move;
 
 pub static MATE_SCORE: i32 = 1_000_000;
@@ -36,6 +36,17 @@ impl MulAssign<i32> for Evaluation {
         match self {
             Evaluation::Score(score) => *self = Evaluation::Score(*score * rhs),
             Evaluation::MateIn(mate_in) => *self = Evaluation::MateIn(*mate_in * rhs)
+        }
+    }
+}
+
+impl Div<i32> for Evaluation {
+    type Output = Evaluation;
+
+    fn div(self, rhs: i32) -> Self::Output {
+        match self {
+            Evaluation::Score(score) => Evaluation::Score(score / rhs),
+            Evaluation::MateIn(mate_in) => Evaluation::MateIn(mate_in)
         }
     }
 }

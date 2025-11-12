@@ -5,7 +5,7 @@ use std::time::Instant;
 use crate::moves::{Move, MoveType};
 use crate::perft;
 use crate::search::Searcher;
-use crate::utils::START_POSITION;
+use crate::utils::{PieceType, START_POSITION};
 
 pub fn uci_loop() {
     let mut position = Position::from_fen(START_POSITION);
@@ -136,7 +136,7 @@ fn go(position: &mut Position, searcher: &mut Searcher) {
     let it = Instant::now();
     let best_move = searcher.search(&position);
 
-    println!("Evaluation: {}", searcher.get_evaluation());
+    println!("Evaluation: {}", searcher.get_evaluation() / 100);
     println!("Number of nodes evaluated: {} in {:?}", searcher.get_number_of_nodes_evaluated(), it.elapsed());
     print!("PV Line: ");
     for mov in searcher.get_pv_line() {

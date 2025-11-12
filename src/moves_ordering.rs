@@ -1,6 +1,6 @@
-use crate::evaluation::PIECES_VALUES;
 use crate::moves::{Move, MoveType};
 use crate::position::Position;
+use crate::psqt::MG_PIECES_VALUES;
 use crate::utils::PieceType;
 
 static PROMOTION_SCORE: i32 = 100_000;
@@ -18,7 +18,7 @@ fn evaluate_move(mov: &Move, position: &Position) -> i32 {
 
     // MVV_LVA:
     if destination_piece_type != PieceType::None {
-        score = 10 * PIECES_VALUES[source_piece_type as usize - 1] - PIECES_VALUES[destination_piece_type as usize - 1];
+        score = 10 * MG_PIECES_VALUES[source_piece_type as usize - 1] - MG_PIECES_VALUES[destination_piece_type as usize - 1];
     }
 
     // Promotion bonus

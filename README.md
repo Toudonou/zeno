@@ -15,17 +15,17 @@ including castling and en passant.
     - [x] Material evaluation
     - [x] Piece-square tables evaluation
     - [ ] Piece Mobility
-    - [ ] [Tapered evaluation](https://www.chessprogramming.org/Tapered_Eval)
+    - [x] [Tapered evaluation](https://www.chessprogramming.org/Tapered_Eval)
     - [ ] King Safety
     - [ ] Pawn Structure
     - [ ] Draw Detection (Threefold repetition draws)
     - [ ] Passed Pawns
     - [ ] Bishop Pair
 - [ ] Search
-    - [ ] [Alpha-beta pruning](https://en.wikipedia.org/wiki/Alpha%E2%80%93beta_pruning)
+    - [x] [Alpha-beta pruning(Negamax)](https://en.wikipedia.org/wiki/Negamax#Negamax_with_alpha_beta_pruning)
     - [ ] Move Ordering
       - [ ] `PV_MOVE` → `TT_MOVE` → `GOOD_CAPTURES` → `KILLER_MOVES` → `GOOD_QUIET_MOVES` → `BAD_CAPTURES` → `BAD_QUIET_MOVES`
-       - [x] MVV_LVA
+      - [x] MVV_LVA
       - [ ] Static exchange evaluation
     - [ ] Iterative deepening
     - [ ] Transposition table
