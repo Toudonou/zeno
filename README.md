@@ -36,7 +36,7 @@ including castling and en passant.
     - [ ] Principal Variation Search (PVS)
     - [ ] Aspiration windows
     - [ ] Multi-threading
-- [ ] Time management
+- [x] Time management(partially)
 - [ ] Opening book support
 - [ ] Endgame tablebases
 
