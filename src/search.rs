@@ -1,3 +1,4 @@
+use std::time::{Instant};
 use crate::evaluation::evaluate;
 use crate::moves::Move;
 use crate::moves_generator::generate_pseudo_legal_moves;
@@ -14,6 +15,8 @@ pub enum GameState {
 
 pub struct Searcher {
     game_state: GameState,
+    timer: Instant,
+    max_thinking_time: i32,
     max_depth: i32,
     number_of_nodes_evaluated: i32,
     evaluation: Evaluation,
@@ -21,10 +24,11 @@ pub struct Searcher {
 }
 
 impl Searcher {
-    pub fn new() -> Searcher { Searcher { game_state: GameState::InProgress, max_depth: 6, number_of_nodes_evaluated: 0, evaluation: Evaluation::Score(0), pv_line: vec![] } }
+    pub fn new() -> Searcher { Searcher { game_state: GameState::InProgress, timer: Instant::now(), max_thinking_time: 1000, max_depth: 6, number_of_nodes_evaluated: 0, evaluation: Evaluation::Score(0), pv_line: vec![] } }
 
     pub fn search(&mut self, position: &Position) -> Option<Move> {
         self.number_of_nodes_evaluated = 0;
+        self.timer = Instant::now();
 
         let result = self.negamax_alpha_beta(position, 1, self.max_depth, -i32::MAX, i32::MAX, position.get_turn() as i32);
         self.pv_line = result.pv_line.clone();
@@ -71,6 +75,8 @@ impl Searcher {
                     break;
                 }
             }
+
+            if self.timer.elapsed().as_millis() > self.max_thinking_time as u128 { break; }
         }
 
         if no_legal_moves {
