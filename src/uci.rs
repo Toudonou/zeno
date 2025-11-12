@@ -121,7 +121,8 @@ fn uci_move(move_string: &str, position: &Position) -> Move {
             'q' => move_type = MoveType::PawnToQueen,
             _ => {}
         }
-    } else if (8 * destination_rank as u8 + destination_file as u8 - 'a' as u8) == position.get_en_passant() {
+    } else if (8 * destination_rank as u8 + destination_file as u8 - 'a' as u8) == position.get_en_passant() &&
+        position.get_piece_on_square(&(8 * source_rank as u8 + source_file as u8 - 'a' as u8)).piece_type == PieceType::Pawn {
         move_type = MoveType::EnPassant;
     }
 
