@@ -4,8 +4,9 @@ use std::io;
 use std::time::Instant;
 use crate::moves::{Move, MoveType};
 use crate::perft;
+use crate::piece::PieceType;
 use crate::search::Searcher;
-use crate::utils::{PieceType, START_POSITION};
+use crate::utils::START_POSITION;
 
 pub fn uci_loop() {
     let mut position = Position::from_fen(START_POSITION);
@@ -129,7 +130,7 @@ fn uci_move(move_string: &str, position: &Position) -> Move {
     let source = (source_rank * 8) as u8 + source_file as u8 - 'a' as u8;
     let destination = (destination_rank * 8) as u8 + destination_file as u8 - 'a' as u8;
 
-    Move::new(source, destination, move_type)
+    Move::new(source, destination, move_type, &position.get_piece_on_square(&source), &position.get_piece_on_square(&destination))
 }
 
 fn go(position: &mut Position, searcher: &mut Searcher) {

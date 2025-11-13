@@ -1,4 +1,5 @@
 pub mod lookup_tables;
+pub mod piece;
 pub mod moves;
 pub mod moves_generator;
 pub mod position;
