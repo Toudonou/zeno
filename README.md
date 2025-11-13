@@ -30,7 +30,7 @@ including castling and en passant.
     - [ ] Iterative deepening
     - [ ] Transposition table
     - [ ] Killer moves
-    - [ ] Quiescence search
+    - [x] Quiescence search
     - [ ] Null move pruning
     - [ ] Late move reductions
     - [ ] Principal Variation Search (PVS)
