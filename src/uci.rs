@@ -136,7 +136,7 @@ fn go(position: &mut Position, searcher: &mut Searcher) {
     let it = Instant::now();
     let best_move = searcher.search(&position);
 
-    println!("Evaluation: {}", searcher.get_evaluation() / 100);
+    println!("Evaluation: {}", searcher.get_evaluation());
     println!("Number of nodes evaluated: {} in {:?}", searcher.get_number_of_nodes_evaluated(), it.elapsed());
     print!("PV Line: ");
     for mov in searcher.get_pv_line() {

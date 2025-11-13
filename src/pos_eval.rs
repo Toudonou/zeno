@@ -40,21 +40,10 @@ impl MulAssign<i32> for Evaluation {
     }
 }
 
-impl Div<i32> for Evaluation {
-    type Output = Evaluation;
-
-    fn div(self, rhs: i32) -> Self::Output {
-        match self {
-            Evaluation::Score(score) => Evaluation::Score(score / rhs),
-            Evaluation::MateIn(mate_in) => Evaluation::MateIn(mate_in)
-        }
-    }
-}
-
 impl Display for Evaluation {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Evaluation::Score(score) => write!(f, "{}", score),
+            Evaluation::Score(score) => write!(f, "{}", (*score as f32) / 100f32),
             Evaluation::MateIn(mate_in) => {
                 if *mate_in > 0 { write!(f, "M{}", mate_in.abs() / 2) } else { write!(f, "-M{}", mate_in.abs() / 2) }
             }

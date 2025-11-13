@@ -48,6 +48,7 @@ including castling and en passant.
 
 - https://www.chessprogramming.org
 - https://www.dogeystamp.com/chess1/
+- https://www.cs.vu.nl/~wanf/theses/bijl-tiet-bscthesis.pdf
 - https://publish.obsidian.md/modern-uci-doc/UCI+Docs/Intro
 - https://dev.to/larswaechter/zobrist-hashing-72n
 - https://www.cs.cmu.edu/afs/cs/academic/class/15418-s12/www/competition/www.contrib.andrew.cmu.edu/~jvirdo/rasmussen-2004.pdf
