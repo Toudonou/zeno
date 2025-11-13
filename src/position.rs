@@ -1,7 +1,6 @@
 use crate::moves::{Move, MoveType};
 use crate::moves_generator::{generate_move_mask_for_bishop, generate_move_mask_for_rook};
-use crate::piece::{Piece, PieceColor, PieceType};
-use crate::utils::{BLACK_PAWNS_ATTACKS, KING_ATTACKS, KNIGHT_ATTACKS, WHITE_PAWNS_ATTACKS};
+use crate::utils::{BLACK_PAWNS_ATTACKS, KING_ATTACKS, KNIGHT_ATTACKS, Piece, PieceColor, PieceType, WHITE_PAWNS_ATTACKS};
 
 /*
     Directions and shifts
@@ -207,8 +206,8 @@ impl Position {
 
         let source_mask = 1u64 << source;
         let destination_mask = 1u64 << destination;
-        let source_piece = mov.get_source_piece();
-        let destination_piece = mov.get_destination_piece();
+        let source_piece = self.get_piece_on_square(&source);
+        let destination_piece = self.get_piece_on_square(&destination);
 
         // Putting 0 at the index of the destination
         match destination_piece.piece_type {

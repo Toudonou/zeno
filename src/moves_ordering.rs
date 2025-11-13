@@ -1,6 +1,6 @@
 use crate::moves::{Move, MoveType};
-use crate::piece::PieceType;
 use crate::position::Position;
+use crate::utils::PieceType;
 
 static PROMOTION_SCORE: i32 = 100_000;
 
@@ -23,8 +23,8 @@ pub fn order_moves(moves: &mut Vec<Move>, position: &Position) {
 #[inline(always)]
 fn evaluate_move(mov: &Move, position: &Position) -> i32 {
     let mut score = 0;
-    let source_piece_type = mov.get_source_piece().piece_type;
-    let destination_piece_type = mov.get_destination_piece().piece_type;
+    let source_piece_type = position.get_piece_on_square(&mov.source()).piece_type;
+    let destination_piece_type = position.get_piece_on_square(&mov.destination()).piece_type;
 
     // MVV_LVA:
     if destination_piece_type != PieceType::None {

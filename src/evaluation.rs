@@ -1,6 +1,6 @@
-use crate::piece::PieceColor;
 use crate::position::Position;
 use crate::psqt::{EG_PIECES_SQUARES_TABLES, EG_PIECES_VALUES, MG_PIECES_SQUARES_TABLES, MG_PIECES_VALUES, PHASE_TABLE, TOTAL_PHASE};
+use crate::utils::PieceColor;
 
 
 static ARR_CENTER_MANHATTAN_DISTANCE: [i32; 64] = [

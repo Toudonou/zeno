@@ -1,8 +1,10 @@
 use crate::lookup_tables::LOOK_UP_TABLE;
 use crate::moves::{Move, MoveType};
-use crate::piece::{Piece, PieceColor, PieceType};
 use crate::position::Position;
-use crate::utils::{KING_ATTACKS, KNIGHT_ATTACKS, NOT_FILE_A, NOT_FILE_H, RANK_2, RANK_3, RANK_4, RANK_5, RANK_6, RANK_7};
+use crate::utils::{
+    PieceColor, PieceType, KING_ATTACKS, KNIGHT_ATTACKS, NOT_FILE_A, NOT_FILE_H, RANK_2, RANK_3,
+    RANK_4, RANK_5, RANK_6, RANK_7,
+};
 
 #[inline(always)]
 pub fn generate_pseudo_legal_moves(position: &Position) -> Vec<Move> {
@@ -37,8 +39,6 @@ pub fn generate_pseudo_legal_moves(position: &Position) -> Vec<Move> {
                     king_square,
                     king_square + 2,
                     MoveType::ShortCastle,
-                    &Piece { color: PieceColor::White, piece_type: PieceType::King },
-                    &Piece { color: PieceColor::None, piece_type: PieceType::None },
                 ));
             }
             if position.can_white_long_castle() {
@@ -46,8 +46,6 @@ pub fn generate_pseudo_legal_moves(position: &Position) -> Vec<Move> {
                     king_square,
                     king_square - 2,
                     MoveType::LongCastle,
-                    &Piece { color: PieceColor::White, piece_type: PieceType::King },
-                    &Piece { color: PieceColor::None, piece_type: PieceType::None },
                 ));
             }
         }
@@ -68,8 +66,6 @@ pub fn generate_pseudo_legal_moves(position: &Position) -> Vec<Move> {
                     king_square,
                     king_square + 2,
                     MoveType::ShortCastle,
-                    &Piece { color: PieceColor::Black, piece_type: PieceType::King },
-                    &Piece { color: PieceColor::None, piece_type: PieceType::None },
                 ));
             }
             if position.can_black_long_castle() {
@@ -77,8 +73,6 @@ pub fn generate_pseudo_legal_moves(position: &Position) -> Vec<Move> {
                     king_square,
                     king_square - 2,
                     MoveType::LongCastle,
-                    &Piece { color: PieceColor::Black, piece_type: PieceType::King },
-                    &Piece { color: PieceColor::None, piece_type: PieceType::None },
                 ));
             }
         }
@@ -94,7 +88,7 @@ pub fn generate_pseudo_legal_moves(position: &Position) -> Vec<Move> {
 
             while mask != 0 {
                 let destination = mask.trailing_zeros();
-                moves.push(Move::new(source, destination as u8, MoveType::Normal, &position.get_piece_on_square(&source), &position.get_piece_on_square(&(destination as u8))));
+                moves.push(Move::new(source, destination as u8, MoveType::Normal));
                 mask &= mask - 1;
             }
 
@@ -178,23 +172,23 @@ pub fn generate_moves_pawn(position: &Position, color: &PieceColor, en_passant: 
             let destination = push.0.trailing_zeros() as u8;
             let source = (destination as i8 - push.1) as u8;
             if destination == *en_passant && *en_passant != 255 {
-                moves.push(Move::new(source, destination, MoveType::EnPassant, &Piece { color: *color, piece_type: PieceType::Pawn }, &Piece { color: PieceColor::None, piece_type: PieceType::None }));
+                moves.push(Move::new(source, destination, MoveType::EnPassant));
                 push.0 &= push.0 - 1;
                 continue;
             }
 
             let destination_rank = 1 + (destination / 8);
             if destination_rank == 1 || destination_rank == 8 {
-                moves.push(Move::new(source, destination, MoveType::PawnToQueen, &Piece { color: *color, piece_type: PieceType::Pawn }, &position.get_piece_on_square(&destination)));
-                moves.push(Move::new(source, destination, MoveType::PawnToRook, &Piece { color: *color, piece_type: PieceType::Pawn }, &position.get_piece_on_square(&destination)));
-                moves.push(Move::new(source, destination, MoveType::PawnToBishop, &Piece { color: *color, piece_type: PieceType::Pawn }, &position.get_piece_on_square(&destination)));
-                moves.push(Move::new(source, destination, MoveType::PawnToKnight, &Piece { color: *color, piece_type: PieceType::Pawn }, &position.get_piece_on_square(&destination)));
+                moves.push(Move::new(source, destination, MoveType::PawnToQueen));
+                moves.push(Move::new(source, destination, MoveType::PawnToRook));
+                moves.push(Move::new(source, destination, MoveType::PawnToBishop));
+                moves.push(Move::new(source, destination, MoveType::PawnToKnight));
 
                 push.0 &= push.0 - 1;
                 continue;
             }
 
-            moves.push(Move::new(source, destination, MoveType::Normal, &Piece { color: *color, piece_type: PieceType::Pawn }, &position.get_piece_on_square(&destination)));
+            moves.push(Move::new(source, destination, MoveType::Normal));
             push.0 &= push.0 - 1;
         }
     }
