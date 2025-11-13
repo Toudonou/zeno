@@ -18,8 +18,9 @@ fn tapered_evaluation(position: &Position) -> i32 {
         while board != 0 {
             let square = board.trailing_zeros();
 
-            mg_evaluation += MG_PIECES_VALUES[i] + MG_PIECES_SQUARES_TABLES[i][square as usize];
-            eg_evaluation += EG_PIECES_VALUES[i] + EG_PIECES_SQUARES_TABLES[i][square as usize];
+            let index = (8 * (7 - (square >> 3)) + (square & 7)) as usize;
+            mg_evaluation += MG_PIECES_VALUES[i] + MG_PIECES_SQUARES_TABLES[i][index];
+            eg_evaluation += EG_PIECES_VALUES[i] + EG_PIECES_SQUARES_TABLES[i][index];
 
             phase -= PHASE_TABLE[i];
             board &= board - 1;
