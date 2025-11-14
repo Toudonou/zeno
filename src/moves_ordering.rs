@@ -1,6 +1,6 @@
 use crate::moves::{Move, MoveType};
 use crate::position::Position;
-use crate::utils::PieceType;
+use crate::piece::PieceType;
 
 static PROMOTION_SCORE: i32 = 100_000;
 

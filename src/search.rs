@@ -5,7 +5,7 @@ use crate::moves_generator::generate_pseudo_legal_moves;
 use crate::moves_ordering::order_moves;
 use crate::pos_eval::{Evaluation, PosEval};
 use crate::position::Position;
-use crate::utils::PieceType;
+use crate::piece::PieceType;
 
 pub enum GameState {
     InProgress,

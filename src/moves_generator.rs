@@ -1,10 +1,8 @@
 use crate::lookup_tables::LOOK_UP_TABLE;
 use crate::moves::{Move, MoveType};
+use crate::piece::{PieceColor, PieceType};
 use crate::position::Position;
-use crate::utils::{
-    PieceColor, PieceType, KING_ATTACKS, KNIGHT_ATTACKS, NOT_FILE_A, NOT_FILE_H, RANK_2, RANK_3,
-    RANK_4, RANK_5, RANK_6, RANK_7,
-};
+use crate::utils::{KING_ATTACKS, KNIGHT_ATTACKS, NOT_FILE_A, NOT_FILE_H, RANK_2, RANK_3, RANK_4, RANK_5, RANK_6, RANK_7};
 
 #[inline(always)]
 pub fn generate_pseudo_legal_moves(position: &Position) -> Vec<Move> {
@@ -134,7 +132,7 @@ pub fn generate_moves_pawn(position: &Position, color: &PieceColor, en_passant: 
         PieceColor::White => position.get_black_board(),
         PieceColor::Black => position.get_white_board(),
     };
-    opponent_board |= if *en_passant < 255 { 1u64 << en_passant } else { 0 };
+    opponent_board |= if *en_passant < 64 { 1u64 << en_passant } else { 0 };
 
     let mut simple_push: (u64, i8) = (0u64, 0i8);
     let mut double_push: (u64, i8) = (0u64, 0i8);

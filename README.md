@@ -11,6 +11,7 @@ including castling and en passant.
 - [x] Magic bitboard lookup for sliding pieces
 - [x] [UCI protocol support (partially)](https://backscattering.de/chess/uci/#engine-info-hashfull)
 - [x] Perft testing
+- [x] [Zobrist hashing](https://en.wikipedia.org/wiki/Zobrist_hashing)
 - [ ] Evaluation
     - [x] Material evaluation
     - [x] Piece-square tables evaluation

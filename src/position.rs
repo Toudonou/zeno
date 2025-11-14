@@ -1,6 +1,7 @@
 use crate::moves::{Move, MoveType};
 use crate::moves_generator::{generate_move_mask_for_bishop, generate_move_mask_for_rook};
-use crate::utils::{BLACK_PAWNS_ATTACKS, KING_ATTACKS, KNIGHT_ATTACKS, Piece, PieceColor, PieceType, WHITE_PAWNS_ATTACKS};
+use crate::piece::{Piece, PieceColor, PieceType};
+use crate::utils::{BLACK_PAWNS_ATTACKS, KING_ATTACKS, KNIGHT_ATTACKS, WHITE_PAWNS_ATTACKS, ZOBRIST_POSITION_KEYS, ZOBRIST_CASTLING_RIGHTS_KEYS, ZOBRIST_EN_PASSANT_FILES_KEYS, ZOBRIST_SIDE_KEY};
 
 /*
     Directions and shifts
@@ -47,11 +48,12 @@ pub struct Position {
     number_of_move: u8,
     half_move_clock: u8,
 
+    hash: u64,
 }
 
 impl Position {
     pub fn from_fen(fen: &str) -> Position {
-        let mut board_index: usize = 56;
+        let mut board_index: u64 = 56;
 
         let mut white_board: u64 = 0;
         let mut black_board: u64 = 0;
@@ -79,7 +81,7 @@ impl Position {
 
                 '1'..='8' => {
                     let skip = ch.to_digit(10).unwrap() - 1;
-                    board_index += skip as usize;
+                    board_index += skip as u64;
                 }
 
                 'P' | 'p' => {
@@ -175,6 +177,30 @@ impl Position {
             }
         }
 
+        let mut hash: u64 = 0;
+        let boards: [u64; 6] = [pawns_board, knights_board, bishops_board, rooks_board, queens_board, kings_board];
+        for piece in 0..6 {
+            let mut board = boards[piece] & white_board;
+            while board != 0 {
+                hash ^= ZOBRIST_POSITION_KEYS[piece * 64 + board.trailing_zeros() as usize];
+                board &= board - 1;
+            }
+
+            board = boards[piece] & black_board;
+            while board != 0 {
+                hash ^= ZOBRIST_POSITION_KEYS[(6 + piece) * 64 + board.trailing_zeros() as usize];
+                board &= board - 1;
+            }
+        }
+
+        hash ^= ZOBRIST_CASTLING_RIGHTS_KEYS[castling_rights as usize];
+
+        if en_passant_rank.is_some() && en_passant_file.is_some() {
+            hash ^= ZOBRIST_EN_PASSANT_FILES_KEYS[((en_passant_rank.unwrap() + en_passant_file.unwrap()) & 7) as usize];
+        }
+        if turn == PieceColor::Black { hash ^= ZOBRIST_SIDE_KEY };
+
+
         Position {
             white_board,
             black_board,
@@ -195,6 +221,7 @@ impl Position {
             turn,
             number_of_move: number_of_moves_move_part.parse().unwrap(),
             half_move_clock: half_move_part.parse().unwrap(),
+            hash,
         }
     }
 
@@ -209,13 +236,27 @@ impl Position {
         let source_piece = self.get_piece_on_square(&source);
         let destination_piece = self.get_piece_on_square(&destination);
 
+        let old_castling_rights = self.castling_rights;
+
+        self.hash ^= ZOBRIST_SIDE_KEY;
+
         // Putting 0 at the index of the destination
         match destination_piece.piece_type {
-            PieceType::Pawn => self.pawns_board &= !destination_mask,
-            PieceType::Knight => self.knights_board &= !destination_mask,
-            PieceType::Bishop => self.bishops_board &= !destination_mask,
+            PieceType::Pawn => {
+                self.pawns_board &= !destination_mask;
+                self.hash ^= ZOBRIST_POSITION_KEYS[destination_piece.to_usize() * 64 + destination as usize];
+            }
+            PieceType::Knight => {
+                self.knights_board &= !destination_mask;
+                self.hash ^= ZOBRIST_POSITION_KEYS[destination_piece.to_usize() * 64 + destination as usize];
+            }
+            PieceType::Bishop => {
+                self.bishops_board &= !destination_mask;
+                self.hash ^= ZOBRIST_POSITION_KEYS[destination_piece.to_usize() * 64 + destination as usize];
+            }
             PieceType::Rook => {
                 self.rooks_board &= !destination_mask;
+                self.hash ^= ZOBRIST_POSITION_KEYS[destination_piece.to_usize() * 64 + destination as usize];
 
                 if destination == 7 {
                     self.castling_rights &= 0b11111110;
@@ -227,10 +268,17 @@ impl Position {
                     self.castling_rights &= 0b11110111;
                 }
             }
-            PieceType::Queen => self.queens_board &= !destination_mask,
-            PieceType::King => self.kings_board &= !destination_mask,
+            PieceType::Queen => {
+                self.queens_board &= !destination_mask;
+                self.hash ^= ZOBRIST_POSITION_KEYS[destination_piece.to_usize() * 64 + destination as usize];
+            }
+            PieceType::King => panic!("King cannot be capture"),
             _ => {}
         }
+
+
+        self.hash ^= ZOBRIST_POSITION_KEYS[source_piece.to_usize() * 64 + source as usize];
+        self.hash ^= ZOBRIST_POSITION_KEYS[source_piece.to_usize() * 64 + destination as usize];
 
         // Putting 0 at the index of the source
         // And moving the piece at the destination by putting 1 at the destination for the corresponding piece
@@ -271,6 +319,13 @@ impl Position {
             _ => {}
         }
 
+        self.hash ^= ZOBRIST_CASTLING_RIGHTS_KEYS[old_castling_rights as usize];
+        self.hash ^= ZOBRIST_CASTLING_RIGHTS_KEYS[self.castling_rights as usize];
+
+        if self.en_passant < 64 {
+            self.hash ^= ZOBRIST_EN_PASSANT_FILES_KEYS[(self.en_passant & 7) as usize];
+        }
+
         // Updating the boards (for each color)
         match source_piece.color {
             PieceColor::White => {
@@ -292,10 +347,18 @@ impl Position {
                 PieceColor::White => {
                     self.rooks_board ^= 160; // 1u64 << 7 | 1u64 << 5
                     self.white_board ^= 160; // 1u64 << 7 | 1u64 << 5
+
+                    // Piece { color: PieceColor::White, piece_type: PieceType::Rook }.to_usize() == 3
+                    self.hash ^= ZOBRIST_POSITION_KEYS[3 * 64 + 7];
+                    self.hash ^= ZOBRIST_POSITION_KEYS[3 * 64 + 5];
                 }
                 PieceColor::Black => {
                     self.rooks_board ^= 11529215046068469760; // 1u64 << 63 | 1u64 << 61
                     self.black_board ^= 11529215046068469760; // 1u64 << 63 | 1u64 << 61
+
+                    // Piece { color: PieceColor::Black, piece_type: PieceType::Rook }.to_usize() == 9
+                    self.hash ^= ZOBRIST_POSITION_KEYS[9 * 64 + 63];
+                    self.hash ^= ZOBRIST_POSITION_KEYS[9 * 64 + 61];
                 }
             }
         } else if move_type == MoveType::LongCastle {
@@ -305,24 +368,20 @@ impl Position {
                 PieceColor::White => {
                     self.rooks_board ^= 9; // 1u64 << 0 | 1u64 << 3
                     self.white_board ^= 9; // 1u64 << 0 | 1u64 << 3
+
+                    // Piece { color: PieceColor::White, piece_type: PieceType::Rook }.to_usize() == 3
+                    self.hash ^= ZOBRIST_POSITION_KEYS[3 * 64 + 0];
+                    self.hash ^= ZOBRIST_POSITION_KEYS[3 * 64 + 3];
                 }
                 PieceColor::Black => {
                     self.rooks_board ^= 648518346341351424; // 1u64 << 56 | 1u64 << 59
                     self.black_board ^= 648518346341351424; // 1u64 << 56 | 1u64 << 59
+
+                    // Piece { color: PieceColor::Black, piece_type: PieceType::Rook }.to_usize() == 9
+                    self.hash ^= ZOBRIST_POSITION_KEYS[9 * 64 + 56];
+                    self.hash ^= ZOBRIST_POSITION_KEYS[9 * 64 + 59];
                 }
             }
-        } else if move_type == MoveType::PawnToKnight {
-            self.pawns_board &= !destination_mask;
-            self.knights_board |= destination_mask;
-        } else if move_type == MoveType::PawnToBishop {
-            self.pawns_board &= !destination_mask;
-            self.bishops_board |= destination_mask;
-        } else if move_type == MoveType::PawnToRook {
-            self.pawns_board &= !destination_mask;
-            self.rooks_board |= destination_mask;
-        } else if move_type == MoveType::PawnToQueen {
-            self.pawns_board &= !destination_mask;
-            self.queens_board |= destination_mask;
         } else if move_type == MoveType::EnPassant {
             // Updating the boards (for each color)
             match source_piece.color {
@@ -330,12 +389,39 @@ impl Position {
                 PieceColor::White => {
                     self.pawns_board &= !(1u64 << (destination - 8));
                     self.black_board &= !(1u64 << (destination - 8));
+
+                    self.hash ^= ZOBRIST_POSITION_KEYS[6 * 64 + destination as usize - 8];
                 }
                 PieceColor::Black => {
                     self.pawns_board &= !(1u64 << (destination + 8));
                     self.white_board &= !(1u64 << (destination + 8));
+
+                    self.hash ^= ZOBRIST_POSITION_KEYS[0 * 64 + destination as usize + 8];
                 }
             };
+        } else {
+            let mut promotion_index: usize = 0;
+            if move_type == MoveType::PawnToKnight {
+                self.pawns_board &= !destination_mask;
+                self.knights_board |= destination_mask;
+                promotion_index = 1;
+            } else if move_type == MoveType::PawnToBishop {
+                self.pawns_board &= !destination_mask;
+                self.bishops_board |= destination_mask;
+                promotion_index = 2;
+            } else if move_type == MoveType::PawnToRook {
+                self.pawns_board &= !destination_mask;
+                self.rooks_board |= destination_mask;
+                promotion_index = 3;
+            } else if move_type == MoveType::PawnToQueen {
+                self.pawns_board &= !destination_mask;
+                self.queens_board |= destination_mask;
+                promotion_index = 4;
+            }
+
+            // WHITE_PAWN or BLACK_PAWN
+            let pawn: usize = (self.turn.to_u8() * 6) as usize;
+            self.hash ^= ZOBRIST_POSITION_KEYS[pawn * 64 + destination as usize] ^ ZOBRIST_POSITION_KEYS[(pawn + promotion_index) * 64 + destination as usize];
         }
 
         self.en_passant = 255;
@@ -349,6 +435,8 @@ impl Position {
                     self.en_passant = destination + 8;
                 }
             }
+
+            self.hash ^= ZOBRIST_EN_PASSANT_FILES_KEYS[(self.en_passant & 7) as usize];
         }
 
         self.turn = self.turn.opposite();
@@ -522,6 +610,9 @@ impl Position {
 
     #[inline(always)]
     pub fn get_en_passant(&self) -> u8 { self.en_passant }
+
+    #[inline(always)]
+    pub fn get_hash(&self) -> u64 { self.hash }
 
     pub fn print_board(&self) {
         for rank in (0..=7).rev() {

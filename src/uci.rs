@@ -4,8 +4,9 @@ use std::io;
 use std::time::Instant;
 use crate::moves::{Move, MoveType};
 use crate::perft;
+use crate::piece::PieceType;
 use crate::search::Searcher;
-use crate::utils::{PieceType, START_POSITION};
+use crate::utils::START_POSITION;
 
 pub fn uci_loop() {
     let mut position = Position::from_fen(START_POSITION);

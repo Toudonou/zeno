@@ -1,3 +1,7 @@
+use regex::Regex;
+use crate::piece::PieceType;
+use crate::position::Position;
+
 #[derive(Clone, Debug, PartialEq, Copy)]
 pub enum MoveType {
     Normal,
@@ -36,6 +40,48 @@ impl Move {
     #[inline(always)]
     pub fn new(source: u8, destination: u8, move_type: MoveType) -> Self {
         Self(((move_type as u16) << 12) | ((destination as u16) << 6) | (source as u16))
+    }
+
+    #[inline(always)]
+    pub fn from_uci_notation(move_string: &str, position: &Position) -> Move {
+        let reg = Regex::new(r"^[a-h][1-8][a-h][1-8][nbrq]?$").unwrap();
+        if !reg.is_match(move_string) {
+            panic!("Incorrect uci move notation");
+        }
+
+        let part: Vec<char> = move_string.chars().collect();
+        let source_rank = part[1].to_digit(10).unwrap() - 1;
+        let source_file = part[0];
+        let destination_rank = part[3].to_digit(10).unwrap() - 1;
+        let destination_file = part[2];
+        let mut move_type = MoveType::Normal;
+
+
+        if move_string == "e1g1" {
+            move_type = MoveType::ShortCastle;
+        } else if move_string == "e1c1" {
+            move_type = MoveType::LongCastle;
+        } else if move_string == "e8g8" {
+            move_type = MoveType::ShortCastle;
+        } else if move_string == "e8c8" {
+            move_type = MoveType::LongCastle;
+        } else if part.len() == 5 {
+            match part[4] {
+                'n' => move_type = MoveType::PawnToKnight,
+                'b' => move_type = MoveType::PawnToBishop,
+                'r' => move_type = MoveType::PawnToRook,
+                'q' => move_type = MoveType::PawnToQueen,
+                _ => {}
+            }
+        } else if (8 * destination_rank as u8 + destination_file as u8 - 'a' as u8) == position.get_en_passant() &&
+            position.get_piece_on_square(&(8 * source_rank as u8 + source_file as u8 - 'a' as u8)).piece_type == PieceType::Pawn {
+            move_type = MoveType::EnPassant;
+        }
+
+        let source = (source_rank * 8) as u8 + source_file as u8 - 'a' as u8;
+        let destination = (destination_rank * 8) as u8 + destination_file as u8 - 'a' as u8;
+
+        Move::new(source, destination, move_type)
     }
 
     #[inline(always)]

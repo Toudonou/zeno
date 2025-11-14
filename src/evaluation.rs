@@ -1,6 +1,6 @@
 use crate::position::Position;
 use crate::psqt::{EG_PIECES_SQUARES_TABLES, EG_PIECES_VALUES, MG_PIECES_SQUARES_TABLES, MG_PIECES_VALUES, PHASE_TABLE, TOTAL_PHASE};
-use crate::utils::PieceColor;
+use crate::piece::PieceColor;
 
 
 static ARR_CENTER_MANHATTAN_DISTANCE: [i32; 64] = [
@@ -72,7 +72,7 @@ fn tapered_evaluation(position: &Position) -> i32 {
             board &= board - 1;
         }
 
-        let mut board = boards[i] & position.get_black_board();
+        board = boards[i] & position.get_black_board();
         while board != 0 {
             number_of_pieces[6 + i] += 1;
 
