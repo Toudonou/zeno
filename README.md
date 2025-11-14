@@ -18,6 +18,7 @@ including castling and en passant.
     - [x] [Tapered evaluation](https://www.chessprogramming.org/Tapered_Eval)
     - [ ] King Safety
     - [ ] Pawn Structure
+    - [x] Draw by insufficient material
     - [ ] Draw Detection (Threefold repetition draws)
     - [ ] Passed Pawns
     - [ ] Bishop Pair
