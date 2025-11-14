@@ -1,15 +1,16 @@
 // Value from https://www.chessprogramming.org/PeSTO%27s_Evaluation_Function
-static MG_PAWN_VALUE: i32 = 82;
-static MG_KNIGHT_VALUE: i32 = 337;
-static MG_BISHOP_VALUE: i32 = 365;
-static MG_ROOK_VALUE: i32 = 477;
-static MG_QUEEN_VALUE: i32 = 1_025;
+// Your piece values
+static MG_PAWN_VALUE:   i32 = 100;
+static MG_KNIGHT_VALUE: i32 = 320;
+static MG_BISHOP_VALUE: i32 = 330;
+static MG_ROOK_VALUE:   i32 = 500;
+static MG_QUEEN_VALUE:  i32 = 900;
 
-static EG_PAWN_VALUE: i32 = 94;
-static EG_KNIGHT_VALUE: i32 = 281;
-static EG_BISHOP_VALUE: i32 = 297;
-static EG_ROOK_VALUE: i32 = 512;
-static EG_QUEEN_VALUE: i32 = 936;
+static EG_PAWN_VALUE:   i32 = 150;
+static EG_KNIGHT_VALUE: i32 = 500;
+static EG_BISHOP_VALUE: i32 = 560;
+static EG_ROOK_VALUE:   i32 = 835;
+static EG_QUEEN_VALUE:  i32 = 1520;
 
 static KING_VALUE: i32 = 10_000;
 

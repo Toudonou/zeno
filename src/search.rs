@@ -25,7 +25,7 @@ pub struct Searcher {
 }
 
 impl Searcher {
-    pub fn new() -> Searcher { Searcher { game_state: GameState::InProgress, timer: Instant::now(), max_thinking_time: 2000, max_depth: 6, number_of_nodes_visited: 0, evaluation: Evaluation::Score(0), pv_line: vec![] } }
+    pub fn new() -> Searcher { Searcher { game_state: GameState::InProgress, timer: Instant::now(), max_thinking_time: 3000, max_depth: 6, number_of_nodes_visited: 0, evaluation: Evaluation::Score(0), pv_line: vec![] } }
 
     pub fn search(&mut self, position: &Position) -> Option<Move> {
         self.number_of_nodes_visited = 0;
