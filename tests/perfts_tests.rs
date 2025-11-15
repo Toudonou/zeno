@@ -4,6 +4,7 @@ use std::path::Path;
 #[cfg(test)]
 mod tests {
     use std::io::BufRead;
+    use zeno::history::History;
     use zeno::perft;
     use zeno::position::Position;
     use super::*;
@@ -21,7 +22,9 @@ mod tests {
             let mut parts = line.split(';');
             let fen = parts.next().unwrap().trim();
 
-            let position = Position::from_fen(fen);
+            let mut history = History::new();
+            
+            let position = Position::from_fen(fen, &mut history);
             let mut depth = 0;
 
             loop {

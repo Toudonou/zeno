@@ -1,5 +1,6 @@
 use std::time::{Instant};
 use crate::evaluation::evaluate;
+use crate::history::History;
 use crate::moves::Move;
 use crate::moves_generator::generate_pseudo_legal_moves;
 use crate::moves_ordering::order_moves;
@@ -27,11 +28,11 @@ pub struct Searcher {
 impl Searcher {
     pub fn new() -> Searcher { Searcher { game_state: GameState::InProgress, timer: Instant::now(), max_thinking_time: 3000, max_depth: 6, number_of_nodes_visited: 0, evaluation: Evaluation::Score(0), pv_line: vec![] } }
 
-    pub fn search(&mut self, position: &Position) -> Option<Move> {
+    pub fn search(&mut self, position: &Position, history: &mut History) -> Option<Move> {
         self.number_of_nodes_visited = 0;
         self.timer = Instant::now();
 
-        let result = self.negamax_alpha_beta(position, 1, self.max_depth, -i32::MAX, i32::MAX, position.get_turn() as i32);
+        let result = self.negamax_alpha_beta(position, history, 1, self.max_depth, -i32::MAX, i32::MAX, position.get_turn() as i32);
         self.pv_line = result.pv_line.clone();
         self.evaluation = result.score * position.get_turn() as i32;
 
@@ -39,10 +40,17 @@ impl Searcher {
     }
 
 
-    fn negamax_alpha_beta(&mut self, position: &Position, current_ply: i32, max_ply: i32, mut alpha: i32, beta: i32, point_of_view: i32) -> PosEval {
+    fn negamax_alpha_beta(&mut self, position: &Position, history: &mut History, current_ply: i32, max_ply: i32, mut alpha: i32, beta: i32, point_of_view: i32) -> PosEval {
         self.number_of_nodes_visited += 1;
+
+        // Check for threefold repetition
+        if history.get_position_occurrences_count(position) >= 3 {
+            return PosEval { best_move: None, score: Evaluation::Score(0), pv_line: vec![] };
+        }
+
         if current_ply > max_ply {
-            return self.quiescence_search(position, self.max_depth, alpha, beta, point_of_view);
+            let mut quiescence_history = History::new();
+            return self.quiescence_search(position, &mut quiescence_history, self.max_depth, alpha, beta, point_of_view);
         }
 
         let mut moves = generate_pseudo_legal_moves(position);
@@ -55,11 +63,11 @@ impl Searcher {
 
         for mov in &moves {
             let mut temp_position = position.clone();
-            temp_position.make_move(&mov);
+            temp_position.make_move(&mov, history);
             if !temp_position.is_check(&turn) {
                 no_legal_moves = false;
 
-                let mut eval = self.negamax_alpha_beta(&temp_position, current_ply + 1, max_ply, -beta, -alpha, -point_of_view);
+                let mut eval = self.negamax_alpha_beta(&temp_position, history, current_ply + 1, max_ply, -beta, -alpha, -point_of_view);
                 eval.score *= -1;
 
                 if eval.score.value() > best_eval.score.value() {
@@ -73,9 +81,12 @@ impl Searcher {
 
                 alpha = alpha.max(eval.score.value());
                 if alpha >= beta {
+                    history.pop_last_entry();
                     break;
                 }
             }
+
+            history.pop_last_entry();
 
             if self.timer.elapsed().as_millis() > self.max_thinking_time { break; }
         }
@@ -90,7 +101,7 @@ impl Searcher {
         best_eval
     }
 
-    fn quiescence_search(&mut self, position: &Position, depth: i32, mut alpha: i32, beta: i32, point_of_view: i32) -> PosEval {
+    fn quiescence_search(&mut self, position: &Position, history: &mut History, depth: i32, mut alpha: i32, beta: i32, point_of_view: i32) -> PosEval {
         self.number_of_nodes_visited += 1;
 
         let static_evaluation = PosEval { best_move: None, score: Evaluation::Score(evaluate(position) * point_of_view), pv_line: vec![] };
@@ -108,9 +119,9 @@ impl Searcher {
         for mov in &moves {
             if position.get_piece_on_square(&mov.destination()).piece_type != PieceType::None {
                 let mut temp_position = position.clone();
-                temp_position.make_move(&mov);
+                temp_position.make_move(&mov, history);
                 if !temp_position.is_check(&turn) {
-                    let mut eval = self.quiescence_search(&temp_position, depth - 1, -beta, -alpha, -point_of_view);
+                    let mut eval = self.quiescence_search(&temp_position, history, depth - 1, -beta, -alpha, -point_of_view);
                     eval.score *= -1;
 
                     if eval.score.value() >= beta { return eval; }

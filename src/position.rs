@@ -1,3 +1,4 @@
+use crate::history::History;
 use crate::moves::{Move, MoveType};
 use crate::moves_generator::{generate_move_mask_for_bishop, generate_move_mask_for_rook};
 use crate::piece::{Piece, PieceColor, PieceType};
@@ -52,7 +53,7 @@ pub struct Position {
 }
 
 impl Position {
-    pub fn from_fen(fen: &str) -> Position {
+    pub fn from_fen(fen: &str, history: &mut History) -> Position {
         let mut board_index: u64 = 56;
 
         let mut white_board: u64 = 0;
@@ -198,7 +199,7 @@ impl Position {
         if turn == PieceColor::Black { hash ^= ZOBRIST_SIDE_KEY };
 
 
-        Position {
+        let position = Position {
             white_board,
             black_board,
             pawns_board,
@@ -215,11 +216,18 @@ impl Position {
             number_of_move: number_of_moves_move_part.parse().unwrap(),
             half_move_clock: half_move_part.parse().unwrap(),
             hash,
-        }
+        };
+
+        history.clear();
+        history.save_position(&position);
+
+        position
     }
 
     #[inline(always)]
-    pub fn make_move(&mut self, mov: &Move) {
+    pub fn make_move(&mut self, mov: &Move, history: &mut History) {
+        history.save_position(&self);
+
         let source: u8 = mov.source();
         let destination: u8 = mov.destination();
         let move_type = mov.move_type();

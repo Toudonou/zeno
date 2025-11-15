@@ -11,3 +11,4 @@ pub mod evaluation;
 pub mod psqt;
 pub mod moves_ordering;
 pub mod pos_eval;
+pub mod history;

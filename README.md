@@ -20,7 +20,7 @@ including castling and en passant.
     - [ ] King Safety
     - [ ] Pawn Structure
     - [x] Draw by insufficient material
-    - [ ] Draw Detection (Threefold repetition draws)
+    - [x] [Draw by Threefold repetition](https://en.wikipedia.org/wiki/Threefold_repetition)
     - [ ] Passed Pawns
     - [ ] Bishop Pair
 - [ ] Search
