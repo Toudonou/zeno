@@ -42,7 +42,7 @@ pub struct Position {
     white_king_coord: u8,
     black_king_coord: u8,
     castling_rights: u8, // 0 0 0 0 0(q) 0(k) 0(Q) 0(K)
-    en_passant: u8,
+    en_passant_file: u8,
 
     turn: PieceColor,
     number_of_move: u8,
@@ -165,13 +165,11 @@ impl Position {
             }
         }
 
-        let mut en_passant_rank: Option<u8> = None;
-        let mut en_passant_file: Option<u8> = None;
+        let mut en_passant_file: u8 = 8;
         if en_passant_part != "-" {
             for ch in en_passant_part.chars() {
                 match ch {
-                    'a'..='z' => en_passant_file = Some(ch as u8 - 'a' as u8),
-                    '1'..='8' => en_passant_rank = Some((ch.to_digit(10).unwrap() as u8 - 1) * 8),
+                    'a'..='h' => en_passant_file = ch as u8 - 'a' as u8,
                     _ => {}
                 }
             }
@@ -195,9 +193,8 @@ impl Position {
 
         hash ^= ZOBRIST_CASTLING_RIGHTS_KEYS[castling_rights as usize];
 
-        if en_passant_rank.is_some() && en_passant_file.is_some() {
-            hash ^= ZOBRIST_EN_PASSANT_FILES_KEYS[((en_passant_rank.unwrap() + en_passant_file.unwrap()) & 7) as usize];
-        }
+        hash ^= ZOBRIST_EN_PASSANT_FILES_KEYS[en_passant_file as usize];
+
         if turn == PieceColor::Black { hash ^= ZOBRIST_SIDE_KEY };
 
 
@@ -213,11 +210,7 @@ impl Position {
             white_king_coord: (white_board & kings_board).trailing_zeros() as u8,
             black_king_coord: (black_board & kings_board).trailing_zeros() as u8,
             castling_rights,
-            en_passant: if en_passant_rank.is_some() && en_passant_file.is_some() {
-                en_passant_rank.unwrap() + en_passant_file.unwrap()
-            } else {
-                255
-            },
+            en_passant_file,
             turn,
             number_of_move: number_of_moves_move_part.parse().unwrap(),
             half_move_clock: half_move_part.parse().unwrap(),
@@ -322,9 +315,7 @@ impl Position {
         self.hash ^= ZOBRIST_CASTLING_RIGHTS_KEYS[old_castling_rights as usize];
         self.hash ^= ZOBRIST_CASTLING_RIGHTS_KEYS[self.castling_rights as usize];
 
-        if self.en_passant < 64 {
-            self.hash ^= ZOBRIST_EN_PASSANT_FILES_KEYS[(self.en_passant & 7) as usize];
-        }
+        self.hash ^= ZOBRIST_EN_PASSANT_FILES_KEYS[self.en_passant_file as usize];
 
         // Updating the boards (for each color)
         match source_piece.color {
@@ -424,19 +415,19 @@ impl Position {
             self.hash ^= ZOBRIST_POSITION_KEYS[pawn * 64 + destination as usize] ^ ZOBRIST_POSITION_KEYS[(pawn + promotion_index) * 64 + destination as usize];
         }
 
-        self.en_passant = 255;
+        self.en_passant_file = 8;
         if source_piece.piece_type == PieceType::Pawn && source.abs_diff(destination) == 16 {
             match source_piece.color {
                 PieceColor::None => {}
                 PieceColor::White => {
-                    self.en_passant = destination - 8;
+                    self.en_passant_file = (destination - 8) & 7;
                 }
                 PieceColor::Black => {
-                    self.en_passant = destination + 8;
+                    self.en_passant_file = (destination + 8) & 7;
                 }
             }
 
-            self.hash ^= ZOBRIST_EN_PASSANT_FILES_KEYS[(self.en_passant & 7) as usize];
+            self.hash ^= ZOBRIST_EN_PASSANT_FILES_KEYS[self.en_passant_file as usize];
         }
 
         self.turn = self.turn.opposite();
@@ -609,7 +600,19 @@ impl Position {
     }
 
     #[inline(always)]
-    pub fn get_en_passant(&self) -> u8 { self.en_passant }
+    pub fn get_en_passant(&self) -> u8 {
+        if self.en_passant_file < 8 {
+            match self.turn {
+                PieceColor::White => {
+                    5 * 8 + self.en_passant_file
+                }
+                PieceColor::Black => {
+                    2 * 8 + self.en_passant_file
+                }
+                PieceColor::None => { 64 }
+            }
+        } else { 64 }
+    }
 
     #[inline(always)]
     pub fn get_hash(&self) -> u64 { self.hash }
