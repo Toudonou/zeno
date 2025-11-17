@@ -28,18 +28,6 @@ pub static ZOBRIST_CASTLING_RIGHTS_KEYS: [u64; 16] = [11780527869552164668u64, 1
 pub static ZOBRIST_EN_PASSANT_FILES_KEYS: [u64; 9] = [14738946940338503124u64, 6606236692097797261u64, 7066129299173918413u64, 2863321319830961373u64, 7108307768812983722u64, 3073184983009257124u64, 4502407837955249006u64, 15640541603748436794u64, 0u64];
 pub static ZOBRIST_SIDE_KEY: u64 = 11882366746094442584u64;
 
-pub static ZENO_MAX_TRANSPOSITION_ENTRIES: u32 = 64 * 1024 * 1024; // 64MB
-
-
-pub fn count_set_bit(value: u64) -> u8 {
-    let mut count = 0;
-    let mut value = value;
-    while value != 0 {
-        count += 1;
-        value &= value - 1;
-    }
-    count
-}
 
 pub fn random_u64() -> u64 {
     // https://www.chessprogramming.org/index.php?title=Looking_for_Magics&oldid=2272

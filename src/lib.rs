@@ -12,3 +12,4 @@ pub mod psqt;
 pub mod moves_ordering;
 pub mod pos_eval;
 pub mod history;
+pub mod transposition_table;

@@ -7,6 +7,7 @@ use crate::moves_ordering::order_moves;
 use crate::pos_eval::{Evaluation, PosEval};
 use crate::position::Position;
 use crate::piece::PieceType;
+use crate::transposition_table::{TTEntry, TTFlag, TranspositionTable};
 
 pub enum GameState {
     InProgress,
@@ -28,19 +29,18 @@ pub struct Searcher {
 impl Searcher {
     pub fn new() -> Searcher { Searcher { game_state: GameState::InProgress, timer: Instant::now(), max_thinking_time: 3000, max_depth: 6, number_of_nodes_visited: 0, evaluation: Evaluation::Score(0), pv_line: vec![] } }
 
-    pub fn search(&mut self, position: &Position, history: Option<&mut History>) -> Option<Move> {
+    pub fn search(&mut self, position: &Position, history: Option<&mut History>, transposition_table: Option<&mut TranspositionTable>) -> Option<Move> {
         self.number_of_nodes_visited = 0;
         self.timer = Instant::now();
 
-        let result = self.negamax_alpha_beta(position, history, 1, self.max_depth, -i32::MAX, i32::MAX, position.get_turn() as i32);
+        let result = self.negamax_alpha_beta_with_tt(position, history, transposition_table, 1, self.max_depth, -i32::MAX, i32::MAX, position.get_turn() as i32);
         self.pv_line = result.pv_line.clone();
         self.evaluation = result.score * position.get_turn() as i32;
 
         result.best_move
     }
 
-
-    fn negamax_alpha_beta(&mut self, position: &Position, mut history: Option<&mut History>, current_ply: i32, max_ply: i32, mut alpha: i32, beta: i32, point_of_view: i32) -> PosEval {
+    fn negamax_alpha_beta_with_tt(&mut self, position: &Position, mut history: Option<&mut History>, mut transposition_table: Option<&mut TranspositionTable>, current_ply: i32, max_ply: i32, mut alpha: i32, beta: i32, point_of_view: i32) -> PosEval {
         self.number_of_nodes_visited += 1;
 
         // Check for threefold repetition
@@ -48,12 +48,34 @@ impl Searcher {
             return PosEval { best_move: None, score: Evaluation::Score(0), pv_line: vec![] };
         }
 
+        let tt_entry = transposition_table.as_deref_mut().unwrap().get_entry(position.get_hash());
+        let mut tt_move: Option<Move> = None;
+
+        match tt_entry {
+            None => {}
+            Some(entry) => {
+                tt_move = entry.pos_eval.best_move;
+
+                if entry.hash == position.get_hash() && entry.depth >= (max_ply - current_ply) {
+                    if entry.flag == TTFlag::Exact {
+                        return entry.pos_eval;
+                    } else if entry.flag == TTFlag::LowerBound && entry.pos_eval.score.value() >= beta {
+                        return entry.pos_eval;
+                    } else if entry.flag == TTFlag::UpperBound && entry.pos_eval.score.value() <= alpha {
+                        return entry.pos_eval;
+                    }
+                }
+            }
+        }
+
+
         if current_ply > max_ply {
             return self.quiescence_search(position, Some(&mut History::new()), self.max_depth, alpha, beta, point_of_view);
         }
 
+        let original_alpha = alpha;
         let mut moves = generate_pseudo_legal_moves(position);
-        order_moves(&mut moves, position);
+        order_moves(&mut moves, position, &tt_move);
 
         let turn = position.get_turn();
         let mut no_legal_moves = true;
@@ -66,7 +88,7 @@ impl Searcher {
             if !temp_position.is_check(&turn) {
                 no_legal_moves = false;
 
-                let mut eval = self.negamax_alpha_beta(&temp_position, history.as_deref_mut(), current_ply + 1, max_ply, -beta, -alpha, -point_of_view);
+                let mut eval = self.negamax_alpha_beta_with_tt(&temp_position, history.as_deref_mut(), transposition_table.as_deref_mut(), current_ply + 1, max_ply, -beta, -alpha, -point_of_view);
                 eval.score *= -1;
 
                 if eval.score.value() > best_eval.score.value() {
@@ -97,6 +119,15 @@ impl Searcher {
             return PosEval { best_move: None, score: Evaluation::Score(0), pv_line: vec![] };
         }
 
+
+        let mut tt_entry = TTEntry { flag: TTFlag::Exact, pos_eval: best_eval.clone(), hash: position.get_hash(), depth: max_ply - current_ply };
+        if tt_entry.pos_eval.score.value() <= original_alpha {
+            tt_entry.flag = TTFlag::UpperBound;
+        } else if tt_entry.pos_eval.score.value() >= beta {
+            tt_entry.flag = TTFlag::LowerBound;
+        }
+        transposition_table.as_deref_mut().unwrap().add_entry(tt_entry);
+
         best_eval
     }
 
@@ -111,7 +142,7 @@ impl Searcher {
         if best_eval.score.value() > alpha { alpha = best_eval.score.value(); }
 
         let mut moves = generate_pseudo_legal_moves(position);
-        order_moves(&mut moves, position);
+        order_moves(&mut moves, position, &None);
 
         let turn = position.get_turn();
 

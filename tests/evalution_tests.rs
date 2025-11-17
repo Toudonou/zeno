@@ -51,7 +51,7 @@ mod evaluation_tests {
         moves.for_each(|move_string| position.make_move(&uci_move(move_string, &position), history.as_deref_mut()));
 
         let mut searcher = Searcher::new();
-        let search_result = searcher.search(&position, history.as_deref_mut());
+        let search_result = searcher.search(&position, history.as_deref_mut(), None);
 
         assert_eq!(search_result, None);
     }

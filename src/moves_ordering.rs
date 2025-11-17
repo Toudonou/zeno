@@ -2,7 +2,8 @@ use crate::moves::{Move, MoveType};
 use crate::position::Position;
 use crate::piece::PieceType;
 
-static PROMOTION_SCORE: i32 = 100_000;
+static TT_MOVE_SCORE: i32 = 500_000;
+static PROMOTION_MOVE_SCORE: i32 = 400_000;
 
 //https://open-chess.org/viewtopic.php?t=3058
 static MVV_LVA: [[i32; 6]; 6] = [
@@ -16,27 +17,33 @@ static MVV_LVA: [[i32; 6]; 6] = [
 ];
 
 #[inline(always)]
-pub fn order_moves(moves: &mut Vec<Move>, position: &Position) {
-    moves.sort_by(|a, b| evaluate_move(b, position).cmp(&evaluate_move(a, position)));
+pub fn order_moves(moves: &mut Vec<Move>, position: &Position, tt_move: &Option<Move>) {
+    let tt_move = tt_move.unwrap_or(Move::new(0, 0, MoveType::Normal));
+
+    moves.sort_by(|a, b| evaluate_move(b, position, &tt_move).cmp(&evaluate_move(a, position, &tt_move)));
 }
 
 #[inline(always)]
-fn evaluate_move(mov: &Move, position: &Position) -> i32 {
+fn evaluate_move(mov: &Move, position: &Position, tt_move: &Move) -> i32 {
     let mut score = 0;
     let source_piece_type = position.get_piece_on_square(&mov.source()).piece_type;
     let destination_piece_type = position.get_piece_on_square(&mov.destination()).piece_type;
 
+    if mov == tt_move {
+        score = TT_MOVE_SCORE;
+    }
+
     // MVV_LVA:
     if destination_piece_type != PieceType::None {
-        score = MVV_LVA[source_piece_type as usize - 1][destination_piece_type as usize - 1];
+        score += MVV_LVA[source_piece_type as usize - 1][destination_piece_type as usize - 1];
     }
 
     // Promotion bonus
     match mov.move_type() {
-        MoveType::PawnToKnight => score += PROMOTION_SCORE + 300,
-        MoveType::PawnToBishop => score += PROMOTION_SCORE + 400,
-        MoveType::PawnToRook => score += PROMOTION_SCORE + 500,
-        MoveType::PawnToQueen => score += PROMOTION_SCORE + 600,
+        MoveType::PawnToKnight => score += PROMOTION_MOVE_SCORE + 300,
+        MoveType::PawnToBishop => score += PROMOTION_MOVE_SCORE + 400,
+        MoveType::PawnToRook => score += PROMOTION_MOVE_SCORE + 500,
+        MoveType::PawnToQueen => score += PROMOTION_MOVE_SCORE + 600,
         _ => {}
     }
 

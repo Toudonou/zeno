@@ -7,14 +7,16 @@ use crate::moves::{Move, MoveType};
 use crate::perft;
 use crate::piece::PieceType;
 use crate::search::Searcher;
+use crate::transposition_table::TranspositionTable;
 use crate::utils::START_POSITION;
 
 pub fn uci_loop() {
-    let mut history = History::new();
-    let mut history = Some(&mut history);
+    let mut history = Some(&mut History::new());
+    let mut searcher = Searcher::new();
+    let mut transposition_table = Some(&mut TranspositionTable::new());
 
     let mut position = Position::from_fen(START_POSITION, history.as_deref_mut());
-    let mut searcher = Searcher::new();
+
     perft::perft(1, &position); // To init the lookup tables
 
     loop {
@@ -30,12 +32,14 @@ pub fn uci_loop() {
                 position = Position::from_fen(START_POSITION, history.as_deref_mut())
             }
             c if c.starts_with("position") => uci_position(command, &mut position, history.as_deref_mut()),
-            c if c.starts_with("go") => go(&mut position, &mut searcher, history.as_deref_mut()),
+            c if c.starts_with("go") => go(&mut position, &mut searcher, history.as_deref_mut(), transposition_table.as_deref_mut()),
             "stop" => {}
             "quit" => break,
             _ => println!("Command not found {}", command),
         }
     }
+
+    transposition_table.as_deref_mut().unwrap().print_transposition_stats();
 }
 
 fn uci_commands() {
@@ -137,9 +141,9 @@ pub fn uci_move(move_string: &str, position: &Position) -> Move {
     Move::new(source, destination, move_type)
 }
 
-fn go(position: &mut Position, searcher: &mut Searcher, history: Option<&mut History>) {
+fn go(position: &mut Position, searcher: &mut Searcher, history: Option<&mut History>, transposition_table: Option<&mut TranspositionTable>) {
     let it = Instant::now();
-    let best_move = searcher.search(&position, history);
+    let best_move = searcher.search(&position, history, transposition_table);
 
     println!("Evaluation: {}", searcher.get_evaluation());
     println!("Number of nodes visited: {} in {:?}", searcher.get_number_of_nodes_visited(), it.elapsed());

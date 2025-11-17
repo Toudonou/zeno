@@ -30,7 +30,7 @@ including castling and en passant.
       - [x] MVV_LVA
       - [ ] Static exchange evaluation
     - [ ] Iterative deepening
-    - [ ] Transposition table
+    - [x] [Transposition table](https://en.wikipedia.org/wiki/Negamax#Negamax_with_alpha_beta_pruning_and_transposition_tables)
     - [ ] Killer moves
     - [x] Quiescence search
     - [ ] Null move pruning
