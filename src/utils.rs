@@ -30,6 +30,17 @@ pub static ZOBRIST_SIDE_KEY: u64 = 11882366746094442584u64;
 
 pub static ZENO_MAX_TRANSPOSITION_ENTRIES: u32 = 64 * 1024 * 1024; // 64MB
 
+
+pub fn count_set_bit(value: u64) -> u8 {
+    let mut count = 0;
+    let mut value = value;
+    while value != 0 {
+        count += 1;
+        value &= value - 1;
+    }
+    count
+}
+
 pub fn random_u64() -> u64 {
     // https://www.chessprogramming.org/index.php?title=Looking_for_Magics&oldid=2272
     let mut rng = rand::rng();

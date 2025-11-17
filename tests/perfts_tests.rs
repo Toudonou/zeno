@@ -22,7 +22,9 @@ mod tests {
             let mut parts = line.split(';');
             let fen = parts.next().unwrap().trim();
 
-            let mut position = Position::from_fen(fen);
+            let mut history = History::new();
+            
+            let position = Position::from_fen(fen, &mut history);
             let mut depth = 0;
 
             loop {
@@ -34,7 +36,7 @@ mod tests {
                         depth = info.next().unwrap()[1..].parse().unwrap();
                         let number_of_moves: u64 = info.next().unwrap().parse().unwrap();
 
-                        assert_eq!(number_of_moves, perft::perft(depth, &mut position));
+                        assert_eq!(number_of_moves, perft::perft(depth, &position));
                         depth += 1;
                     }
                 }
