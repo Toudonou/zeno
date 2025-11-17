@@ -1,6 +1,6 @@
 use crate::position::Position;
 
-const MAX_PLY: usize = 1024;
+const MAX_PLY: usize = 2048;
 
 #[derive(Clone)]
 pub struct History {
@@ -21,9 +21,11 @@ impl History {
     }
 
     pub fn get_position_occurrences_count(&self, position: &Position) -> usize {
+        // A position cannot be repeated after an undoable moves.
+        // So the repetition check should only concern the last n (half_move_clock) doable moves
+        // https://www.freechess.org/Help/HelpFiles/fen.html
         let hash = position.get_hash();
-        // history.iter().rev().take(halfmove_clock).filter(|&&k| k == zobrist).count();
-        self.history.iter().rev().filter(|k| **k == hash).count()
+        self.history.iter().rev().take(position.get_half_move_clock() as usize).filter(|k| **k == hash).count()
     }
 
     pub fn clear(&mut self) {

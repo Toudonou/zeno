@@ -11,7 +11,9 @@ use crate::utils::START_POSITION;
 
 pub fn uci_loop() {
     let mut history = History::new();
-    let mut position = Position::from_fen(START_POSITION, &mut history);
+    let mut history = Some(&mut history);
+
+    let mut position = Position::from_fen(START_POSITION, history.as_deref_mut());
     let mut searcher = Searcher::new();
     perft::perft(1, &position); // To init the lookup tables
 
@@ -25,10 +27,10 @@ pub fn uci_loop() {
             "uci" => uci_commands(),
             "isready" => println!("readyok"),
             "ucinewgame" => {
-                position = Position::from_fen(START_POSITION, &mut history)
+                position = Position::from_fen(START_POSITION, history.as_deref_mut())
             }
-            c if c.starts_with("position") => uci_position(command, &mut position, &mut history),
-            c if c.starts_with("go") => go(&mut position, &mut searcher, &mut history),
+            c if c.starts_with("position") => uci_position(command, &mut position, history.as_deref_mut()),
+            c if c.starts_with("go") => go(&mut position, &mut searcher, history.as_deref_mut()),
             "stop" => {}
             "quit" => break,
             _ => println!("Command not found {}", command),
@@ -63,33 +65,33 @@ fn uci_commands() {
 }
 
 
-fn uci_position(command: &str, position: &mut Position, history: &mut History) {
+fn uci_position(command: &str, position: &mut Position, mut history: Option<&mut History>) {
     if command.starts_with("position fen") {
         let is_there_some_moves = command.find("moves");
         match is_there_some_moves {
             None => {
-                *position = Position::from_fen(&command[13usize..], history);
+                *position = Position::from_fen(&command[13usize..], history.as_deref_mut());
             }
             Some(moves_index) => {
-                *position = Position::from_fen(&command[13usize..moves_index], history);
+                *position = Position::from_fen(&command[13usize..moves_index], history.as_deref_mut());
 
                 let moves = command[(moves_index + "moves".len())..].split_whitespace();
-                moves.for_each(|move_string| position.make_move(&uci_move(move_string, position), history));
+                moves.for_each(|move_string| position.make_move(&uci_move(move_string, position), history.as_deref_mut()));
             }
         }
     }
 
     if command.starts_with("position startpos") {
-        *position = Position::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", history);
+        *position = Position::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", history.as_deref_mut());
     }
 
     if command.starts_with("position startpos moves") {
         let moves = command[23usize..].split_whitespace();
-        moves.for_each(|move_string| position.make_move(&uci_move(move_string, position), history));
+        moves.for_each(|move_string| position.make_move(&uci_move(move_string, position), history.as_deref_mut()));
     }
 }
 
-fn uci_move(move_string: &str, position: &Position) -> Move {
+pub fn uci_move(move_string: &str, position: &Position) -> Move {
     let reg = Regex::new(r"^[a-h][1-8][a-h][1-8][nbrq]?$").unwrap();
     if !reg.is_match(move_string) {
         panic!("Incorrect uci move notation");
@@ -135,7 +137,7 @@ fn uci_move(move_string: &str, position: &Position) -> Move {
     Move::new(source, destination, move_type)
 }
 
-fn go(position: &mut Position, searcher: &mut Searcher, history: &mut History) {
+fn go(position: &mut Position, searcher: &mut Searcher, history: Option<&mut History>) {
     let it = Instant::now();
     let best_move = searcher.search(&position, history);
 

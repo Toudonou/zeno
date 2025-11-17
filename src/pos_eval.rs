@@ -1,5 +1,5 @@
 use std::fmt::{Display, Formatter};
-use std::ops::{Div, Mul, MulAssign};
+use std::ops::{Mul, MulAssign};
 use crate::moves::Move;
 
 pub static MATE_SCORE: i32 = 1_000_000;
@@ -45,7 +45,7 @@ impl Display for Evaluation {
         match self {
             Evaluation::Score(score) => write!(f, "{}", (*score as f32) / 100f32),
             Evaluation::MateIn(mate_in) => {
-                if *mate_in > 0 { write!(f, "M{}", mate_in.abs() / 2) } else { write!(f, "-M{}", mate_in.abs() / 2) }
+                if *mate_in > 0 { write!(f, "+M{}", mate_in.abs() / 2) } else { write!(f, "-M{}", mate_in.abs() / 2) }
             }
         }
     }

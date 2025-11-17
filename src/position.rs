@@ -53,7 +53,8 @@ pub struct Position {
 }
 
 impl Position {
-    pub fn from_fen(fen: &str, history: &mut History) -> Position {
+    // https://www.freechess.org/Help/HelpFiles/fen.html
+    pub fn from_fen(fen: &str, history: Option<&mut History>) -> Position {
         let mut board_index: u64 = 56;
 
         let mut white_board: u64 = 0;
@@ -218,16 +219,19 @@ impl Position {
             hash,
         };
 
-        history.clear();
-        history.save_position(&position);
+        match history {
+            None => {}
+            Some(h) => {
+                (h).clear();
+                h.save_position(&position);
+            }
+        }
 
         position
     }
 
     #[inline(always)]
-    pub fn make_move(&mut self, mov: &Move, history: &mut History) {
-        history.save_position(&self);
-
+    pub fn make_move(&mut self, mov: &Move, history: Option<&mut History>) {
         let source: u8 = mov.source();
         let destination: u8 = mov.destination();
         let move_type = mov.move_type();
@@ -238,6 +242,9 @@ impl Position {
         let destination_piece = self.get_piece_on_square(&destination);
 
         let old_castling_rights = self.castling_rights;
+
+        let old_half_move_clock = self.half_move_clock;
+        self.half_move_clock = 0;
 
         self.hash ^= ZOBRIST_SIDE_KEY;
 
@@ -274,7 +281,9 @@ impl Position {
                 self.hash ^= ZOBRIST_POSITION_KEYS[destination_piece.to_usize() * 64 + destination as usize];
             }
             PieceType::King => panic!("King cannot be capture"),
-            _ => {}
+
+            // If the destination is empty, the half move clock will be incremented
+            _ => self.half_move_clock = old_half_move_clock + 1,
         }
 
 
@@ -284,7 +293,12 @@ impl Position {
         // Putting 0 at the index of the source
         // And moving the piece at the destination by putting 1 at the destination for the corresponding piece
         match source_piece.piece_type {
-            PieceType::Pawn => self.pawns_board ^= source_mask | destination_mask,
+            PieceType::Pawn => {
+                self.pawns_board ^= source_mask | destination_mask;
+
+                // Pawn's moves are irreversible,
+                self.half_move_clock = 0;
+            }
             PieceType::Knight => self.knights_board ^= source_mask | destination_mask,
             PieceType::Bishop => self.bishops_board ^= source_mask | destination_mask,
             PieceType::Queen => self.queens_board ^= source_mask | destination_mask,
@@ -438,7 +452,9 @@ impl Position {
             self.hash ^= ZOBRIST_EN_PASSANT_FILES_KEYS[self.en_passant_file as usize];
         }
 
+        self.number_of_move += u8::from(self.turn == PieceColor::Black);
         self.turn = self.turn.opposite();
+        if let Some(history) = history { history.save_position(self); }
     }
 
     #[inline(always)]
@@ -534,18 +550,10 @@ impl Position {
     }
 
     #[inline(always)]
-    pub fn get_king_coord(&self, color: &PieceColor) -> u8 {
-        match color {
-            PieceColor::White => self.white_king_coord,
-            PieceColor::Black => self.black_king_coord,
-            PieceColor::None => panic!("Invalid color"),
-        }
     pub fn get_white_king_square(&self) -> u8 { self.white_king_square }
 
     #[inline(always)]
     pub fn get_black_king_square(&self) -> u8 { self.black_king_square }
-
-    }
 
     #[inline(always)]
     pub fn get_board(&self) -> u64 { self.white_board | self.black_board }
@@ -571,6 +579,12 @@ impl Position {
     pub fn get_queens_board(&self) -> u64 { self.queens_board }
     #[inline(always)]
     pub fn get_kings_board(&self) -> u64 { self.kings_board }
+
+    #[inline(always)]
+    pub fn get_number_of_move(&self) -> u8 { self.number_of_move }
+
+    #[inline(always)]
+    pub fn get_half_move_clock(&self) -> u8 { self.half_move_clock }
 
     #[inline(always)]
     pub fn can_white_short_castle(&self) -> bool {
