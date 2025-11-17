@@ -24,6 +24,15 @@ impl PieceColor {
             PieceColor::None => 2,
         }
     }
+
+    pub fn from_u8(value: u8) -> PieceColor {
+        match value {
+            0 => PieceColor::White,
+            1 => PieceColor::Black,
+            2 => PieceColor::None,
+            _ => panic!("Invalid value for PieceColor"),
+        }
+    }
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq, Copy)]
@@ -62,6 +71,28 @@ impl Piece {
             (PieceColor::Black, PieceType::King) => 11,
 
             (PieceColor::None, PieceType::None) => 12,
+            _ => panic!("Invalid piece"),
+        }
+    }
+
+    #[inline(always)]
+    pub fn from_usize(value: usize) -> Piece {
+        match value {
+            0 => Piece { color: PieceColor::White, piece_type: PieceType::Pawn },
+            1 => Piece { color: PieceColor::White, piece_type: PieceType::Knight },
+            2 => Piece { color: PieceColor::White, piece_type: PieceType::Bishop },
+            3 => Piece { color: PieceColor::White, piece_type: PieceType::Rook },
+            4 => Piece { color: PieceColor::White, piece_type: PieceType::Queen },
+            5 => Piece { color: PieceColor::White, piece_type: PieceType::King },
+
+            6 => Piece { color: PieceColor::Black, piece_type: PieceType::Pawn },
+            7 => Piece { color: PieceColor::Black, piece_type: PieceType::Knight },
+            8 => Piece { color: PieceColor::Black, piece_type: PieceType::Bishop },
+            9 => Piece { color: PieceColor::Black, piece_type: PieceType::Rook },
+            10 => Piece { color: PieceColor::Black, piece_type: PieceType::Queen },
+            11 => Piece { color: PieceColor::Black, piece_type: PieceType::King },
+
+            12 => Piece { color: PieceColor::None, piece_type: PieceType::None },
             _ => panic!("Invalid piece"),
         }
     }

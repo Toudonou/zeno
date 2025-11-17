@@ -1,4 +1,4 @@
-use crate::history::History;
+use crate::history::{History, UndoMove};
 use crate::moves::{Move, MoveType};
 use crate::moves_generator::{generate_move_mask_for_bishop, generate_move_mask_for_rook};
 use crate::piece::{Piece, PieceColor, PieceType};
@@ -50,10 +50,12 @@ pub struct Position {
     half_move_clock: u8,
 
     hash: u64,
+    history: [UndoMove; 1usize << 15],
+    history_count: usize,
 }
 
 impl Position {
-    pub fn from_fen(fen: &str, history: &mut History) -> Position {
+    pub fn from_fen(fen: &str) -> Position {
         let mut board_index: u64 = 56;
 
         let mut white_board: u64 = 0;
@@ -199,7 +201,7 @@ impl Position {
         if turn == PieceColor::Black { hash ^= ZOBRIST_SIDE_KEY };
 
 
-        let position = Position {
+        Position {
             white_board,
             black_board,
             pawns_board,
@@ -216,18 +218,13 @@ impl Position {
             number_of_move: number_of_moves_move_part.parse().unwrap(),
             half_move_clock: half_move_part.parse().unwrap(),
             hash,
-        };
-
-        history.clear();
-        history.save_position(&position);
-
-        position
+            history: [UndoMove::default(); 1usize << 15],
+            history_count: 0,
+        }
     }
 
     #[inline(always)]
-    pub fn make_move(&mut self, mov: &Move, history: &mut History) {
-        history.save_position(&self);
-
+    pub fn make_move(&mut self, mov: &Move) {
         let source: u8 = mov.source();
         let destination: u8 = mov.destination();
         let move_type = mov.move_type();
@@ -238,6 +235,9 @@ impl Position {
         let destination_piece = self.get_piece_on_square(&destination);
 
         let old_castling_rights = self.castling_rights;
+
+        self.history[self.history_count] = UndoMove::new(self);
+        self.history_count += 1;
 
         self.hash ^= ZOBRIST_SIDE_KEY;
 
@@ -442,6 +442,31 @@ impl Position {
     }
 
     #[inline(always)]
+    pub fn undo_last_move(&mut self) {
+        self.history_count -= 1;
+        let last_move_info = &self.history[self.history_count];
+
+        self.white_board = last_move_info.white_board;
+        self.black_board = last_move_info.black_board;
+
+        self.pawns_board = last_move_info.pawns_board;
+        self.knights_board = last_move_info.knights_board;
+        self.bishops_board = last_move_info.bishops_board;
+        self.rooks_board = last_move_info.rooks_board;
+        self.queens_board = last_move_info.queens_board;
+        self.kings_board = last_move_info.kings_board;
+
+        self.hash = last_move_info.hash;
+
+        self.turn = last_move_info.turn;
+        self.castling_rights = last_move_info.castling_rights;
+        self.white_king_square = last_move_info.white_king_square;
+        self.black_king_square = last_move_info.black_king_square;
+        self.en_passant_file = last_move_info.en_passant_file;
+        self.half_move_clock = last_move_info.half_move_clock;
+    }
+
+    #[inline(always)]
     pub fn is_square_attack_by(&self, square: &u8, attacker_color: &PieceColor) -> bool {
         let board = self.white_board | self.black_board;
 
@@ -534,17 +559,23 @@ impl Position {
     }
 
     #[inline(always)]
-    pub fn get_king_coord(&self, color: &PieceColor) -> u8 {
-        match color {
-            PieceColor::White => self.white_king_coord,
-            PieceColor::Black => self.black_king_coord,
-            PieceColor::None => panic!("Invalid color"),
-        }
     pub fn get_white_king_square(&self) -> u8 { self.white_king_square }
 
     #[inline(always)]
     pub fn get_black_king_square(&self) -> u8 { self.black_king_square }
 
+    #[inline(always)]
+    pub fn get_repetition_count_for_current_position(&self) -> usize {
+        // self.history.iter().take(self.history_count).filter(|k| (**k).hash == self.hash).count()
+        let mut count = 0;
+
+        for i in 0..self.history_count {
+            if self.history[i].hash == self.hash {
+                count += 1;
+            }
+        }
+
+        count
     }
 
     #[inline(always)]
@@ -629,6 +660,15 @@ impl Position {
 
     #[inline(always)]
     pub fn get_hash(&self) -> u64 { self.hash }
+
+    #[inline(always)]
+    pub fn get_castling_rights(&self) -> u8 { self.castling_rights }
+
+    #[inline(always)]
+    pub fn get_number_of_move(&self) -> u8 { self.number_of_move }
+
+    #[inline(always)]
+    pub fn get_half_move_clock(&self) -> u8 { self.half_move_clock }
 
     pub fn print_board(&self) {
         for rank in (0..=7).rev() {

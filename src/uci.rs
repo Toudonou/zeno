@@ -11,9 +11,9 @@ use crate::utils::START_POSITION;
 
 pub fn uci_loop() {
     let mut history = History::new();
-    let mut position = Position::from_fen(START_POSITION, &mut history);
+    let mut position = Position::from_fen(START_POSITION);
     let mut searcher = Searcher::new();
-    perft::perft(1, &position); // To init the lookup tables
+    perft::perft(1, &mut position); // To init the lookup tables
 
     loop {
         position.print_board();
@@ -25,10 +25,10 @@ pub fn uci_loop() {
             "uci" => uci_commands(),
             "isready" => println!("readyok"),
             "ucinewgame" => {
-                position = Position::from_fen(START_POSITION, &mut history)
+                position = Position::from_fen(START_POSITION)
             }
-            c if c.starts_with("position") => uci_position(command, &mut position, &mut history),
-            c if c.starts_with("go") => go(&mut position, &mut searcher, &mut history),
+            c if c.starts_with("position") => uci_position(command, &mut position),
+            c if c.starts_with("go") => go(&mut position, &mut searcher),
             "stop" => {}
             "quit" => break,
             _ => println!("Command not found {}", command),
@@ -63,29 +63,29 @@ fn uci_commands() {
 }
 
 
-fn uci_position(command: &str, position: &mut Position, history: &mut History) {
+fn uci_position(command: &str, position: &mut Position) {
     if command.starts_with("position fen") {
         let is_there_some_moves = command.find("moves");
         match is_there_some_moves {
             None => {
-                *position = Position::from_fen(&command[13usize..], history);
+                *position = Position::from_fen(&command[13usize..]);
             }
             Some(moves_index) => {
-                *position = Position::from_fen(&command[13usize..moves_index], history);
+                *position = Position::from_fen(&command[13usize..moves_index]);
 
                 let moves = command[(moves_index + "moves".len())..].split_whitespace();
-                moves.for_each(|move_string| position.make_move(&uci_move(move_string, position), history));
+                moves.for_each(|move_string| position.make_move(&uci_move(move_string, position)));
             }
         }
     }
 
     if command.starts_with("position startpos") {
-        *position = Position::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", history);
+        *position = Position::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
     }
 
     if command.starts_with("position startpos moves") {
         let moves = command[23usize..].split_whitespace();
-        moves.for_each(|move_string| position.make_move(&uci_move(move_string, position), history));
+        moves.for_each(|move_string| position.make_move(&uci_move(move_string, position)));
     }
 }
 
@@ -135,9 +135,9 @@ fn uci_move(move_string: &str, position: &Position) -> Move {
     Move::new(source, destination, move_type)
 }
 
-fn go(position: &mut Position, searcher: &mut Searcher, history: &mut History) {
+fn go(position: &mut Position, searcher: &mut Searcher) {
     let it = Instant::now();
-    let best_move = searcher.search(&position, history);
+    let best_move = searcher.search(position);
 
     println!("Evaluation: {}", searcher.get_evaluation());
     println!("Number of nodes visited: {} in {:?}", searcher.get_number_of_nodes_visited(), it.elapsed());
