@@ -91,8 +91,8 @@ fn tapered_evaluation(position: &Position) -> i32 {
     phase = phase.max(0); // If we have a custom setup with more pieces than a normal chess board start position
     phase = (phase * 256 + (TOTAL_PHASE / 2)) / TOTAL_PHASE; // phase from [0, 24] to [0, 256]
 
-    eg_evaluation += king_cornering(&position.get_king_coord(&PieceColor::White), &position.get_king_coord(&PieceColor::Black));
-    eg_evaluation -= king_cornering(&position.get_king_coord(&PieceColor::Black), &position.get_king_coord(&PieceColor::White));
+    eg_evaluation += king_cornering(&position.get_white_king_square(), &position.get_black_king_square());
+    eg_evaluation -= king_cornering(&position.get_black_king_square(), &position.get_white_king_square());
 
     ((mg_evaluation * (256 - phase)) + (eg_evaluation * phase)) / 256
 }

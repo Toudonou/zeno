@@ -40,8 +40,8 @@ pub struct Position {
     queens_board: u64,
     kings_board: u64,
 
-    white_king_coord: u8,
-    black_king_coord: u8,
+    white_king_square: u8,
+    black_king_square: u8,
     castling_rights: u8, // 0 0 0 0 0(q) 0(k) 0(Q) 0(K)
     en_passant_file: u8,
 
@@ -208,8 +208,8 @@ impl Position {
             rooks_board,
             queens_board,
             kings_board,
-            white_king_coord: (white_board & kings_board).trailing_zeros() as u8,
-            black_king_coord: (black_board & kings_board).trailing_zeros() as u8,
+            white_king_square: (white_board & kings_board).trailing_zeros() as u8,
+            black_king_square: (black_board & kings_board).trailing_zeros() as u8,
             castling_rights,
             en_passant_file,
             turn,
@@ -308,11 +308,11 @@ impl Position {
                 match source_piece.color {
                     PieceColor::None => {}
                     PieceColor::White => {
-                        self.white_king_coord = destination;
+                        self.white_king_square = destination;
                         self.castling_rights &= 0b11111100;
                     }
                     PieceColor::Black => {
-                        self.black_king_coord = destination;
+                        self.black_king_square = destination;
                         self.castling_rights &= 0b11110011;
                     }
                 }
@@ -487,8 +487,8 @@ impl Position {
     pub fn is_check(&self, color: &PieceColor) -> bool {
         self.is_square_attack_by(
             &match color {
-                PieceColor::White => self.white_king_coord,
-                PieceColor::Black => self.black_king_coord,
+                PieceColor::White => self.white_king_square,
+                PieceColor::Black => self.black_king_square,
                 PieceColor::None => panic!("Invalid color"),
             },
             &color.opposite(),
@@ -540,6 +540,11 @@ impl Position {
             PieceColor::Black => self.black_king_coord,
             PieceColor::None => panic!("Invalid color"),
         }
+    pub fn get_white_king_square(&self) -> u8 { self.white_king_square }
+
+    #[inline(always)]
+    pub fn get_black_king_square(&self) -> u8 { self.black_king_square }
+
     }
 
     #[inline(always)]

@@ -31,7 +31,7 @@ pub fn generate_pseudo_legal_moves(position: &Position) -> Vec<Move> {
             non_own_pieces = !position.get_white_board();
             generate_moves_pawn(position, &PieceColor::White, &en_passant, &mut moves);
 
-            let king_square = position.get_king_coord(&PieceColor::White);
+            let king_square = position.get_white_king_square();
             if position.can_white_short_castle() {
                 moves.push(Move::new(
                     king_square,
@@ -58,7 +58,7 @@ pub fn generate_pseudo_legal_moves(position: &Position) -> Vec<Move> {
             non_own_pieces = !position.get_black_board();
             generate_moves_pawn(position, &PieceColor::Black, &en_passant, &mut moves);
 
-            let king_square = position.get_king_coord(&PieceColor::Black);
+            let king_square = position.get_black_king_square();
             if position.can_black_short_castle() {
                 moves.push(Move::new(
                     king_square,
