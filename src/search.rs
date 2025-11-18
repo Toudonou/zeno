@@ -33,14 +33,14 @@ impl Searcher {
         self.number_of_nodes_visited = 0;
         self.timer = Instant::now();
 
-        let result = self.negamax_alpha_beta_with_tt(position, history, transposition_table, 1, self.max_depth, -i32::MAX, i32::MAX, position.get_turn() as i32);
+        let result = self.pv_search(position, history, transposition_table, 1, self.max_depth, -i32::MAX, i32::MAX, position.get_turn() as i32);
         self.pv_line = result.pv_line.clone();
         self.evaluation = result.score * position.get_turn() as i32;
 
         result.best_move
     }
 
-    fn negamax_alpha_beta_with_tt(&mut self, position: &Position, mut history: Option<&mut History>, mut transposition_table: Option<&mut TranspositionTable>, current_ply: i32, max_ply: i32, mut alpha: i32, beta: i32, point_of_view: i32) -> PosEval {
+    fn pv_search(&mut self, position: &Position, mut history: Option<&mut History>, mut transposition_table: Option<&mut TranspositionTable>, current_ply: i32, max_ply: i32, mut alpha: i32, beta: i32, point_of_view: i32) -> PosEval {
         self.number_of_nodes_visited += 1;
 
         // Check for threefold repetition
@@ -80,18 +80,33 @@ impl Searcher {
         let turn = position.get_turn();
         let mut no_legal_moves = true;
 
-        let mut best_eval = PosEval { best_move: None, score: Evaluation::Score(-i32::MAX), pv_line: vec![] };
+        let mut best_eval = PosEval { best_move: None, score: Evaluation::Score(alpha), pv_line: vec![] };
 
         for mov in &moves {
             let mut temp_position = position.clone();
             temp_position.make_move(&mov, history.as_deref_mut());
             if !temp_position.is_check(&turn) {
-                no_legal_moves = false;
+                let mut eval: PosEval;
 
-                let mut eval = self.negamax_alpha_beta_with_tt(&temp_position, history.as_deref_mut(), transposition_table.as_deref_mut(), current_ply + 1, max_ply, -beta, -alpha, -point_of_view);
-                eval.score *= -1;
+                // In some sense, it is the first move
+                if no_legal_moves {
+                    no_legal_moves = false;
 
-                if eval.score.value() > best_eval.score.value() {
+                    eval = self.pv_search(&temp_position, history.as_deref_mut(), transposition_table.as_deref_mut(), current_ply + 1, max_ply, -beta, -alpha, -point_of_view);
+                    eval.score *= -1;
+                } else {
+                    eval = self.pv_search(&temp_position, history.as_deref_mut(), transposition_table.as_deref_mut(), current_ply + 1, max_ply, -alpha - 1, -alpha, -point_of_view);
+                    eval.score *= -1;
+
+                    if alpha < eval.score.value() && eval.score.value() < beta {
+                        eval = self.pv_search(&temp_position, history.as_deref_mut(), transposition_table.as_deref_mut(), current_ply + 1, max_ply, -beta, -alpha, -point_of_view);
+                        eval.score *= -1;
+                    }
+                }
+
+                if eval.score.value() > alpha {
+                    alpha = eval.score.value();
+
                     best_eval.best_move = Some(mov.clone());
                     best_eval.score = eval.score;
 
@@ -100,7 +115,6 @@ impl Searcher {
                     best_eval.pv_line.extend(eval.pv_line.clone());
                 }
 
-                alpha = alpha.max(eval.score.value());
                 if alpha >= beta {
                     history.as_deref_mut().unwrap().pop_last_entry();
                     break;

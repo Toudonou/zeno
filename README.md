@@ -35,7 +35,7 @@ including castling and en passant.
     - [x] Quiescence search
     - [ ] Null move pruning
     - [ ] Late move reductions
-    - [ ] Principal Variation Search (PVS)
+    - [x] [Principal Variation Search (PVS)](https://en.wikipedia.org/wiki/Principal_variation_search)
     - [ ] Aspiration windows
     - [ ] Multi-threading
 - [x] Time management(partially)

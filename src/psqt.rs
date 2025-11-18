@@ -1,5 +1,5 @@
 // Value from https://www.chessprogramming.org/PeSTO%27s_Evaluation_Function
-// Your piece values
+
 static MG_PAWN_VALUE:   i32 = 100;
 static MG_KNIGHT_VALUE: i32 = 320;
 static MG_BISHOP_VALUE: i32 = 330;

@@ -4,6 +4,8 @@ use crate::piece::PieceType;
 
 static TT_MOVE_SCORE: i32 = 500_000;
 static PROMOTION_MOVE_SCORE: i32 = 400_000;
+static CASTLE_MOVE_SCORE: i32 = 100_000;
+static EN_PASSANT_MOVE_SCORE: i32 = 6002;
 
 //https://open-chess.org/viewtopic.php?t=3058
 static MVV_LVA: [[i32; 6]; 6] = [
@@ -39,13 +41,16 @@ fn evaluate_move(mov: &Move, position: &Position, tt_move: &Move) -> i32 {
     }
 
     // Promotion bonus
-    match mov.move_type() {
-        MoveType::PawnToKnight => score += PROMOTION_MOVE_SCORE + 300,
-        MoveType::PawnToBishop => score += PROMOTION_MOVE_SCORE + 400,
-        MoveType::PawnToRook => score += PROMOTION_MOVE_SCORE + 500,
-        MoveType::PawnToQueen => score += PROMOTION_MOVE_SCORE + 600,
-        _ => {}
-    }
+    score += match mov.move_type() {
+        MoveType::Normal => 0,
+        MoveType::ShortCastle => CASTLE_MOVE_SCORE,
+        MoveType::LongCastle => CASTLE_MOVE_SCORE,
+        MoveType::EnPassant => EN_PASSANT_MOVE_SCORE,
+        MoveType::PawnToKnight => PROMOTION_MOVE_SCORE + 300,
+        MoveType::PawnToBishop => PROMOTION_MOVE_SCORE + 400,
+        MoveType::PawnToRook => PROMOTION_MOVE_SCORE + 500,
+        MoveType::PawnToQueen => PROMOTION_MOVE_SCORE + 600,
+    };
 
     score
 }
