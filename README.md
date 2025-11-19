@@ -31,7 +31,7 @@ including castling and en passant.
       - [ ] Static exchange evaluation
     - [x] Iterative deepening
     - [x] [Transposition table](https://en.wikipedia.org/wiki/Negamax#Negamax_with_alpha_beta_pruning_and_transposition_tables)
-    - [ ] Killer moves
+    - [x] Killer moves
     - [x] Quiescence search
     - [ ] Null move pruning
     - [ ] Late move reductions

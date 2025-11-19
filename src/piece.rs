@@ -37,6 +37,21 @@ pub enum PieceType {
     King,
 }
 
+impl PieceType {
+    #[inline(always)]
+    pub fn to_usize(&self) -> usize {
+        match self {
+            PieceType::Pawn => 0,
+            PieceType::Knight => 1,
+            PieceType::Bishop => 2,
+            PieceType::Rook => 3,
+            PieceType::Queen => 4,
+            PieceType::King => 5,
+            PieceType::None => panic!("Cannot convert None to usize"),
+        }
+    }
+}
+
 #[derive(Clone, Debug, Eq, Hash, PartialEq, Copy)]
 pub struct Piece {
     pub color: PieceColor,

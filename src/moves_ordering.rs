@@ -1,11 +1,12 @@
 use crate::moves::{Move, MoveType};
-use crate::position::Position;
 use crate::piece::PieceType;
+use crate::position::Position;
 
 static PV_MOVE_SCORE: i32 = 600_000;
 static TT_MOVE_SCORE: i32 = 500_000;
 static PROMOTION_MOVE_SCORE: i32 = 400_000;
 static CASTLE_MOVE_SCORE: i32 = 100_000;
+static KILLER_MOVE_SCORE: i32 = 2000;
 static EN_PASSANT_MOVE_SCORE: i32 = 6002;
 
 //https://open-chess.org/viewtopic.php?t=3058
@@ -20,15 +21,17 @@ static MVV_LVA: [[i32; 6]; 6] = [
 ];
 
 #[inline(always)]
-pub fn order_moves(moves: &mut Vec<Move>, position: &Position, pv_move: &Option<Move>, tt_move: &Option<Move>) {
+pub fn order_moves(moves: &mut Vec<Move>, position: &Position, pv_move: &Option<Move>, tt_move: &Option<Move>, killers: &Option<(Move, Move)>) {
     let pv_move = pv_move.unwrap_or(Move::new(0, 0, MoveType::Normal));
     let tt_move = tt_move.unwrap_or(Move::new(0, 0, MoveType::Normal));
 
-    moves.sort_by(|a, b| evaluate_move(b, position, &pv_move, &tt_move).cmp(&evaluate_move(a, position, &pv_move, &tt_move)));
+    let killer = killers.unwrap_or((Move::new(0, 0, MoveType::Normal), Move::new(0, 0, MoveType::Normal)));
+
+    moves.sort_by(|a, b| evaluate_move(b, position, &pv_move, &tt_move, &killer).cmp(&evaluate_move(a, position, &pv_move, &tt_move, &killer)));
 }
 
 #[inline(always)]
-fn evaluate_move(mov: &Move, position: &Position, pv_move: &Move, tt_move: &Move) -> i32 {
+fn evaluate_move(mov: &Move, position: &Position, pv_move: &Move, tt_move: &Move, killers: &(Move, Move)) -> i32 {
     let mut score = 0;
     let source_piece_type = position.get_piece_on_square(&mov.source()).piece_type;
     let destination_piece_type = position.get_piece_on_square(&mov.destination()).piece_type;
@@ -41,7 +44,23 @@ fn evaluate_move(mov: &Move, position: &Position, pv_move: &Move, tt_move: &Move
 
     // MVV_LVA:
     if destination_piece_type != PieceType::None {
-        score += MVV_LVA[source_piece_type as usize - 1][destination_piece_type as usize - 1];
+        score += MVV_LVA[source_piece_type.to_usize()][destination_piece_type.to_usize()];
+    } else {
+        if *mov == (*killers).0 {
+            score += KILLER_MOVE_SCORE + 500;
+        } else if *mov == (*killers).1 {
+            score += KILLER_MOVE_SCORE;
+        } else {
+            score += match source_piece_type {
+                PieceType::Pawn => 100,
+                PieceType::Knight => 90,
+                PieceType::Bishop => 80,
+                PieceType::Rook => 70,
+                PieceType::Queen => 50,
+                PieceType::King => 0,
+                PieceType::None => 0,
+            }
+        }
     }
 
     // Promotion bonus

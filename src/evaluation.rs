@@ -41,6 +41,9 @@ static DARK_SQUARES_MAP: [i32; 64] = [
     0, 1, 0, 1, 0, 1, 0, 1,
 ];
 
+pub static MATERIAL_WEIGHT: i32 = 70;
+pub static PSQT_WEIGHT: i32 = 100 - MATERIAL_WEIGHT;
+
 #[inline(always)]
 pub fn evaluate(position: &Position) -> i32 {
     tapered_evaluation(position)
@@ -55,15 +58,15 @@ fn tapered_evaluation(position: &Position) -> i32 {
 
     for i in 0..6 {
         let mut board = boards[i] & position.get_white_board();
-        let material_weight = 70;
+
         while board != 0 {
             number_of_pieces[i] += 1;
 
             let square = board.trailing_zeros();
 
             let index = (8 * (7 - (square >> 3)) + (square & 7)) as usize;
-            mg_evaluation += (MG_PIECES_VALUES[i] * material_weight + MG_PIECES_SQUARES_TABLES[i][index] * (100 - material_weight)) / 100;
-            eg_evaluation += (EG_PIECES_VALUES[i] * material_weight + EG_PIECES_SQUARES_TABLES[i][index] * (100 - material_weight)) / 100;
+            mg_evaluation += (MG_PIECES_VALUES[i] * MATERIAL_WEIGHT + MG_PIECES_SQUARES_TABLES[i][index] * PSQT_WEIGHT) / 100;
+            eg_evaluation += (EG_PIECES_VALUES[i] * MATERIAL_WEIGHT + EG_PIECES_SQUARES_TABLES[i][index] * PSQT_WEIGHT) / 100;
 
             board &= board - 1;
         }
@@ -74,8 +77,8 @@ fn tapered_evaluation(position: &Position) -> i32 {
 
             let square = board.trailing_zeros() as usize;
 
-            mg_evaluation -= (MG_PIECES_VALUES[i] * material_weight + MG_PIECES_SQUARES_TABLES[i][square] * (100 - material_weight)) / 100;
-            eg_evaluation -= (EG_PIECES_VALUES[i] * material_weight + EG_PIECES_SQUARES_TABLES[i][square] * (100 - material_weight)) / 100;
+            mg_evaluation -= (MG_PIECES_VALUES[i] * MATERIAL_WEIGHT + MG_PIECES_SQUARES_TABLES[i][square] * PSQT_WEIGHT) / 100;
+            eg_evaluation -= (EG_PIECES_VALUES[i] * MATERIAL_WEIGHT + EG_PIECES_SQUARES_TABLES[i][square] * PSQT_WEIGHT) / 100;
 
             board &= board - 1;
         }
@@ -87,8 +90,11 @@ fn tapered_evaluation(position: &Position) -> i32 {
     phase = phase.max(0); // If we have a custom setup with more pieces than a normal chess board start position
     phase = (phase * 256 + (TOTAL_PHASE / 2)) / TOTAL_PHASE; // phase from [0, 24] to [0, 256]
 
-    eg_evaluation += king_cornering(&position.get_white_king_square(), &position.get_black_king_square());
-    eg_evaluation -= king_cornering(&position.get_black_king_square(), &position.get_white_king_square());
+    // The game is about 80% the phase
+    if phase > 180 {
+        eg_evaluation += king_cornering(&position.get_white_king_square(), &position.get_black_king_square());
+        eg_evaluation -= king_cornering(&position.get_black_king_square(), &position.get_white_king_square());
+    }
 
     ((mg_evaluation * (256 - phase)) + (eg_evaluation * phase)) / 256
 }

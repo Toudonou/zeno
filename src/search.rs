@@ -1,7 +1,7 @@
 use std::time::{Instant};
 use crate::evaluation::evaluate;
 use crate::history::History;
-use crate::moves::Move;
+use crate::moves::{Move, MoveType};
 use crate::moves_generator::generate_pseudo_legal_moves;
 use crate::moves_ordering::order_moves;
 use crate::pos_eval::{Evaluation, PosEval};
@@ -25,10 +25,23 @@ pub struct Searcher {
     number_of_nodes_visited: i32,
     evaluation: Evaluation,
     pv_line: Vec<Vec<Move>>,
+    killers: Vec<(Move, Move)>,
 }
 
 impl Searcher {
-    pub fn new() -> Searcher { Searcher { game_state: GameState::InProgress, timer: Instant::now(), thinking_time: 3000, max_depth: 40, is_search_cancel_early: false, number_of_nodes_visited: 0, evaluation: Evaluation::Score(0), pv_line: vec![] } }
+    pub fn new() -> Searcher {
+        Searcher {
+            game_state: GameState::InProgress,
+            timer: Instant::now(),
+            thinking_time: 3000,
+            max_depth: 6,
+            is_search_cancel_early: false,
+            number_of_nodes_visited: 0,
+            evaluation: Evaluation::Score(0),
+            pv_line: vec![],
+            killers: vec![],
+        }
+    }
 
     pub fn search(&mut self, position: &Position, mut history: Option<&mut History>, mut transposition_table: Option<&mut TranspositionTable>, thinking_time: u128) -> Option<Move> {
         self.thinking_time = thinking_time;
@@ -38,20 +51,9 @@ impl Searcher {
         self.is_search_cancel_early = false;
         self.evaluation = Evaluation::Score(0);
 
-        // The whole "last_pv_line" thing is to reuse the previous work done by the engine
-        // It has to be removed  if I can achieve some speed improvement
-
-        let mut last_pv_line = if let Some(last_line) = self.pv_line.last() {
-            last_line.clone()
-        } else { vec![] };
-
-        self.pv_line = Vec::with_capacity(self.max_depth as usize + 1);
-        if last_pv_line.len() > 2 {
-            last_pv_line.remove(1);
-            last_pv_line.remove(0);
-        }
+        self.pv_line.clear();
         for _ in 0..=self.max_depth {
-            self.pv_line.push(last_pv_line.clone());
+            self.killers.push((Move::new(0, 0, MoveType::Normal), Move::new(0, 0, MoveType::Normal)));
         }
 
         let mut best_move: Option<Move> = None;
@@ -62,19 +64,15 @@ impl Searcher {
             let result = self.pv_search(position, history.as_deref_mut(), transposition_table.as_deref_mut(), 1, depth, -i32::MAX, i32::MAX, position.get_turn() as i32);
 
             if !self.is_search_cancel_early {
-                self.pv_line[depth as usize] = result.pv_line.clone();
+                self.pv_line.push(result.pv_line.clone());
                 self.evaluation = result.score * position.get_turn() as i32;
                 best_move = result.best_move;
-            } else {
-                for i in (depth as usize..self.max_depth as usize).rev() {
-                    self.pv_line.remove(i);
-                }
             }
         }
 
-        for i in 0..self.pv_line.len() {
-            print!("Depth {}: ", i + 1);
-            for mov in self.pv_line.get(i).unwrap() {
+        for depth in 0..self.pv_line.len() {
+            print!("Depth {}: ", depth + 1);
+            for mov in self.pv_line[depth].clone() {
                 print!("{} ", mov.to_uci_string());
             }
             println!();
@@ -141,7 +139,7 @@ impl Searcher {
 
         let original_alpha = alpha;
         let mut moves = generate_pseudo_legal_moves(position);
-        order_moves(&mut moves, position, &pv_move, &tt_move);
+        order_moves(&mut moves, position, &pv_move, &tt_move, &Some(self.killers[current_ply as usize]));
 
         let turn = position.get_turn();
         let mut no_legal_moves = true;
@@ -182,6 +180,13 @@ impl Searcher {
                 }
 
                 if alpha >= beta {
+                    if position.get_piece_on_square(&mov.destination()).piece_type != PieceType::None {
+                        if *mov != self.killers[current_ply as usize].0 && *mov != self.killers[current_ply as usize].1 {
+                            self.killers[current_ply as usize].1 = self.killers[current_ply as usize].0;
+                            self.killers[current_ply as usize].0 = *mov;
+                        }
+                    }
+
                     history.as_deref_mut().unwrap().pop_last_entry();
                     break;
                 }
@@ -225,7 +230,7 @@ impl Searcher {
         if best_eval.score.value() > alpha { alpha = best_eval.score.value(); }
 
         let mut moves = generate_pseudo_legal_moves(position);
-        order_moves(&mut moves, position, &None, &None);
+        order_moves(&mut moves, position, &None, &None, &None);
 
         let turn = position.get_turn();
 
