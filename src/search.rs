@@ -19,7 +19,7 @@ pub enum GameState {
 pub struct Searcher {
     game_state: GameState,
     timer: Instant,
-    max_thinking_time: u128,
+    thinking_time: u128,
     max_depth: i32,
     is_search_cancel_early: bool,
     number_of_nodes_visited: i32,
@@ -28,28 +28,52 @@ pub struct Searcher {
 }
 
 impl Searcher {
-    pub fn new() -> Searcher { Searcher { game_state: GameState::InProgress, timer: Instant::now(), max_thinking_time: 3000, max_depth: 40, is_search_cancel_early: false, number_of_nodes_visited: 0, evaluation: Evaluation::Score(0), pv_line: vec![] } }
+    pub fn new() -> Searcher { Searcher { game_state: GameState::InProgress, timer: Instant::now(), thinking_time: 3000, max_depth: 40, is_search_cancel_early: false, number_of_nodes_visited: 0, evaluation: Evaluation::Score(0), pv_line: vec![] } }
 
-    pub fn search(&mut self, position: &Position, mut history: Option<&mut History>, mut transposition_table: Option<&mut TranspositionTable>) -> Option<Move> {
+    pub fn search(&mut self, position: &Position, mut history: Option<&mut History>, mut transposition_table: Option<&mut TranspositionTable>, thinking_time: u128) -> Option<Move> {
+        self.thinking_time = thinking_time;
         self.timer = Instant::now();
 
         self.number_of_nodes_visited = 0;
         self.is_search_cancel_early = false;
-
         self.evaluation = Evaluation::Score(0);
+
+        // The whole "last_pv_line" thing is to reuse the previous work done by the engine
+        // It has to be removed  if I can achieve some speed improvement
+
+        let mut last_pv_line = if let Some(last_line) = self.pv_line.last() {
+            last_line.clone()
+        } else { vec![] };
+
         self.pv_line = Vec::with_capacity(self.max_depth as usize);
+        if last_pv_line.len() > 2 {
+            last_pv_line.remove(1);
+            last_pv_line.remove(0);
+
+            for _ in 0..self.max_depth {
+                self.pv_line.push(last_pv_line.clone());
+            }
+        } else {
+            for _ in 0..self.max_depth {
+                self.pv_line.push(vec![]);
+            }
+        }
 
         let mut best_move: Option<Move> = None;
 
         for depth in 1..=self.max_depth {
-            if self.timer.elapsed().as_millis() > self.max_thinking_time { break; }
+            if self.timer.elapsed().as_millis() > self.thinking_time { break; }
 
             let result = self.pv_search(position, history.as_deref_mut(), transposition_table.as_deref_mut(), 1, depth, -i32::MAX, i32::MAX, position.get_turn() as i32);
 
             if !self.is_search_cancel_early {
-                self.pv_line.push(result.pv_line.clone());
+                self.pv_line[depth as usize] = result.pv_line.clone();
                 self.evaluation = result.score * position.get_turn() as i32;
                 best_move = result.best_move;
+            } else {
+                for i in (depth as usize..self.max_depth as usize).rev() {
+                    self.pv_line.remove(i);
+                }
             }
         }
 
@@ -170,7 +194,7 @@ impl Searcher {
 
             history.as_deref_mut().unwrap().pop_last_entry();
 
-            if self.timer.elapsed().as_millis() > self.max_thinking_time {
+            if self.timer.elapsed().as_millis() > self.thinking_time {
                 self.is_search_cancel_early = true;
                 break;
             }
@@ -232,7 +256,7 @@ impl Searcher {
                 }
             }
 
-            if self.timer.elapsed().as_millis() > self.max_thinking_time { break; }
+            if self.timer.elapsed().as_millis() > self.thinking_time { break; }
         }
 
         best_eval

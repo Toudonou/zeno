@@ -5,7 +5,8 @@ use std::time::Instant;
 use crate::history::History;
 use crate::moves::{Move, MoveType};
 use crate::perft;
-use crate::piece::PieceType;
+use crate::piece::{PieceColor, PieceType};
+use crate::psqt::TOTAL_PHASE;
 use crate::search::Searcher;
 use crate::transposition_table::TranspositionTable;
 use crate::utils::START_POSITION;
@@ -32,7 +33,7 @@ pub fn uci_loop() {
                 position = Position::from_fen(START_POSITION, history.as_deref_mut())
             }
             c if c.starts_with("position") => uci_position(command, &mut position, history.as_deref_mut()),
-            c if c.starts_with("go") => go(&mut position, &mut searcher, history.as_deref_mut(), transposition_table.as_deref_mut()),
+            c if c.starts_with("go") => go(command, &mut position, &mut searcher, history.as_deref_mut(), transposition_table.as_deref_mut()),
             "stop" => {}
             "quit" => break,
             _ => println!("Command not found {}", command),
@@ -141,9 +142,62 @@ pub fn uci_move(move_string: &str, position: &Position) -> Move {
     Move::new(source, destination, move_type)
 }
 
-fn go(position: &mut Position, searcher: &mut Searcher, history: Option<&mut History>, transposition_table: Option<&mut TranspositionTable>) {
+fn go(command: &str, position: &mut Position, searcher: &mut Searcher, history: Option<&mut History>, transposition_table: Option<&mut TranspositionTable>) {
+    let mut search_time: u128 = 60 * 1000;
+
+    if command.starts_with("go infinite") {
+        search_time = 60 * 1000;
+    } else if command.starts_with("go movetime") {
+        search_time = command[("go movetime".len() + 1)..].parse().unwrap();
+    } else if command.starts_with("go wtime") {
+        let mut w_time: u32 = 0;
+        let mut b_time: u32 = 0;
+        let mut w_inc: u32 = 0;
+        let mut b_inc: u32 = 0;
+        let mut moves_to_go: u32 = 0;
+
+        let mut parts = command["go".len() + 1..].split_whitespace();
+
+        while let Some(token) = parts.next() {
+            match token {
+                "wtime" => {
+                    w_time = parts
+                        .next().expect("missing value for wtime")
+                        .parse().expect("invalid wtime");
+                }
+                "btime" => {
+                    b_time = parts
+                        .next().expect("missing value for btime")
+                        .parse().expect("invalid btime");
+                }
+                "winc" => {
+                    w_inc = parts
+                        .next().expect("missing value for winc")
+                        .parse().expect("invalid winc");
+                }
+                "binc" => {
+                    b_inc = parts
+                        .next().expect("missing value for binc")
+                        .parse().expect("invalid binc");
+                }
+                "movestogo" => {
+                    moves_to_go = parts
+                        .next().expect("missing value for movestogo")
+                        .parse().expect("invalid movestogo");
+                }
+                _ => {}
+            }
+        }
+
+        match position.get_turn() {
+            PieceColor::White => search_time = allocate_time(position, w_time, b_time, w_inc, b_inc, moves_to_go),
+            PieceColor::Black => search_time = allocate_time(position, b_time, w_time, b_inc, w_inc, moves_to_go),
+            PieceColor::None => {}
+        }
+    }
+
     let it = Instant::now();
-    let best_move = searcher.search(&position, history, transposition_table);
+    let best_move = searcher.search(&position, history, transposition_table, search_time);
 
     println!("Evaluation: {}", searcher.get_evaluation());
     println!("Number of nodes visited: {} in {:?}", searcher.get_number_of_nodes_visited(), it.elapsed());
@@ -159,4 +213,23 @@ fn go(position: &mut Position, searcher: &mut Searcher, history: Option<&mut His
             println!("bestmove {}", mov.to_uci_string())
         }
     }
+}
+
+fn allocate_time(position: &Position, remaining_time: u32, opponent_time: u32, increment: u32, opponent_increment: u32, move_to_go: u32) -> u128 {
+    let phase = ((position.get_phase() * 256 + TOTAL_PHASE / 2) / TOTAL_PHASE) as u32;
+
+    let estimated_move_to_go: u32 = move_to_go.max(20);
+    let base_time: u32 = remaining_time / estimated_move_to_go + increment;
+
+    let middle_game_factor: u32 = 150;
+    let end_game_factor: u32 = 100;
+
+    let mut allocated_time: u32 = (base_time * (middle_game_factor * (256 - phase) + end_game_factor * phase) / 256) / 100 + increment;
+
+    // Still in the opening
+    if position.get_number_of_move() < 7 {
+        allocated_time = (50 * base_time) / 100 + increment;
+    }
+
+    allocated_time.min((remaining_time * 20) / 100) as u128
 }

@@ -1,6 +1,5 @@
 use crate::position::Position;
-use crate::psqt::{EG_PIECES_SQUARES_TABLES, EG_PIECES_VALUES, MG_PIECES_SQUARES_TABLES, MG_PIECES_VALUES, PHASE_TABLE, TOTAL_PHASE};
-use crate::piece::PieceColor;
+use crate::psqt::{EG_PIECES_SQUARES_TABLES, EG_PIECES_VALUES, MG_PIECES_SQUARES_TABLES, MG_PIECES_VALUES, TOTAL_PHASE};
 
 
 static ARR_CENTER_MANHATTAN_DISTANCE: [i32; 64] = [
@@ -52,8 +51,6 @@ fn tapered_evaluation(position: &Position) -> i32 {
     let mut mg_evaluation: i32 = 0;
     let mut eg_evaluation: i32 = 0;
     let boards: [u64; 6] = [position.get_pawns_board(), position.get_knights_board(), position.get_bishops_board(), position.get_rooks_board(), position.get_queens_board(), position.get_kings_board()];
-    let mut phase = TOTAL_PHASE;
-
     let mut number_of_pieces: [i32; 12] = [0; 12];
 
     for i in 0..6 {
@@ -68,7 +65,6 @@ fn tapered_evaluation(position: &Position) -> i32 {
             mg_evaluation += (MG_PIECES_VALUES[i] * material_weight + MG_PIECES_SQUARES_TABLES[i][index] * (100 - material_weight)) / 100;
             eg_evaluation += (EG_PIECES_VALUES[i] * material_weight + EG_PIECES_SQUARES_TABLES[i][index] * (100 - material_weight)) / 100;
 
-            phase -= PHASE_TABLE[i];
             board &= board - 1;
         }
 
@@ -81,13 +77,13 @@ fn tapered_evaluation(position: &Position) -> i32 {
             mg_evaluation -= (MG_PIECES_VALUES[i] * material_weight + MG_PIECES_SQUARES_TABLES[i][square] * (100 - material_weight)) / 100;
             eg_evaluation -= (EG_PIECES_VALUES[i] * material_weight + EG_PIECES_SQUARES_TABLES[i][square] * (100 - material_weight)) / 100;
 
-            phase -= PHASE_TABLE[i];
             board &= board - 1;
         }
     }
 
     if is_draw_by_insufficient_material(position, number_of_pieces) { return 0; }
 
+    let mut phase = position.get_phase();
     phase = phase.max(0); // If we have a custom setup with more pieces than a normal chess board start position
     phase = (phase * 256 + (TOTAL_PHASE / 2)) / TOTAL_PHASE; // phase from [0, 24] to [0, 256]
 

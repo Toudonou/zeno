@@ -53,7 +53,7 @@ mod evaluation_tests {
 
         let mut searcher = Searcher::new();
         let mut transposition_table = Some(&mut TranspositionTable::new());
-        let search_result = searcher.search(&position, history.as_deref_mut(), transposition_table.as_deref_mut());
+        let search_result = searcher.search(&position, history.as_deref_mut(), transposition_table.as_deref_mut(), 10 * 1000);
 
         assert_eq!(search_result, None);
     }
