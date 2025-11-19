@@ -1,6 +1,6 @@
 use crate::pos_eval::PosEval;
 
-pub static ZENO_TRANSPOSITION_TABLE_SIZE: usize = 64 * 1024 * 1024; // 64MB
+pub static ZENO_TRANSPOSITION_TABLE_SIZE: usize = 256 * 1024 * 1024; // 256MB
 
 
 #[derive(Clone, Copy, PartialEq, Eq)]

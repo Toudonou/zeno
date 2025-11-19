@@ -29,14 +29,14 @@ including castling and en passant.
       - [ ] `PV_MOVE` → `TT_MOVE` → `GOOD_CAPTURES` → `KILLER_MOVES` → `GOOD_QUIET_MOVES` → `BAD_CAPTURES` → `BAD_QUIET_MOVES`
       - [x] MVV_LVA
       - [ ] Static exchange evaluation
-    - [ ] Iterative deepening
+    - [x] Iterative deepening
     - [x] [Transposition table](https://en.wikipedia.org/wiki/Negamax#Negamax_with_alpha_beta_pruning_and_transposition_tables)
     - [ ] Killer moves
     - [x] Quiescence search
     - [ ] Null move pruning
     - [ ] Late move reductions
     - [x] [Principal Variation Search (PVS)](https://en.wikipedia.org/wiki/Principal_variation_search)
-    - [ ] Aspiration windows
+    - [ ] Aspiration window
     - [ ] Multi-threading
 - [x] Time management(partially)
 - [ ] Opening book support

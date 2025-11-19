@@ -4,6 +4,7 @@ mod evaluation_tests {
     use zeno::history::History;
     use zeno::position::Position;
     use zeno::search::Searcher;
+    use zeno::transposition_table::TranspositionTable;
     use zeno::uci::uci_move;
     use zeno::utils::START_POSITION;
 
@@ -51,7 +52,8 @@ mod evaluation_tests {
         moves.for_each(|move_string| position.make_move(&uci_move(move_string, &position), history.as_deref_mut()));
 
         let mut searcher = Searcher::new();
-        let search_result = searcher.search(&position, history.as_deref_mut(), None);
+        let mut transposition_table = Some(&mut TranspositionTable::new());
+        let search_result = searcher.search(&position, history.as_deref_mut(), transposition_table.as_deref_mut());
 
         assert_eq!(search_result, None);
     }

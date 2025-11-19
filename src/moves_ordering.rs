@@ -2,6 +2,7 @@ use crate::moves::{Move, MoveType};
 use crate::position::Position;
 use crate::piece::PieceType;
 
+static PV_MOVE_SCORE: i32 = 600_000;
 static TT_MOVE_SCORE: i32 = 500_000;
 static PROMOTION_MOVE_SCORE: i32 = 400_000;
 static CASTLE_MOVE_SCORE: i32 = 100_000;
@@ -19,19 +20,22 @@ static MVV_LVA: [[i32; 6]; 6] = [
 ];
 
 #[inline(always)]
-pub fn order_moves(moves: &mut Vec<Move>, position: &Position, tt_move: &Option<Move>) {
+pub fn order_moves(moves: &mut Vec<Move>, position: &Position, pv_move: &Option<Move>, tt_move: &Option<Move>) {
+    let pv_move = pv_move.unwrap_or(Move::new(0, 0, MoveType::Normal));
     let tt_move = tt_move.unwrap_or(Move::new(0, 0, MoveType::Normal));
 
-    moves.sort_by(|a, b| evaluate_move(b, position, &tt_move).cmp(&evaluate_move(a, position, &tt_move)));
+    moves.sort_by(|a, b| evaluate_move(b, position, &pv_move, &tt_move).cmp(&evaluate_move(a, position, &pv_move, &tt_move)));
 }
 
 #[inline(always)]
-fn evaluate_move(mov: &Move, position: &Position, tt_move: &Move) -> i32 {
+fn evaluate_move(mov: &Move, position: &Position, pv_move: &Move, tt_move: &Move) -> i32 {
     let mut score = 0;
     let source_piece_type = position.get_piece_on_square(&mov.source()).piece_type;
     let destination_piece_type = position.get_piece_on_square(&mov.destination()).piece_type;
 
-    if mov == tt_move {
+    if mov == pv_move {
+        score = PV_MOVE_SCORE;
+    } else if mov == tt_move {
         score = TT_MOVE_SCORE;
     }
 
