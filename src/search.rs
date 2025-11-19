@@ -45,18 +45,13 @@ impl Searcher {
             last_line.clone()
         } else { vec![] };
 
-        self.pv_line = Vec::with_capacity(self.max_depth as usize);
+        self.pv_line = Vec::with_capacity(self.max_depth as usize + 1);
         if last_pv_line.len() > 2 {
             last_pv_line.remove(1);
             last_pv_line.remove(0);
-
-            for _ in 0..self.max_depth {
-                self.pv_line.push(last_pv_line.clone());
-            }
-        } else {
-            for _ in 0..self.max_depth {
-                self.pv_line.push(vec![]);
-            }
+        }
+        for _ in 0..=self.max_depth {
+            self.pv_line.push(last_pv_line.clone());
         }
 
         let mut best_move: Option<Move> = None;
