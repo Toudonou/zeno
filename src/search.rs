@@ -133,9 +133,11 @@ impl Searcher {
             return self.quiescence_search(position, Some(&mut History::new()), 100, alpha, beta, point_of_view);
         }
 
-        let pv_move = if let Some(current_pv_line) = self.pv_line.get((current_ply - 1) as usize) {
-            current_pv_line.first().copied()
-        } else { None };
+        let mut pv_move = None;
+        if max_ply > 1 {
+            pv_move = self.pv_line_per_depth.get((max_ply - 2) as usize).unwrap().get((current_ply - 1) as usize).copied();
+        }
+
 
         let original_alpha = alpha;
         let mut moves = generate_pseudo_legal_moves(position);
