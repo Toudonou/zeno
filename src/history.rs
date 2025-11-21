@@ -1,7 +1,5 @@
 use crate::position::Position;
 
-const MAX_PLY: usize = 2048;
-
 #[derive(Clone)]
 pub struct History {
     history: Vec<u64>
@@ -9,7 +7,7 @@ pub struct History {
 
 impl History {
     pub fn new() -> History {
-        History { history: Vec::with_capacity(MAX_PLY) }
+        History { history: Vec::with_capacity(2048) }
     }
 
     pub fn save_position(&mut self, position: &Position) {

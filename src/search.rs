@@ -6,8 +6,11 @@ use crate::moves_generator::generate_pseudo_legal_moves;
 use crate::moves_ordering::order_moves;
 use crate::pos_eval::{Evaluation, PosEval};
 use crate::position::Position;
-use crate::piece::PieceType;
 use crate::transposition_table::{TTEntry, TTFlag, TranspositionTable};
+use crate::piece::PieceType;
+use crate::utils::ZENO_INFINITY;
+
+pub static MAX_PLY: i32 = 128;
 
 pub enum GameState {
     InProgress,
@@ -16,16 +19,25 @@ pub enum GameState {
     Draw,
 }
 
+#[derive(Copy, Clone)]
+struct SearchStats {
+    pub number_of_nodes_visited: i32,
+    pub number_of_alpha_beta_cut_off: i32,
+    pub number_of_tt_cut_off: i32,
+    pub number_of_nodes_evaluated: i32,
+}
+
 pub struct Searcher {
     game_state: GameState,
     timer: Instant,
     thinking_time: u128,
     max_depth: i32,
     is_search_cancel_early: bool,
-    number_of_nodes_visited: i32,
+    search_stats: SearchStats,
     evaluation: Evaluation,
-    pv_line: Vec<Vec<Move>>,
+    current_pv_line: Vec<Vec<Move>>,
     killers: Vec<(Move, Move)>,
+    pv_line_per_depth: Vec<Vec<Move>>,
 }
 
 impl Searcher {
@@ -36,10 +48,16 @@ impl Searcher {
             thinking_time: 3000,
             max_depth: 6,
             is_search_cancel_early: false,
-            number_of_nodes_visited: 0,
+            search_stats: SearchStats {
+                number_of_nodes_visited: 0,
+                number_of_alpha_beta_cut_off: 0,
+                number_of_tt_cut_off: 0,
+                number_of_nodes_evaluated: 0,
+            },
             evaluation: Evaluation::Score(0),
-            pv_line: vec![],
+            current_pv_line: vec![],
             killers: vec![],
+            pv_line_per_depth: vec![],
         }
     }
 
@@ -47,81 +65,128 @@ impl Searcher {
         self.thinking_time = thinking_time;
         self.timer = Instant::now();
 
-        self.number_of_nodes_visited = 0;
+        self.search_stats = SearchStats {
+            number_of_nodes_visited: 0,
+            number_of_alpha_beta_cut_off: 0,
+            number_of_tt_cut_off: 0,
+            number_of_nodes_evaluated: 0,
+        };
+
         self.is_search_cancel_early = false;
         self.evaluation = Evaluation::Score(0);
 
-        self.pv_line.clear();
-        for _ in 0..=self.max_depth {
-            self.killers.push((Move::new(0, 0, MoveType::Normal), Move::new(0, 0, MoveType::Normal)));
-        }
+        self.pv_line_per_depth.clear();
+        self.killers.clear();
+        self.killers.resize(
+            (self.max_depth as usize) + 1,
+            (Move::new(0, 0, MoveType::Normal), Move::new(0, 0, MoveType::Normal)),
+        );
 
         let mut best_move: Option<Move> = None;
 
-        for depth in 1..=self.max_depth {
+        let mut final_full_searched_depth = 0;
+        let mut final_stats: SearchStats = SearchStats {
+            number_of_nodes_visited: 0,
+            number_of_alpha_beta_cut_off: 0,
+            number_of_tt_cut_off: 0,
+            number_of_nodes_evaluated: 0,
+        };
+
+        for depth in 1..=self.max_depth as usize {
+            self.current_pv_line = vec![vec![]; depth + 1];
+
             if self.timer.elapsed().as_millis() > self.thinking_time { break; }
 
-            let result = self.pv_search(position, history.as_deref_mut(), transposition_table.as_deref_mut(), 1, depth, -i32::MAX, i32::MAX, position.get_turn() as i32);
+            let result = self.pv_search(position, history.as_deref_mut(), transposition_table.as_deref_mut(), 1, depth as i32, -ZENO_INFINITY, ZENO_INFINITY, position.get_turn() as i32);
 
             if !self.is_search_cancel_early {
-                self.pv_line.push(result.pv_line.clone());
+                final_full_searched_depth = depth;
+                final_stats = self.search_stats;
+
+                self.pv_line_per_depth.push(self.current_pv_line[depth].clone());
                 self.evaluation = result.score * position.get_turn() as i32;
                 best_move = result.best_move;
             }
         }
 
-        for depth in 0..self.pv_line.len() {
+        for depth in 0..self.pv_line_per_depth.len() {
             print!("Depth {}: ", depth + 1);
-            for mov in self.pv_line[depth].clone() {
+            for mov in self.pv_line_per_depth[depth].clone() {
                 print!("{} ", mov.to_uci_string());
             }
             println!();
         }
         println!();
 
+        let branching_factor = if final_full_searched_depth > 1 {
+            (final_stats.number_of_nodes_visited as f64).powf(1.0 / (final_full_searched_depth as f64))
+        } else { 0.0 };
+
+        println!("Search stats");
+        println!("Branching factor: {:.3}", branching_factor);
+        println!("Number of nodes visited: {}", final_stats.number_of_nodes_visited);
+        println!("Alpha cut off rate: {:.3}%", 100f64 * final_stats.number_of_alpha_beta_cut_off as f64 / final_stats.number_of_nodes_visited as f64);
+        println!("TT cut of rate: {:.3}%", 100f64 * final_stats.number_of_tt_cut_off as f64 / final_stats.number_of_nodes_visited as f64);
+        println!("Final node evaluation rate: {:.3}%", 100f64 * final_stats.number_of_nodes_evaluated as f64 / final_stats.number_of_nodes_visited as f64);
+        println!();
+
         best_move
     }
 
     fn pv_search(&mut self, position: &Position, mut history: Option<&mut History>, mut transposition_table: Option<&mut TranspositionTable>, current_ply: i32, max_ply: i32, mut alpha: i32, beta: i32, point_of_view: i32) -> PosEval {
-        self.number_of_nodes_visited += 1;
+        self.search_stats.number_of_nodes_visited += 1;
+
+        let depth = max_ply - current_ply + 1;
+
+        let mut is_full_search = true;
 
         // Check for threefold repetition
         if history.as_deref_mut().unwrap().get_position_occurrences_count(position) >= 3 {
-            return PosEval { best_move: None, score: Evaluation::Score(0), pv_line: vec![] };
+            self.search_stats.number_of_nodes_evaluated += 1;
+
+            self.current_pv_line[depth as usize] = vec![];
+
+            return PosEval { best_move: None, score: Evaluation::Score(0) };
         }
 
         let tt_entry = transposition_table.as_deref_mut().unwrap().get_entry(position.get_hash());
         let mut tt_move: Option<Move> = None;
 
-        match tt_entry {
-            None => {}
-            Some(entry) => {
-                tt_move = entry.pos_eval.best_move;
-                let mut will_return_early = false;
+        if tt_entry.get_flag() != TTFlag::None {
+            tt_move = tt_entry.get_best_move();
+            let mut will_return_early = false;
 
-                if entry.hash == position.get_hash() && entry.depth >= (max_ply - current_ply) {
-                    // https://talkchess.com/posting.php?mode=quote&p=179317&sid=1d8df817122d148f7c7c83bedc9c23e8
-                    if entry.flag == TTFlag::Exact {
-                        will_return_early = false;
-                    } else if entry.flag == TTFlag::LowerBound && entry.pos_eval.score.value() >= beta {
-                        will_return_early = true;
-                    } else if entry.flag == TTFlag::UpperBound && entry.pos_eval.score.value() <= alpha {
-                        will_return_early = true;
-                    }
+            if tt_entry.get_hash() == position.get_hash() && tt_entry.get_depth() as i32 >= (max_ply - current_ply) {
+                if tt_entry.get_flag() == TTFlag::Exact {
+                    will_return_early = true;
+                } else if tt_entry.get_flag() == TTFlag::LowerBound && tt_entry.get_evaluation().value() >= beta {
+                    will_return_early = true;
+                } else if tt_entry.get_flag() == TTFlag::UpperBound && tt_entry.get_evaluation().value() <= alpha {
+                    will_return_early = true;
+                }
 
-                    if will_return_early {
-                        match entry.pos_eval.best_move {
-                            None => return entry.pos_eval,
-                            Some(mov) => {
-                                let mut temp_position = position.clone();
-                                temp_position.make_move(&mov, history.as_deref_mut());
+                if will_return_early {
+                    self.search_stats.number_of_tt_cut_off += 1;
+                    match tt_move {
+                        None => return PosEval { best_move: None, score: tt_entry.get_evaluation() },
+                        Some(mov) => {
+                            let mut temp_position = position.clone();
+                            temp_position.make_move(&mov, history.as_deref_mut());
 
-                                if history.as_deref_mut().unwrap().get_position_occurrences_count(&temp_position) < 3 {
-                                    history.as_deref_mut().unwrap().pop_last_entry();
-                                    return entry.pos_eval;
-                                }
+                            if history.as_deref_mut().unwrap().get_position_occurrences_count(&temp_position) < 3 {
                                 history.as_deref_mut().unwrap().pop_last_entry();
+
+                                self.current_pv_line[depth as usize].clear();
+                                self.current_pv_line[depth as usize].push(mov);
+
+                                if depth > 1 {
+                                    let temp = self.current_pv_line[(depth - 1) as usize].clone();
+                                    self.current_pv_line[depth as usize].extend(temp);
+                                }
+
+                                return PosEval { best_move: tt_move, score: tt_entry.get_evaluation() };
                             }
+                            history.as_deref_mut().unwrap().pop_last_entry();
                         }
                     }
                 }
@@ -130,7 +195,10 @@ impl Searcher {
 
 
         if current_ply > max_ply {
-            return self.quiescence_search(position, Some(&mut History::new()), 100, alpha, beta, point_of_view);
+            self.search_stats.number_of_nodes_evaluated += 1;
+            self.current_pv_line[0] = vec![];
+
+            return self.quiescence_search(position, history.as_deref_mut(), 100, alpha, beta, point_of_view);
         }
 
         let mut pv_move = None;
@@ -140,13 +208,13 @@ impl Searcher {
 
 
         let original_alpha = alpha;
+        let turn = position.get_turn();
+        let mut no_legal_moves = true;
         let mut moves = generate_pseudo_legal_moves(position);
         order_moves(&mut moves, position, &pv_move, &tt_move, &Some(self.killers[current_ply as usize]));
 
-        let turn = position.get_turn();
-        let mut no_legal_moves = true;
 
-        let mut best_eval = PosEval { best_move: None, score: Evaluation::Score(alpha), pv_line: vec![] };
+        let mut best_eval = PosEval { best_move: None, score: Evaluation::Score(alpha) };
 
         for mov in &moves {
             let mut temp_position = position.clone();
@@ -176,9 +244,11 @@ impl Searcher {
                     best_eval.best_move = Some(mov.clone());
                     best_eval.score = eval.score;
 
-                    best_eval.pv_line = Vec::with_capacity(eval.pv_line.len() + 1);
-                    best_eval.pv_line.push(mov.clone());
-                    best_eval.pv_line.extend(eval.pv_line.clone());
+                    self.current_pv_line[depth as usize].clear();
+                    self.current_pv_line[depth as usize].push(mov.clone());
+
+                    let temp = self.current_pv_line[(depth - 1) as usize].clone();
+                    self.current_pv_line[depth as usize].extend(temp);
                 }
 
                 if alpha >= beta {
@@ -190,6 +260,9 @@ impl Searcher {
                     }
 
                     history.as_deref_mut().unwrap().pop_last_entry();
+
+                    self.search_stats.number_of_alpha_beta_cut_off += 1;
+                    is_full_search = false;
                     break;
                 }
             }
@@ -203,28 +276,32 @@ impl Searcher {
         }
 
         if no_legal_moves {
+            self.search_stats.number_of_nodes_evaluated += 1;
+
+            self.current_pv_line[depth as usize] = vec![];
+
             if position.is_check(&turn) {
-                return PosEval { best_move: None, score: Evaluation::MateIn(-current_ply), pv_line: vec![] };
+                return PosEval { best_move: None, score: Evaluation::MateIn(-current_ply) };
             }
-            return PosEval { best_move: None, score: Evaluation::Score(0), pv_line: vec![] };
+            return PosEval { best_move: None, score: Evaluation::Score(0) };
         }
 
 
-        let mut tt_entry = TTEntry { flag: TTFlag::Exact, pos_eval: best_eval.clone(), hash: position.get_hash(), depth: max_ply - current_ply };
-        if tt_entry.pos_eval.score.value() <= original_alpha {
-            tt_entry.flag = TTFlag::UpperBound;
-        } else if tt_entry.pos_eval.score.value() >= beta {
-            tt_entry.flag = TTFlag::LowerBound;
+        let mut tt_entry = TTEntry::new(position.get_hash(), &best_eval.best_move, (max_ply - current_ply) as u32, &TTFlag::Exact, &best_eval.score);
+        if best_eval.score.value() <= original_alpha {
+            tt_entry = TTEntry::new(position.get_hash(), &best_eval.best_move, (max_ply - current_ply) as u32, &TTFlag::UpperBound, &best_eval.score);
+        } else if best_eval.score.value() >= beta {
+            tt_entry = TTEntry::new(position.get_hash(), &best_eval.best_move, (max_ply - current_ply) as u32, &TTFlag::LowerBound, &best_eval.score);
         }
         transposition_table.as_deref_mut().unwrap().add_entry(tt_entry);
+
+        if is_full_search { self.search_stats.number_of_nodes_evaluated += 1; }
 
         best_eval
     }
 
     fn quiescence_search(&mut self, position: &Position, mut history: Option<&mut History>, depth: i32, mut alpha: i32, beta: i32, point_of_view: i32) -> PosEval {
-        self.number_of_nodes_visited += 1;
-
-        let static_evaluation = PosEval { best_move: None, score: Evaluation::Score(evaluate(position) * point_of_view), pv_line: vec![] };
+        let static_evaluation = PosEval { best_move: None, score: Evaluation::Score(evaluate(position) * point_of_view) };
         if depth <= 0 { return static_evaluation; }
 
         let mut best_eval = static_evaluation;
@@ -250,10 +327,6 @@ impl Searcher {
                     if eval.score.value() > best_eval.score.value() {
                         best_eval.best_move = Some(mov.clone());
                         best_eval.score = eval.score;
-
-                        best_eval.pv_line.clear();
-                        best_eval.pv_line.push(mov.clone());
-                        best_eval.pv_line.extend(eval.pv_line.clone());
                     }
                 }
             }
@@ -264,7 +337,7 @@ impl Searcher {
         best_eval
     }
 
-    pub fn get_pv_line(&self) -> Vec<Move> { self.pv_line.last().unwrap().clone() }
-    pub fn get_number_of_nodes_visited(&self) -> i32 { self.number_of_nodes_visited }
+    pub fn get_pv_line(&self) -> Vec<Move> { self.pv_line_per_depth.last().unwrap().clone() }
+    pub fn get_number_of_nodes_visited(&self) -> i32 { self.search_stats.number_of_nodes_visited }
     pub fn get_evaluation(&self) -> Evaluation { self.evaluation }
 }

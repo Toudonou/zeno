@@ -198,9 +198,9 @@ fn go(command: &str, position: &mut Position, searcher: &mut Searcher, history: 
 
     let it = Instant::now();
     let best_move = searcher.search(&position, history, transposition_table, search_time);
+    println!("Finish in {:?}", it.elapsed());
 
     println!("Evaluation: {}", searcher.get_evaluation());
-    println!("Number of nodes visited: {} in {:?}", searcher.get_number_of_nodes_visited(), it.elapsed());
     print!("PV Line: ");
     for mov in searcher.get_pv_line() {
         print!("{} ", mov.to_uci_string());

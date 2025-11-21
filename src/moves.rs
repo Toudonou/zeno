@@ -43,6 +43,11 @@ impl Move {
     }
 
     #[inline(always)]
+    pub fn to_u16(&self) -> u16 { self.0 }
+    #[inline(always)]
+    pub fn from_u16(value: u16) -> Self { Move(value) }
+
+    #[inline(always)]
     pub fn from_uci_notation(move_string: &str, position: &Position) -> Move {
         let reg = Regex::new(r"^[a-h][1-8][a-h][1-8][nbrq]?$").unwrap();
         if !reg.is_match(move_string) {
@@ -73,8 +78,7 @@ impl Move {
                 'q' => move_type = MoveType::PawnToQueen,
                 _ => {}
             }
-        } else if (8 * destination_rank as u8 + destination_file as u8 - 'a' as u8) == position.get_en_passant() &&
-            position.get_piece_on_square(&(8 * source_rank as u8 + source_file as u8 - 'a' as u8)).piece_type == PieceType::Pawn {
+        } else if (8 * destination_rank as u8 + destination_file as u8 - 'a' as u8) == position.get_en_passant() && position.get_piece_on_square(&(8 * source_rank as u8 + source_file as u8 - 'a' as u8)).piece_type == PieceType::Pawn {
             move_type = MoveType::EnPassant;
         }
 

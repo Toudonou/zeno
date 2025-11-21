@@ -2,8 +2,9 @@
 mod evaluation_tests {
     use zeno::evaluation::evaluate;
     use zeno::history::History;
+    use zeno::pos_eval::{Evaluation, MATE_SCORE};
     use zeno::position::Position;
-    use zeno::search::Searcher;
+    use zeno::search::{Searcher, MAX_PLY};
     use zeno::transposition_table::TranspositionTable;
     use zeno::uci::uci_move;
     use zeno::utils::START_POSITION;
@@ -56,5 +57,25 @@ mod evaluation_tests {
         let search_result = searcher.search(&position, history.as_deref_mut(), transposition_table.as_deref_mut(), 10 * 1000);
 
         assert_eq!(search_result, None);
+    }
+
+    #[test]
+    fn test_evaluation_conversion_from_i32_to_u32_and_reverse() {
+        // Simple score
+        for i in -(MATE_SCORE / 2)..=(MATE_SCORE / 2) {
+            let initial_eval = Evaluation::Score(i);
+
+            let value_after_double_transition = Evaluation::from_u32(initial_eval.to_u32());
+
+            assert_eq!(value_after_double_transition, initial_eval);
+        }
+
+        for i in -MAX_PLY..=MAX_PLY {
+            let initial_eval = Evaluation::MateIn(i);
+
+            let value_after_double_transition = Evaluation::from_u32(initial_eval.to_u32());
+
+            assert_eq!(value_after_double_transition, initial_eval);
+        }
     }
 }
