@@ -1,7 +1,7 @@
 use crate::moves::Move;
 use crate::pos_eval::Evaluation;
 
-pub static ZENO_TRANSPOSITION_TABLE_SIZE: usize = 64 * 1024 * 1024; // 16MB
+pub static ZENO_TRANSPOSITION_TABLE_SIZE: usize = 64 * 1024 * 1024; // 64MB
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TTFlag {
@@ -99,11 +99,9 @@ impl TranspositionTable {
 
     pub fn print_transposition_stats(&self) {
         let count = self.table.iter().filter(|x| x.get_flag() != TTFlag::None).count();
-        println!("Transposition utilization: {}/{} = {}%", count, self.max_entries, 100 * count / self.max_entries);
+        println!("Transposition utilization: {}/{} = {:.3}%", count, self.max_entries, 100f64 * count as f64 / self.max_entries as f64);
     }
 
     #[inline(always)]
-    pub fn clear(&mut self) {
-        self.table.clear()
-    }
+    pub fn clear(&mut self) { self.table = vec![TTEntry::new(0, &None, 0, &TTFlag::None, &Evaluation::Score(0)); ZENO_TRANSPOSITION_TABLE_SIZE / size_of::<TTEntry>()] }
 }

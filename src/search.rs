@@ -4,7 +4,7 @@ use crate::history::History;
 use crate::moves::{Move, MoveType};
 use crate::moves_generator::generate_pseudo_legal_moves;
 use crate::moves_ordering::order_moves;
-use crate::pos_eval::{Evaluation, PosEval};
+use crate::pos_eval::{Evaluation, PosEval, MATE_SCORE};
 use crate::position::Position;
 use crate::transposition_table::{TTEntry, TTFlag, TranspositionTable};
 use crate::piece::PieceType;
@@ -46,7 +46,7 @@ impl Searcher {
             game_state: GameState::InProgress,
             timer: Instant::now(),
             thinking_time: 3000,
-            max_depth: 6,
+            max_depth: MAX_PLY,
             is_search_cancel_early: false,
             search_stats: SearchStats {
                 number_of_nodes_visited: 0,
@@ -64,6 +64,8 @@ impl Searcher {
     pub fn search(&mut self, position: &Position, mut history: Option<&mut History>, mut transposition_table: Option<&mut TranspositionTable>, thinking_time: u128) -> Option<Move> {
         self.thinking_time = thinking_time;
         self.timer = Instant::now();
+
+        transposition_table.as_deref_mut().unwrap().clear();
 
         self.search_stats = SearchStats {
             number_of_nodes_visited: 0,
@@ -106,6 +108,8 @@ impl Searcher {
                 self.pv_line_per_depth.push(self.current_pv_line[depth].clone());
                 self.evaluation = result.score * position.get_turn() as i32;
                 best_move = result.best_move;
+
+                if self.evaluation.value().abs() >= MATE_SCORE { break; }
             }
         }
 

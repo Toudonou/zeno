@@ -30,7 +30,9 @@ pub fn uci_loop() {
             "uci" => uci_commands(),
             "isready" => println!("readyok"),
             "ucinewgame" => {
-                position = Position::from_fen(START_POSITION, history.as_deref_mut())
+                position = Position::from_fen(START_POSITION, history.as_deref_mut());
+                transposition_table.as_deref_mut().unwrap().clear();
+                history.as_deref_mut().unwrap().clear()
             }
             c if c.starts_with("position") => uci_position(command, &mut position, history.as_deref_mut()),
             c if c.starts_with("go") => go(command, &mut position, &mut searcher, history.as_deref_mut(), transposition_table.as_deref_mut()),
@@ -197,6 +199,7 @@ fn go(command: &str, position: &mut Position, searcher: &mut Searcher, history: 
     }
 
     let it = Instant::now();
+    println!("Given search time: {}ms", search_time);
     let best_move = searcher.search(&position, history, transposition_table, search_time);
     println!("Finish in {:?}", it.elapsed());
 
@@ -219,17 +222,17 @@ fn allocate_time(position: &Position, remaining_time: u32, opponent_time: u32, i
     let phase = ((position.get_phase() * 256 + TOTAL_PHASE / 2) / TOTAL_PHASE) as u32;
 
     let estimated_move_to_go: u32 = move_to_go.max(20);
-    let base_time: u32 = remaining_time / estimated_move_to_go + increment;
+    let base_time: u32 = (remaining_time - 2000) / estimated_move_to_go + increment;
 
     let middle_game_factor: u32 = 150;
     let end_game_factor: u32 = 100;
 
-    let mut allocated_time: u32 = (base_time * (middle_game_factor * (256 - phase) + end_game_factor * phase) / 256) / 100 + increment;
+    let mut allocated_time: u32 = base_time; // * (middle_game_factor * (256 - phase) + end_game_factor * phase) / 256) / 100;
 
     // Still in the opening
     if position.get_number_of_move() < 7 {
-        allocated_time = (50 * base_time) / 100 + increment;
+        allocated_time = (50 * base_time) / 100;
     }
 
-    allocated_time.min((remaining_time * 20) / 100) as u128
+    allocated_time.min((remaining_time * 20) / 100).max(100) as u128
 }
