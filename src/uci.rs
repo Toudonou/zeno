@@ -12,11 +12,11 @@ use crate::transposition_table::TranspositionTable;
 use crate::utils::START_POSITION;
 
 pub fn uci_loop() {
-    let mut history = Some(&mut History::new());
+    let mut history = History::new();
     let mut searcher = Searcher::new();
-    let mut transposition_table = Some(&mut TranspositionTable::new());
+    let mut transposition_table = TranspositionTable::new();
 
-    let mut position = Position::from_fen(START_POSITION, history.as_deref_mut());
+    let mut position = Position::from_fen(START_POSITION, Some(&mut history));
 
     perft::perft(1, &position); // To init the lookup tables
 
@@ -30,19 +30,19 @@ pub fn uci_loop() {
             "uci" => uci_commands(),
             "isready" => println!("readyok"),
             "ucinewgame" => {
-                position = Position::from_fen(START_POSITION, history.as_deref_mut());
-                transposition_table.as_deref_mut().unwrap().clear();
-                history.as_deref_mut().unwrap().clear()
+                position = Position::from_fen(START_POSITION, Some(&mut history));
+                transposition_table.clear();
+                history.clear()
             }
-            c if c.starts_with("position") => uci_position(command, &mut position, history.as_deref_mut()),
-            c if c.starts_with("go") => go(command, &mut position, &mut searcher, history.as_deref_mut(), transposition_table.as_deref_mut()),
+            c if c.starts_with("position") => uci_position(command, &mut position, &mut history),
+            c if c.starts_with("go") => go(command, &mut position, &mut searcher, &mut history, &mut transposition_table),
             "stop" => {}
             "quit" => break,
             _ => println!("Command not found {}", command),
         }
     }
 
-    transposition_table.as_deref_mut().unwrap().print_transposition_stats();
+    transposition_table.print_transposition_stats();
 }
 
 fn uci_commands() {
@@ -72,29 +72,29 @@ fn uci_commands() {
 }
 
 
-fn uci_position(command: &str, position: &mut Position, mut history: Option<&mut History>) {
+fn uci_position(command: &str, position: &mut Position, mut history: &mut History) {
     if command.starts_with("position fen") {
         let is_there_some_moves = command.find("moves");
         match is_there_some_moves {
             None => {
-                *position = Position::from_fen(&command[13usize..], history.as_deref_mut());
+                *position = Position::from_fen(&command[13usize..], Some(&mut history));
             }
             Some(moves_index) => {
-                *position = Position::from_fen(&command[13usize..moves_index], history.as_deref_mut());
+                *position = Position::from_fen(&command[13usize..moves_index], Some(&mut history));
 
                 let moves = command[(moves_index + "moves".len())..].split_whitespace();
-                moves.for_each(|move_string| position.make_move(&uci_move(move_string, position), history.as_deref_mut()));
+                moves.for_each(|move_string| position.make_move(&uci_move(move_string, position), Some(&mut history)));
             }
         }
     }
 
     if command.starts_with("position startpos") {
-        *position = Position::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", history.as_deref_mut());
+        *position = Position::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", Some(&mut history));
     }
 
     if command.starts_with("position startpos moves") {
         let moves = command[23usize..].split_whitespace();
-        moves.for_each(|move_string| position.make_move(&uci_move(move_string, position), history.as_deref_mut()));
+        moves.for_each(|move_string| position.make_move(&uci_move(move_string, position), Some(&mut history)));
     }
 }
 
@@ -133,8 +133,7 @@ pub fn uci_move(move_string: &str, position: &Position) -> Move {
             'q' => move_type = MoveType::PawnToQueen,
             _ => {}
         }
-    } else if (8 * destination_rank as u8 + destination_file as u8 - 'a' as u8) == position.get_en_passant() &&
-        position.get_piece_on_square(&(8 * source_rank as u8 + source_file as u8 - 'a' as u8)).piece_type == PieceType::Pawn {
+    } else if (8 * destination_rank as u8 + destination_file as u8 - 'a' as u8) == position.get_en_passant() && position.get_piece_on_square(&(8 * source_rank as u8 + source_file as u8 - 'a' as u8)).piece_type == PieceType::Pawn {
         move_type = MoveType::EnPassant;
     }
 
@@ -144,7 +143,7 @@ pub fn uci_move(move_string: &str, position: &Position) -> Move {
     Move::new(source, destination, move_type)
 }
 
-fn go(command: &str, position: &mut Position, searcher: &mut Searcher, history: Option<&mut History>, transposition_table: Option<&mut TranspositionTable>) {
+fn go(command: &str, position: &mut Position, searcher: &mut Searcher, history: &mut History, transposition_table: &mut TranspositionTable) {
     let mut search_time: u128 = 60 * 1000;
 
     if command.starts_with("go infinite") {
@@ -163,29 +162,19 @@ fn go(command: &str, position: &mut Position, searcher: &mut Searcher, history: 
         while let Some(token) = parts.next() {
             match token {
                 "wtime" => {
-                    w_time = parts
-                        .next().expect("missing value for wtime")
-                        .parse().expect("invalid wtime");
+                    w_time = parts.next().expect("missing value for wtime").parse().expect("invalid wtime");
                 }
                 "btime" => {
-                    b_time = parts
-                        .next().expect("missing value for btime")
-                        .parse().expect("invalid btime");
+                    b_time = parts.next().expect("missing value for btime").parse().expect("invalid btime");
                 }
                 "winc" => {
-                    w_inc = parts
-                        .next().expect("missing value for winc")
-                        .parse().expect("invalid winc");
+                    w_inc = parts.next().expect("missing value for winc").parse().expect("invalid winc");
                 }
                 "binc" => {
-                    b_inc = parts
-                        .next().expect("missing value for binc")
-                        .parse().expect("invalid binc");
+                    b_inc = parts.next().expect("missing value for binc").parse().expect("invalid binc");
                 }
                 "movestogo" => {
-                    moves_to_go = parts
-                        .next().expect("missing value for movestogo")
-                        .parse().expect("invalid movestogo");
+                    moves_to_go = parts.next().expect("missing value for movestogo").parse().expect("invalid movestogo");
                 }
                 _ => {}
             }
@@ -198,17 +187,12 @@ fn go(command: &str, position: &mut Position, searcher: &mut Searcher, history: 
         }
     }
 
+    search_time = search_time.max(100);
+
     let it = Instant::now();
     println!("Given search time: {}ms", search_time);
     let best_move = searcher.search(&position, history, transposition_table, search_time);
     println!("Finish in {:?}", it.elapsed());
-
-    println!("Evaluation: {}", searcher.get_evaluation());
-    print!("PV Line: ");
-    for mov in searcher.get_pv_line() {
-        print!("{} ", mov.to_uci_string());
-    }
-    println!();
 
     match best_move {
         None => println!("No move found"),

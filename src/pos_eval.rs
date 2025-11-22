@@ -6,10 +6,10 @@ use crate::search::MAX_PLY;
 pub static MATE_SCORE: i32 = 1_000_000;
 
 
-#[derive(Clone, Debug, Copy, Eq, PartialEq)]
 // The value of the Score() should be between [-MATE_SCORE / 2, MATE_SCORE / 2]
 // The Mate() value should be inside [-MAX_PLY, MAX_PLY]
 // No verification are do during the runtime to avoid performance issue due to many if statements
+#[derive(Clone, Debug, Copy, Eq, PartialEq)]
 pub enum Evaluation {
     Score(i32),
     MateIn(i32),

@@ -31,7 +31,7 @@ pub struct Searcher {
     game_state: GameState,
     timer: Instant,
     thinking_time: u128,
-    max_depth: i32,
+    max_depth: u32,
     is_search_cancel_early: bool,
     search_stats: SearchStats,
     evaluation: Evaluation,
@@ -46,7 +46,7 @@ impl Searcher {
             game_state: GameState::InProgress,
             timer: Instant::now(),
             thinking_time: 3000,
-            max_depth: MAX_PLY,
+            max_depth: MAX_PLY as u32,
             is_search_cancel_early: false,
             search_stats: SearchStats {
                 number_of_nodes_visited: 0,
@@ -61,11 +61,11 @@ impl Searcher {
         }
     }
 
-    pub fn search(&mut self, position: &Position, mut history: Option<&mut History>, mut transposition_table: Option<&mut TranspositionTable>, thinking_time: u128) -> Option<Move> {
+    pub fn search(&mut self, position: &Position, history: &mut History, transposition_table: &mut TranspositionTable, thinking_time: u128) -> Option<Move> {
         self.thinking_time = thinking_time;
         self.timer = Instant::now();
 
-        transposition_table.as_deref_mut().unwrap().clear();
+        transposition_table.clear();
 
         self.search_stats = SearchStats {
             number_of_nodes_visited: 0,
@@ -99,7 +99,7 @@ impl Searcher {
 
             if self.timer.elapsed().as_millis() > self.thinking_time { break; }
 
-            let result = self.pv_search(position, history.as_deref_mut(), transposition_table.as_deref_mut(), 1, depth as i32, -ZENO_INFINITY, ZENO_INFINITY, position.get_turn() as i32);
+            let result = self.pv_search(position, history, transposition_table, 1, depth as u32, -ZENO_INFINITY, ZENO_INFINITY, position.get_turn() as i32);
 
             if !self.is_search_cancel_early {
                 final_full_searched_depth = depth;
@@ -132,12 +132,18 @@ impl Searcher {
         println!("Alpha cut off rate: {:.3}%", 100f64 * final_stats.number_of_alpha_beta_cut_off as f64 / final_stats.number_of_nodes_visited as f64);
         println!("TT cut of rate: {:.3}%", 100f64 * final_stats.number_of_tt_cut_off as f64 / final_stats.number_of_nodes_visited as f64);
         println!("Final node evaluation rate: {:.3}%", 100f64 * final_stats.number_of_nodes_evaluated as f64 / final_stats.number_of_nodes_visited as f64);
+
+        println!("Evaluation: {}", self.get_evaluation());
+        print!("PV Line: ");
+        for mov in self.get_pv_line() {
+            print!("{} ", mov.to_uci_string());
+        }
         println!();
 
         best_move
     }
 
-    fn pv_search(&mut self, position: &Position, mut history: Option<&mut History>, mut transposition_table: Option<&mut TranspositionTable>, current_ply: i32, max_ply: i32, mut alpha: i32, beta: i32, point_of_view: i32) -> PosEval {
+    fn pv_search(&mut self, position: &Position, history: &mut History, transposition_table: &mut TranspositionTable, current_ply: u32, max_ply: u32, mut alpha: i32, beta: i32, point_of_view: i32) -> PosEval {
         self.search_stats.number_of_nodes_visited += 1;
 
         let depth = max_ply - current_ply + 1;
@@ -145,7 +151,7 @@ impl Searcher {
         let mut is_full_search = true;
 
         // Check for threefold repetition
-        if history.as_deref_mut().unwrap().get_position_occurrences_count(position) >= 3 {
+        if history.get_position_occurrences_count(position) >= 3 {
             self.search_stats.number_of_nodes_evaluated += 1;
 
             self.current_pv_line[depth as usize] = vec![];
@@ -153,14 +159,14 @@ impl Searcher {
             return PosEval { best_move: None, score: Evaluation::Score(0) };
         }
 
-        let tt_entry = transposition_table.as_deref_mut().unwrap().get_entry(position.get_hash());
+        let tt_entry = transposition_table.get_entry(position.get_hash());
         let mut tt_move: Option<Move> = None;
 
         if tt_entry.get_flag() != TTFlag::None {
             tt_move = tt_entry.get_best_move();
             let mut will_return_early = false;
 
-            if tt_entry.get_hash() == position.get_hash() && tt_entry.get_depth() as i32 >= (max_ply - current_ply) {
+            if tt_entry.get_hash() == position.get_hash() && tt_entry.get_depth() >= (max_ply - current_ply) {
                 if tt_entry.get_flag() == TTFlag::Exact {
                     will_return_early = true;
                 } else if tt_entry.get_flag() == TTFlag::LowerBound && tt_entry.get_evaluation().value() >= beta {
@@ -175,10 +181,10 @@ impl Searcher {
                         None => return PosEval { best_move: None, score: tt_entry.get_evaluation() },
                         Some(mov) => {
                             let mut temp_position = position.clone();
-                            temp_position.make_move(&mov, history.as_deref_mut());
+                            temp_position.make_move(&mov, Some(history));
 
-                            if history.as_deref_mut().unwrap().get_position_occurrences_count(&temp_position) < 3 {
-                                history.as_deref_mut().unwrap().pop_last_entry();
+                            if history.get_position_occurrences_count(&temp_position) < 3 {
+                                history.pop_last_entry();
 
                                 self.current_pv_line[depth as usize].clear();
                                 self.current_pv_line[depth as usize].push(mov);
@@ -190,7 +196,7 @@ impl Searcher {
 
                                 return PosEval { best_move: tt_move, score: tt_entry.get_evaluation() };
                             }
-                            history.as_deref_mut().unwrap().pop_last_entry();
+                            history.pop_last_entry();
                         }
                     }
                 }
@@ -202,7 +208,7 @@ impl Searcher {
             self.search_stats.number_of_nodes_evaluated += 1;
             self.current_pv_line[0] = vec![];
 
-            return self.quiescence_search(position, history.as_deref_mut(), 100, alpha, beta, point_of_view);
+            return self.quiescence_search(position, 100, alpha, beta, point_of_view);
         }
 
         let mut pv_move = None;
@@ -222,7 +228,7 @@ impl Searcher {
 
         for mov in &moves {
             let mut temp_position = position.clone();
-            temp_position.make_move(&mov, history.as_deref_mut());
+            temp_position.make_move(&mov, Some(history));
             if !temp_position.is_check(&turn) {
                 let mut eval: PosEval;
 
@@ -230,14 +236,14 @@ impl Searcher {
                 if no_legal_moves {
                     no_legal_moves = false;
 
-                    eval = self.pv_search(&temp_position, history.as_deref_mut(), transposition_table.as_deref_mut(), current_ply + 1, max_ply, -beta, -alpha, -point_of_view);
+                    eval = self.pv_search(&temp_position, history, transposition_table, current_ply + 1, max_ply, -beta, -alpha, -point_of_view);
                     eval.score *= -1;
                 } else {
-                    eval = self.pv_search(&temp_position, history.as_deref_mut(), transposition_table.as_deref_mut(), current_ply + 1, max_ply, -alpha - 1, -alpha, -point_of_view);
+                    eval = self.pv_search(&temp_position, history, transposition_table, current_ply + 1, max_ply, -alpha - 1, -alpha, -point_of_view);
                     eval.score *= -1;
 
                     if alpha < eval.score.value() && eval.score.value() < beta {
-                        eval = self.pv_search(&temp_position, history.as_deref_mut(), transposition_table.as_deref_mut(), current_ply + 1, max_ply, -beta, -alpha, -point_of_view);
+                        eval = self.pv_search(&temp_position, history, transposition_table, current_ply + 1, max_ply, -beta, -alpha, -point_of_view);
                         eval.score *= -1;
                     }
                 }
@@ -263,7 +269,7 @@ impl Searcher {
                         }
                     }
 
-                    history.as_deref_mut().unwrap().pop_last_entry();
+                    history.pop_last_entry();
 
                     self.search_stats.number_of_alpha_beta_cut_off += 1;
                     is_full_search = false;
@@ -271,7 +277,7 @@ impl Searcher {
                 }
             }
 
-            history.as_deref_mut().unwrap().pop_last_entry();
+            history.pop_last_entry();
 
             if self.timer.elapsed().as_millis() > self.thinking_time {
                 self.is_search_cancel_early = true;
@@ -285,7 +291,7 @@ impl Searcher {
             self.current_pv_line[depth as usize] = vec![];
 
             if position.is_check(&turn) {
-                return PosEval { best_move: None, score: Evaluation::MateIn(-current_ply) };
+                return PosEval { best_move: None, score: Evaluation::MateIn(-1 * (current_ply as i32)) };
             }
             return PosEval { best_move: None, score: Evaluation::Score(0) };
         }
@@ -297,14 +303,14 @@ impl Searcher {
         } else if best_eval.score.value() >= beta {
             tt_entry = TTEntry::new(position.get_hash(), &best_eval.best_move, (max_ply - current_ply) as u32, &TTFlag::LowerBound, &best_eval.score);
         }
-        transposition_table.as_deref_mut().unwrap().add_entry(tt_entry);
+        transposition_table.add_entry(tt_entry);
 
         if is_full_search { self.search_stats.number_of_nodes_evaluated += 1; }
 
         best_eval
     }
 
-    fn quiescence_search(&mut self, position: &Position, mut history: Option<&mut History>, depth: i32, mut alpha: i32, beta: i32, point_of_view: i32) -> PosEval {
+    fn quiescence_search(&mut self, position: &Position, depth: i32, mut alpha: i32, beta: i32, point_of_view: i32) -> PosEval {
         let static_evaluation = PosEval { best_move: None, score: Evaluation::Score(evaluate(position) * point_of_view) };
         if depth <= 0 { return static_evaluation; }
 
@@ -320,9 +326,9 @@ impl Searcher {
         for mov in &moves {
             if position.get_piece_on_square(&mov.destination()).piece_type != PieceType::None {
                 let mut temp_position = position.clone();
-                temp_position.make_move(&mov, history.as_deref_mut());
+                temp_position.make_move(&mov, None);
                 if !temp_position.is_check(&turn) {
-                    let mut eval = self.quiescence_search(&temp_position, history.as_deref_mut(), depth - 1, -beta, -alpha, -point_of_view);
+                    let mut eval = self.quiescence_search(&temp_position, depth - 1, -beta, -alpha, -point_of_view);
                     eval.score *= -1;
 
                     if eval.score.value() >= beta { return eval; }
@@ -341,7 +347,7 @@ impl Searcher {
         best_eval
     }
 
-    pub fn get_pv_line(&self) -> Vec<Move> { self.pv_line_per_depth.last().unwrap().clone() }
+    pub fn get_pv_line(&self) -> Vec<Move> { self.pv_line_per_depth.last().unwrap_or(&vec![Move::new(0, 0, MoveType::Normal)]).clone() }
     pub fn get_number_of_nodes_visited(&self) -> i32 { self.search_stats.number_of_nodes_visited }
     pub fn get_evaluation(&self) -> Evaluation { self.evaluation }
 }

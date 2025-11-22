@@ -1,8 +1,8 @@
 use crate::position::Position;
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct History {
-    history: Vec<u64>
+    pub history: Vec<u64>
 }
 
 impl History {
