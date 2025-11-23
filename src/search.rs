@@ -90,6 +90,8 @@ impl Searcher {
         };
 
         for depth in 1..=self.max_depth as usize {
+            let iterative_timer = Instant::now();
+
             self.search_stats = SearchStats {
                 number_of_nodes_visited: 0,
                 number_of_alpha_beta_cut_off: 0,
@@ -106,7 +108,7 @@ impl Searcher {
             let result = self.pv_search(position, history, transposition_table, 1, depth as u32, -ZENO_INFINITY, ZENO_INFINITY, position.get_turn() as i32);
 
             self.search_stats.search_depth = depth as u32;
-            self.search_stats.search_time = self.timer.elapsed().as_millis();
+            self.search_stats.search_time = iterative_timer.elapsed().as_millis().max(35);
 
             if !self.is_search_cancel_early {
                 print!("Depth: {} ==> {}ms; ", depth, self.search_stats.search_time.separate_with_commas());
@@ -132,8 +134,8 @@ impl Searcher {
                 let future_depth = 1f32 + depth as f32;
                 let nodes_needed = (branching_factor.powf(future_depth + 1.0) - 1.0) / (branching_factor - 1.0);
 
-                // I only take 50% of the estimated time because, the predictions are not so good; maybe because of the move ordering
-                let estimated_time_ms = ((0.5 * (nodes_needed / speed as f32) * 1000.0) as u128).max(35); // The search seems to take at least 33ms
+                // I only take 80% of the estimated time because, the predictions are not so good; maybe because of the move ordering
+                let estimated_time_ms = ((0.8 * (nodes_needed / speed as f32) * 1000.0) as u128).max(35); // The search seems to take at least 33ms
                 println!("Estimated time for depth {}: {}ms", depth + 1, estimated_time_ms);
 
                 if estimated_time_ms > self.thinking_time - self.timer.elapsed().as_millis() { break; }
