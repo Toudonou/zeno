@@ -1,4 +1,5 @@
 use std::time::{Instant};
+use thousands::Separable;
 use crate::evaluation::evaluate;
 use crate::history::History;
 use crate::moves::{Move, MoveType};
@@ -21,10 +22,12 @@ pub enum GameState {
 
 #[derive(Copy, Clone)]
 struct SearchStats {
-    pub number_of_nodes_visited: i32,
-    pub number_of_alpha_beta_cut_off: i32,
-    pub number_of_tt_cut_off: i32,
-    pub number_of_nodes_evaluated: i32,
+    pub number_of_nodes_visited: u32,
+    pub number_of_alpha_beta_cut_off: u32,
+    pub number_of_tt_cut_off: u32,
+    pub number_of_nodes_evaluated: u32,
+    pub search_time: u128,
+    pub search_depth: u32,
 }
 
 pub struct Searcher {
@@ -36,7 +39,7 @@ pub struct Searcher {
     search_stats: SearchStats,
     evaluation: Evaluation,
     current_pv_line: Vec<Vec<Move>>,
-    killers: Vec<(Move, Move)>,
+    killers: [(Move, Move); 1 + MAX_PLY as usize],
     pv_line_per_depth: Vec<Vec<Move>>,
 }
 
@@ -53,10 +56,12 @@ impl Searcher {
                 number_of_alpha_beta_cut_off: 0,
                 number_of_tt_cut_off: 0,
                 number_of_nodes_evaluated: 0,
+                search_time: 0,
+                search_depth: 0,
             },
             evaluation: Evaluation::Score(0),
             current_pv_line: vec![],
-            killers: vec![],
+            killers: [(Move::new(0, 0, MoveType::Normal), Move::new(0, 0, MoveType::Normal)); 1 + MAX_PLY as usize],
             pv_line_per_depth: vec![],
         }
     }
@@ -72,26 +77,25 @@ impl Searcher {
             number_of_alpha_beta_cut_off: 0,
             number_of_tt_cut_off: 0,
             number_of_nodes_evaluated: 0,
+            search_time: 0,
+            search_depth: 0,
         };
 
         self.is_search_cancel_early = false;
         self.evaluation = Evaluation::Score(0);
 
         self.pv_line_per_depth.clear();
-        self.killers.clear();
-        self.killers.resize(
-            (self.max_depth as usize) + 1,
-            (Move::new(0, 0, MoveType::Normal), Move::new(0, 0, MoveType::Normal)),
-        );
+        self.killers = [(Move::new(0, 0, MoveType::Normal), Move::new(0, 0, MoveType::Normal)); 1 + MAX_PLY as usize];
 
         let mut best_move: Option<Move> = None;
 
-        let mut final_full_searched_depth = 0;
         let mut final_stats: SearchStats = SearchStats {
             number_of_nodes_visited: 0,
             number_of_alpha_beta_cut_off: 0,
             number_of_tt_cut_off: 0,
             number_of_nodes_evaluated: 0,
+            search_time: 0,
+            search_depth: 0,
         };
 
         for depth in 1..=self.max_depth as usize {
@@ -101,8 +105,12 @@ impl Searcher {
 
             let result = self.pv_search(position, history, transposition_table, 1, depth as u32, -ZENO_INFINITY, ZENO_INFINITY, position.get_turn() as i32);
 
+            self.search_stats.search_depth = depth as u32;
+            self.search_stats.search_time = self.timer.elapsed().as_millis();
+
             if !self.is_search_cancel_early {
-                final_full_searched_depth = depth;
+                println!("Depth: {} ==> {}ms", depth, self.search_stats.search_time.separate_with_commas());
+
                 final_stats = self.search_stats;
 
                 self.pv_line_per_depth.push(self.current_pv_line[depth].clone());
@@ -122,22 +130,25 @@ impl Searcher {
         }
         println!();
 
-        let branching_factor = if final_full_searched_depth > 1 {
-            (final_stats.number_of_nodes_visited as f64).powf(1.0 / (final_full_searched_depth as f64))
+        let branching_factor = if final_stats.search_depth > 1 {
+            (final_stats.number_of_nodes_visited as f64).powf(1.0 / (final_stats.search_depth as f64))
         } else { 0.0 };
 
         println!("Search stats");
         println!("Branching factor: {:.3}", branching_factor);
-        println!("Number of nodes visited: {}", final_stats.number_of_nodes_visited);
+        if self.search_stats.search_time > 0 { println!("Speed {} NPS", (1000 * final_stats.number_of_nodes_visited as u128 / final_stats.search_time).separate_with_commas()) }
+        println!("Number of nodes visited: {};", final_stats.number_of_nodes_visited.separate_with_commas());
         println!("Alpha cut off rate: {:.3}%", 100f64 * final_stats.number_of_alpha_beta_cut_off as f64 / final_stats.number_of_nodes_visited as f64);
         println!("TT cut of rate: {:.3}%", 100f64 * final_stats.number_of_tt_cut_off as f64 / final_stats.number_of_nodes_visited as f64);
         println!("Final node evaluation rate: {:.3}%", 100f64 * final_stats.number_of_nodes_evaluated as f64 / final_stats.number_of_nodes_visited as f64);
 
+        println!();
         println!("Evaluation: {}", self.get_evaluation());
         print!("PV Line: ");
         for mov in self.get_pv_line() {
             print!("{} ", mov.to_uci_string());
         }
+        println!();
         println!();
 
         best_move
@@ -212,7 +223,7 @@ impl Searcher {
         }
 
         let mut pv_move = None;
-        if max_ply > 1 {
+        if max_ply > 1 { // test cutoof rate, time in stat, PSQT move ordering
             pv_move = self.pv_line_per_depth.get((max_ply - 2) as usize).unwrap().get((current_ply - 1) as usize).copied();
         }
 
@@ -348,6 +359,6 @@ impl Searcher {
     }
 
     pub fn get_pv_line(&self) -> Vec<Move> { self.pv_line_per_depth.last().unwrap_or(&vec![Move::new(0, 0, MoveType::Normal)]).clone() }
-    pub fn get_number_of_nodes_visited(&self) -> i32 { self.search_stats.number_of_nodes_visited }
+    pub fn get_number_of_nodes_visited(&self) -> u32 { self.search_stats.number_of_nodes_visited }
     pub fn get_evaluation(&self) -> Evaluation { self.evaluation }
 }

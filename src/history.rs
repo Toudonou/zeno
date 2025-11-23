@@ -2,12 +2,12 @@ use crate::position::Position;
 
 #[derive(Debug, Clone)]
 pub struct History {
-    pub history: Vec<u64>
+    pub history: Vec<u64>,
 }
 
 impl History {
     pub fn new() -> History {
-        History { history: Vec::with_capacity(2048) }
+        History { history: Vec::with_capacity(4096) }
     }
 
     pub fn save_position(&mut self, position: &Position) {
@@ -26,7 +26,5 @@ impl History {
         self.history.iter().rev().take(position.get_half_move_clock() as usize).filter(|k| **k == hash).count()
     }
 
-    pub fn clear(&mut self) {
-        self.history.clear()
-    }
+    pub fn clear(&mut self) { self.history.clear() }
 }

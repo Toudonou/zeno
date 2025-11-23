@@ -685,6 +685,7 @@ impl Position {
     pub fn get_hash(&self) -> u64 { self.hash }
 
     pub fn print_board(&self) {
+        println!();
         for rank in (0..=7).rev() {
             print!("{} ", rank + 1);
             for file in 0..=7 {

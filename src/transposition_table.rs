@@ -1,3 +1,4 @@
+use thousands::Separable;
 use crate::moves::Move;
 use crate::pos_eval::Evaluation;
 
@@ -60,6 +61,9 @@ impl TTEntry {
     pub fn get_hash(&self) -> u64 { self.hash }
 
     #[inline(always)]
+    pub fn get_evaluation(&self) -> Evaluation { Evaluation::from_u32(((self.others_informations >> (4 * 8)) & 0xFFFFFFFF) as u32) }
+
+    #[inline(always)]
     pub fn get_best_move(&self) -> Option<Move> {
         let move_code = ((self.others_informations >> (2 * 8)) & 0xFFFF) as u16;
         if move_code != 0 { Some(Move::from_u16(move_code)) } else { None }
@@ -70,9 +74,6 @@ impl TTEntry {
 
     #[inline(always)]
     pub fn get_flag(&self) -> TTFlag { TTFlag::from_u32(((self.others_informations) & 0xFF) as u32) }
-
-    #[inline(always)]
-    pub fn get_evaluation(&self) -> Evaluation { Evaluation::from_u32(((self.others_informations >> (4 * 8)) & 0xFFFFFFFF) as u32) }
 }
 
 #[derive(Clone)]
@@ -99,7 +100,7 @@ impl TranspositionTable {
 
     pub fn print_transposition_stats(&self) {
         let count = self.table.iter().filter(|x| x.get_flag() != TTFlag::None).count();
-        println!("Transposition utilization: {}/{} = {:.3}%", count, self.max_entries, 100f64 * count as f64 / self.max_entries as f64);
+        println!("Transposition utilization: {}/{} = {:.3}%", count.separate_with_commas(), self.max_entries.separate_with_commas(), 100f64 * count as f64 / self.max_entries as f64);
     }
 
     #[inline(always)]

@@ -89,7 +89,7 @@ fn uci_position(command: &str, position: &mut Position, mut history: &mut Histor
     }
 
     if command.starts_with("position startpos") {
-        *position = Position::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", Some(&mut history));
+        *position = Position::from_fen(START_POSITION, Some(&mut history));
     }
 
     if command.starts_with("position startpos moves") {

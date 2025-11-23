@@ -1,3 +1,4 @@
+use std::fmt::{Display, Formatter};
 use regex::Regex;
 use crate::piece::PieceType;
 use crate::position::Position;
@@ -33,6 +34,12 @@ impl From<u16> for MoveType {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Move(u16);
+
+impl Display for Move {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.to_uci_string())
+    }
+}
 
 impl Move {
     /// Pack source, destination, and move_type into a 16-bit value:

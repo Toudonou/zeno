@@ -1,6 +1,7 @@
 use crate::moves::{Move, MoveType};
-use crate::piece::PieceType;
+use crate::piece::{PieceColor, PieceType};
 use crate::position::Position;
+use crate::psqt::{EG_PIECES_SQUARES_TABLES, MG_PIECES_SQUARES_TABLES, TOTAL_PHASE};
 
 static PV_MOVE_SCORE: i32 = 600_000;
 static TT_MOVE_SCORE: i32 = 500_000;
@@ -27,11 +28,30 @@ pub fn order_moves(moves: &mut Vec<Move>, position: &Position, pv_move: &Option<
 
     let killer = killers.unwrap_or((Move::new(0, 0, MoveType::Normal), Move::new(0, 0, MoveType::Normal)));
 
-    moves.sort_by(|a, b| evaluate_move(b, position, &pv_move, &tt_move, &killer).cmp(&evaluate_move(a, position, &pv_move, &tt_move, &killer)));
+    let flip = match position.get_turn() {
+        PieceColor::White => 0,
+        PieceColor::Black => 1,
+        PieceColor::None => panic!("Invalid color"),
+    };
+
+    let mut phase = position.get_phase().max(0);
+    phase = (phase * 256 + (TOTAL_PHASE / 2)) / TOTAL_PHASE; // phase from [0, 24] to [0, 256]
+
+    let mut moves_scores = vec![(Move::new(0, 0, MoveType::Normal), 0); moves.len()];
+
+    for i in 0..moves.len() {
+        moves_scores[i] = (moves[i], evaluate_move(&moves[i], position, &pv_move, &tt_move, &killer, flip, phase));
+    }
+
+    moves_scores.sort_by(|a, b| b.1.cmp(&a.1));
+
+    for i in 0..moves.len() {
+        moves[i] = moves_scores[i].0;
+    }
 }
 
 #[inline(always)]
-fn evaluate_move(mov: &Move, position: &Position, pv_move: &Move, tt_move: &Move, killers: &(Move, Move)) -> i32 {
+fn evaluate_move(mov: &Move, position: &Position, pv_move: &Move, tt_move: &Move, killers: &(Move, Move), flip: i32, phase: i32) -> i32 {
     let mut score = 0;
     let source_piece_type = position.get_piece_on_square(&mov.source()).piece_type;
     let destination_piece_type = position.get_piece_on_square(&mov.destination()).piece_type;
@@ -51,15 +71,10 @@ fn evaluate_move(mov: &Move, position: &Position, pv_move: &Move, tt_move: &Move
         } else if *mov == (*killers).1 {
             score += KILLER_MOVE_SCORE;
         } else {
-            score += match source_piece_type {
-                PieceType::Pawn => 100,
-                PieceType::Knight => 90,
-                PieceType::Bishop => 80,
-                PieceType::Rook => 70,
-                PieceType::Queen => 50,
-                PieceType::King => 0,
-                PieceType::None => 0,
-            }
+            let destination_square = mov.destination() as i32;
+            let destination_sq_index = (1 - flip) * (8 * (7 - (destination_square >> 3)) + (destination_square & 7)) + flip * destination_square;
+
+            score += MG_PIECES_SQUARES_TABLES[source_piece_type.to_usize()][destination_sq_index as usize] * (256 - phase) + EG_PIECES_SQUARES_TABLES[source_piece_type.to_usize()][destination_sq_index as usize] * phase;
         }
     }
 
