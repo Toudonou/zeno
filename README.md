@@ -29,7 +29,7 @@ including castling and en passant.
       - [ ] `PV_MOVE` → `TT_MOVE` → `GOOD_CAPTURES` → `KILLER_MOVES` → `GOOD_QUIET_MOVES` → `BAD_CAPTURES` → `BAD_QUIET_MOVES`
       - [x] MVV_LVA
       - [ ] Static exchange evaluation
-      - [x] Normals moves (quiets moves) ordering based on psqt score
+      - [x] Normals moves (quiets moves) ordering based on PSQT score
     - [x] Iterative deepening
     - [x] [Transposition table](https://en.wikipedia.org/wiki/Negamax#Negamax_with_alpha_beta_pruning_and_transposition_tables)
     - [x] Killer moves

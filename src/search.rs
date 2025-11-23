@@ -72,15 +72,6 @@ impl Searcher {
 
         transposition_table.clear();
 
-        self.search_stats = SearchStats {
-            number_of_nodes_visited: 0,
-            number_of_alpha_beta_cut_off: 0,
-            number_of_tt_cut_off: 0,
-            number_of_nodes_evaluated: 0,
-            search_time: 0,
-            search_depth: 0,
-        };
-
         self.is_search_cancel_early = false;
         self.evaluation = Evaluation::Score(0);
 
@@ -99,6 +90,15 @@ impl Searcher {
         };
 
         for depth in 1..=self.max_depth as usize {
+            self.search_stats = SearchStats {
+                number_of_nodes_visited: 0,
+                number_of_alpha_beta_cut_off: 0,
+                number_of_tt_cut_off: 0,
+                number_of_nodes_evaluated: 0,
+                search_time: 0,
+                search_depth: 0,
+            };
+
             self.current_pv_line = vec![vec![]; depth + 1];
 
             if self.timer.elapsed().as_millis() > self.thinking_time { break; }
@@ -109,7 +109,7 @@ impl Searcher {
             self.search_stats.search_time = self.timer.elapsed().as_millis();
 
             if !self.is_search_cancel_early {
-                println!("Depth: {} ==> {}ms", depth, self.search_stats.search_time.separate_with_commas());
+                print!("Depth: {} ==> {}ms; ", depth, self.search_stats.search_time.separate_with_commas());
 
                 final_stats = self.search_stats;
 
@@ -118,9 +118,29 @@ impl Searcher {
                 best_move = result.best_move;
 
                 if self.evaluation.value().abs() >= MATE_SCORE { break; }
+
+                // I try to predict the time need to search the next depth.
+                // If there is no enough time, the search is automatically canceled
+
+                let branching_factor = if final_stats.search_depth > 1 {
+                    (final_stats.number_of_nodes_visited as f32).powf(1.0 / (final_stats.search_depth as f32))
+                } else { 0.0 };
+
+                let speed = 1000 * final_stats.number_of_nodes_visited as u128 / final_stats.search_time;
+
+                // Geometric series because of the iterative deepening
+                let future_depth = 1f32 + depth as f32;
+                let nodes_needed = (branching_factor.powf(future_depth + 1.0) - 1.0) / (branching_factor - 1.0);
+
+                // I only take 50% of the estimated time because, the predictions are not so good; maybe because of the move ordering
+                let estimated_time_ms = ((0.5 * (nodes_needed / speed as f32) * 1000.0) as u128).max(35); // The search seems to take at least 33ms
+                println!("Estimated time for depth {}: {}ms", depth + 1, estimated_time_ms);
+
+                if estimated_time_ms > self.thinking_time - self.timer.elapsed().as_millis() { break; }
             }
         }
 
+        println!();
         for depth in 0..self.pv_line_per_depth.len() {
             print!("Depth {}: ", depth + 1);
             for mov in self.pv_line_per_depth[depth].clone() {
@@ -134,9 +154,9 @@ impl Searcher {
             (final_stats.number_of_nodes_visited as f64).powf(1.0 / (final_stats.search_depth as f64))
         } else { 0.0 };
 
-        println!("Search stats");
+        println!("Search stats for last depth searched");
         println!("Branching factor: {:.3}", branching_factor);
-        if self.search_stats.search_time > 0 { println!("Speed {} NPS", (1000 * final_stats.number_of_nodes_visited as u128 / final_stats.search_time).separate_with_commas()) }
+        if final_stats.search_time > 0 { println!("Speed {} NPS", (1000 * final_stats.number_of_nodes_visited as u128 / final_stats.search_time).separate_with_commas()) }
         println!("Number of nodes visited: {};", final_stats.number_of_nodes_visited.separate_with_commas());
         println!("Alpha cut off rate: {:.3}%", 100f64 * final_stats.number_of_alpha_beta_cut_off as f64 / final_stats.number_of_nodes_visited as f64);
         println!("TT cut of rate: {:.3}%", 100f64 * final_stats.number_of_tt_cut_off as f64 / final_stats.number_of_nodes_visited as f64);
@@ -223,7 +243,7 @@ impl Searcher {
         }
 
         let mut pv_move = None;
-        if max_ply > 1 { // test cutoof rate, time in stat, PSQT move ordering
+        if max_ply > 1 {
             pv_move = self.pv_line_per_depth.get((max_ply - 2) as usize).unwrap().get((current_ply - 1) as usize).copied();
         }
 
