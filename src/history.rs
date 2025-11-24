@@ -23,7 +23,7 @@ impl History {
         // So the repetition check should only concern the last n (half_move_clock) doable moves
         // https://www.freechess.org/Help/HelpFiles/fen.html
         let hash = position.get_hash();
-        self.history.iter().rev().take(position.get_half_move_clock() as usize).filter(|k| **k == hash).count()
+        self.history.iter().rev().take(1 + position.get_half_move_clock() as usize).filter(|k| **k == hash).count()
     }
 
     pub fn clear(&mut self) { self.history.clear() }

@@ -53,7 +53,21 @@ mod evaluation_tests {
 
         let mut searcher = Searcher::new();
         let mut transposition_table = TranspositionTable::new();
-        let search_result = searcher.search(&position, &mut history, &mut transposition_table, 10 * 1000);
+        let search_result = searcher.search(&position, &mut history, &mut transposition_table, 5 * 1000);
+
+        assert_eq!(search_result, None);
+
+        let mut history = History::new();
+
+        let mut position = Position::from_fen(START_POSITION, Some(&mut history));
+
+        // Game link: https://lichess.org/hTK2QMUTul1t
+        let moves = "d2d4 g8f6 b1c3 e7e6 d1d3 b8c6 a2a3 d7d5 g1f3 f8d6 h2h4 e8g8 h4h5 h7h6 c3b5 f6g4 h1h4 e6e5 b5d6 c7d6 d4e5 g4e5 f3e5 d8h4 e5c6 b7c6 d3f3 c8g4 f3f4 f8d8 c1e3 h4h5 f2f3 g4e6 g2g4 h5h4 e3f2 h4g5 f4g5 h6g5 e1d2 c6c5 f1g2 a8b8 b2b3 a7a5 f2g3 b8c8 a3a4 c5c4 b3c4 c8c4 e2e3 d8c8 a1c1 c8d8 c1a1 d8c8 a1c1 c8d8 c1a1".split_whitespace();
+        moves.for_each(|move_string| position.make_move(&uci_move(move_string, &position), Some(&mut history)));
+
+        let mut searcher = Searcher::new();
+        let mut transposition_table = TranspositionTable::new();
+        let search_result = searcher.search(&position, &mut history, &mut transposition_table, 5 * 1000);
 
         assert_eq!(search_result, None);
     }
