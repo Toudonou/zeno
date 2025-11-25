@@ -495,45 +495,97 @@ impl Position {
     }
 
     #[inline(always)]
-    pub fn is_square_attack_by(&self, square: &u8, attacker_color: &PieceColor) -> bool {
+    pub fn make_see_move(&mut self, attacker: &Piece, victim: &Piece, source: &u8, destination: &u8) {
+        let source_mask = 1u64 << source;
+        let destination_mask = 1u64 << destination;
+
+        match victim.piece_type {
+            PieceType::Pawn => self.pawns_board &= !destination_mask,
+            PieceType::Knight => self.knights_board &= !destination_mask,
+            PieceType::Bishop => self.bishops_board &= !destination_mask,
+            PieceType::Rook => self.rooks_board &= !destination_mask,
+            PieceType::Queen => self.queens_board &= !destination_mask,
+            PieceType::King => {}
+            _ => panic!("In see the destination can not be empty"),
+        }
+
+        match attacker.piece_type {
+            PieceType::Pawn => self.pawns_board ^= source_mask | destination_mask,
+            PieceType::Knight => self.knights_board ^= source_mask | destination_mask,
+            PieceType::Bishop => self.bishops_board ^= source_mask | destination_mask,
+            PieceType::Queen => self.queens_board ^= source_mask | destination_mask,
+            PieceType::Rook => self.rooks_board ^= source_mask | destination_mask,
+            PieceType::King => self.kings_board ^= source_mask | destination_mask,
+            _ => panic!("Attacker piece should be well define")
+        }
+
+        match attacker.color {
+            PieceColor::White => {
+                self.white_board ^= source_mask | destination_mask;
+                self.black_board &= !destination_mask;
+            }
+            PieceColor::Black => {
+                self.black_board ^= source_mask | destination_mask;
+                self.white_board &= !destination_mask;
+            }
+            PieceColor::None => {}
+        }
+    }
+
+    #[inline(always)]
+    pub fn is_square_attack_by(&self, square: &u8, attacker_color: &PieceColor) -> bool { self.get_smallest_attacker(square, attacker_color) != (PieceType::None, 64) }
+
+    #[inline(always)]
+    pub fn get_smallest_attacker(&self, victim_square: &u8, attacker_color: &PieceColor) -> (PieceType, u8) {
         let board = self.white_board | self.black_board;
 
-        let attacker_board = match attacker_color {
+        let attacker_board;
+        let mut superior_mask;
+        let mut result;
+
+        match attacker_color {
             PieceColor::None => panic!("Invalid color"),
-            PieceColor::White => self.white_board,
-            PieceColor::Black => self.black_board,
+            PieceColor::White => {
+                attacker_board = self.white_board;
+
+                superior_mask = BLACK_PAWNS_ATTACKS[*victim_square as usize];
+            }
+            PieceColor::Black => {
+                attacker_board = self.black_board;
+
+                superior_mask = WHITE_PAWNS_ATTACKS[*victim_square as usize];
+            }
         };
 
-        let mut superior_king_mask = KNIGHT_ATTACKS[*square as usize];
-        if superior_king_mask & self.knights_board & attacker_board != 0 {
-            return true;
-        }
+        result = superior_mask & self.pawns_board & attacker_board;
+        if result != 0 { return (PieceType::Pawn, result.trailing_zeros() as u8); }
 
-        superior_king_mask = KING_ATTACKS[*square as usize];
-        if superior_king_mask & self.kings_board & attacker_board != 0 {
-            return true;
-        }
 
-        superior_king_mask = match attacker_color {
-            PieceColor::None => panic!("Invalid color"),
-            PieceColor::White => BLACK_PAWNS_ATTACKS[*square as usize],
-            PieceColor::Black => WHITE_PAWNS_ATTACKS[*square as usize],
-        };
-        if superior_king_mask & self.pawns_board & attacker_board != 0 {
-            return true;
-        }
+        superior_mask = KNIGHT_ATTACKS[*victim_square as usize];
+        result = superior_mask & self.knights_board & attacker_board;
+        if result != 0 { return (PieceType::Knight, result.trailing_zeros() as u8); }
 
-        let superior_bishop_mask = generate_move_mask_for_bishop(&board, &square);
-        if superior_bishop_mask & (self.bishops_board | self.queens_board) & attacker_board != 0 {
-            return true;
-        }
 
-        let superior_rook_mask = generate_move_mask_for_rook(&board, &square);
-        if superior_rook_mask & (self.rooks_board | self.queens_board) & attacker_board != 0 {
-            return true;
-        }
+        let bishop_mask = generate_move_mask_for_bishop(&board, &victim_square);
+        result = bishop_mask & self.bishops_board & attacker_board;
+        if result != 0 { return (PieceType::Bishop, result.trailing_zeros() as u8); }
 
-        false
+
+        let rook_mask = generate_move_mask_for_rook(&board, &victim_square);
+        result = rook_mask & self.rooks_board & attacker_board;
+        if result != 0 { return (PieceType::Rook, result.trailing_zeros() as u8); }
+
+
+        result = (rook_mask | bishop_mask) & self.queens_board & attacker_board;
+        if result != 0 { return (PieceType::Queen, result.trailing_zeros() as u8); }
+
+
+        superior_mask = KING_ATTACKS[*victim_square as usize];
+        result = superior_mask & self.kings_board & attacker_board;
+        if result != 0 { return (PieceType::King, result.trailing_zeros() as u8); }
+
+
+        (PieceType::None, 64)
     }
 
     #[inline(always)]

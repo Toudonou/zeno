@@ -2,7 +2,7 @@ use std::fs::File;
 use std::io;
 use std::path::Path;
 #[cfg(test)]
-mod tests {
+mod pertf_tests {
     use std::io::BufRead;
     use zeno::perft;
     use zeno::position::Position;

@@ -2,8 +2,11 @@
 mod evaluation_tests {
     use zeno::evaluation::evaluate;
     use zeno::history::History;
+    use zeno::moves_ordering::see_capture;
+    use zeno::piece::{Piece, PieceColor, PieceType};
     use zeno::pos_eval::{Evaluation, MATE_SCORE};
     use zeno::position::Position;
+    use zeno::psqt::MG_PIECES_VALUES;
     use zeno::search::{Searcher, MAX_PLY};
     use zeno::transposition_table::TranspositionTable;
     use zeno::uci::uci_move;
@@ -90,5 +93,58 @@ mod evaluation_tests {
 
             assert_eq!(value_after_double_transition, initial_eval);
         }
+    }
+
+    #[test]
+    fn test_see_capture() {
+        let mut position = Position::from_fen("3r1rk1/pnpqb1p1/1p1p1n1p/4p3/P3P3/2PPBN1P/1P3RPN/R2Q2K1 w - - 0 1", None);
+
+        let attacker = Piece { color: PieceColor::White, piece_type: PieceType::Knight };
+        let victim = Piece { color: PieceColor::Black, piece_type: PieceType::Pawn };
+
+        let source = ((3 - 1) * 8) as u8 + 'f' as u8 - 'a' as u8;
+        let destination = ((5 - 1) * 8) as u8 + 'e' as u8 - 'a' as u8;
+
+        let see_value = see_capture(&mut position, &attacker, &victim, &source, &destination);
+        assert_eq!(see_value, 10 * (MG_PIECES_VALUES[PieceType::Pawn.to_usize()] - MG_PIECES_VALUES[PieceType::Knight.to_usize()]));
+        assert!(see_value < 0, "This capture is bad for white");
+
+
+        let mut position = Position::from_fen("3r1rk1/pnpqb1p1/1p1p1n1p/8/P3p1p1/2PPBN1P/1P2BRPN/R2Q2K1 b - - 0 1", None);
+
+        let attacker = Piece { color: PieceColor::Black, piece_type: PieceType::Pawn };
+        let victim = Piece { color: PieceColor::White, piece_type: PieceType::Knight };
+
+        let source = ((4 - 1) * 8) as u8 + 'e' as u8 - 'a' as u8;
+        let destination = ((3 - 1) * 8) as u8 + 'f' as u8 - 'a' as u8;
+
+        let see_value = see_capture(&mut position, &attacker, &victim, &source, &destination);
+        assert_eq!(see_value, 10 * (MG_PIECES_VALUES[PieceType::Knight.to_usize()] + MG_PIECES_VALUES[PieceType::Pawn.to_usize()] - 2 * MG_PIECES_VALUES[PieceType::Pawn.to_usize()]));
+        assert!(see_value > 0, "This capture is good for back");
+
+
+        let position = Position::from_fen("3r1rk1/pnpqb1p1/1p1p1n1p/8/P5p1/2PPBp1P/1P2BRPN/R2Q2K1 w - - 0 1", None);
+
+        let attacker = Piece { color: PieceColor::White, piece_type: PieceType::Pawn };
+        let victim = Piece { color: PieceColor::Black, piece_type: PieceType::Pawn };
+
+        let source = ((2 - 1) * 8) as u8 + 'g' as u8 - 'a' as u8;
+        let destination = ((3 - 1) * 8) as u8 + 'f' as u8 - 'a' as u8;
+
+        let see_value = see_capture(&position, &attacker, &victim, &source, &destination);
+        assert_eq!(see_value, 10 * (2 * MG_PIECES_VALUES[PieceType::Pawn.to_usize()] - MG_PIECES_VALUES[PieceType::Pawn.to_usize()]));
+        assert!(see_value > 0, "This capture is good for back");
+
+
+        let mut position = Position::from_fen("3r1rk1/p1pq2p1/1p1pb2p/n7/P1n1p1p1/1P1PB1NP/1P2BR1N/R2Q2K1 b - - 0 1", None);
+
+        let attacker = Piece { color: PieceColor::Black, piece_type: PieceType::Pawn };
+        let victim = Piece { color: PieceColor::White, piece_type: PieceType::Knight };
+
+        let source = ((3 - 1) * 8) as u8 + 'b' as u8 - 'a' as u8;
+        let destination = ((4 - 1) * 8) as u8 + 'c' as u8 - 'a' as u8;
+
+        let see_value = see_capture(&mut position, &attacker, &victim, &source, &destination);
+        assert_eq!(see_value, 10 * (MG_PIECES_VALUES[PieceType::Knight.to_usize()]), "It's better for black to just give up the knight");
     }
 }

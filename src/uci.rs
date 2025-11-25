@@ -34,7 +34,10 @@ pub fn uci_loop() {
                 transposition_table.clear();
                 history.clear()
             }
-            c if c.starts_with("position") => uci_position(command, &mut position, &mut history),
+            c if c.starts_with("position") => {
+                history.clear();
+                uci_position(command, &mut position, &mut history);
+            }
             c if c.starts_with("go") => go(command, &mut position, &mut searcher, &mut history, &mut transposition_table),
             "stop" => {}
             "quit" => break,
