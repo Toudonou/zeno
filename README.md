@@ -21,6 +21,7 @@ including castling and en passant.
     - [ ] Pawn Structure
     - [x] Draw by insufficient material
     - [x] [Draw by Threefold repetition](https://en.wikipedia.org/wiki/Threefold_repetition)
+    - [ ] [Fifty-move rule](https://en.wikipedia.org/wiki/Fifty-move_rule)
     - [ ] Passed Pawns
     - [ ] Bishop Pair
 - [ ] Search
@@ -40,7 +41,7 @@ including castling and en passant.
     - [ ] Aspiration window
     - [ ] Multi-threading
 - [x] Time management (partially)
-- [ ] Opening book support
+- [ ] Opening book support: [Polyglot book format](http://hgm.nubati.net/book_format.html)
 - [ ] Endgame tablebases
 
 ## Author
@@ -65,6 +66,7 @@ including castling and en passant.
 - https://billylevin.dev/posts/chess-engine-programming/
 - https://www.chessprogramming.org/Mop-up_Evaluation
 - https://cs.stackexchange.com/questions/1134/how-does-the-negascout-algorithm-work
+- [Polyglot Zobrist Key Generator](https://shinkarom.github.io/zobrist/)
 
 ## License
 

@@ -3,6 +3,109 @@ mod zobrist_hash_test {
     use zeno::moves::Move;
     use zeno::piece::PieceColor;
     use zeno::position::Position;
+    use zeno::uci::uci_move;
+    use zeno::utils::START_POSITION;
+
+    #[test]
+    fn test_zobrist_hash_polyglot_values() {
+        // For hash verification: https://shinkarom.github.io/zobrist/
+
+        // En passant for black
+        let position = Position::from_fen("rnbqkbnr/8/8/8/pppppppp/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", None);
+        assert_eq!(position.get_hash(), 0x0b667f4815ea3b0e);
+
+        let position = Position::from_fen("rnbqkbnr/8/8/8/Pppppppp/8/1PPPPPPP/RNBQKBNR b KQkq a3 0 1", None);
+        assert_eq!(position.get_hash(), 0xba07ee13cf46d018);
+
+        let position = Position::from_fen("rnbqkbnr/8/8/8/pPpppppp/8/2PPPPPP/RNBQKBNR b KQkq b3 0 1", None);
+        assert_eq!(position.get_hash(), 0xda9843864982ee80);
+
+        let position = Position::from_fen("rnbqkbnr/8/8/8/pPPppppp/8/3PPPPP/RNBQKBNR b KQkq c3 0 1", None);
+        assert_eq!(position.get_hash(), 0xcb9f05ae49f1012c);
+
+        let position = Position::from_fen("rnbqkbnr/8/8/8/pPPPpppp/8/4PPPP/RNBQKBNR b KQkq d3 0 1", None);
+        assert_eq!(position.get_hash(), 0xf32c86f4aace7a45);
+
+        let position = Position::from_fen("rnbqkbnr/8/8/8/pPPPPppp/8/5PPP/RNBQKBNR b KQkq e3 0 1", None);
+        assert_eq!(position.get_hash(), 0xa8fe06ebbabd0ad1);
+
+        let position = Position::from_fen("rnbqkbnr/8/8/8/pPPPpPpp/8/6PP/RNBQKBNR b KQkq f3 0 1", None);
+        assert_eq!(position.get_hash(), 0xfafa6872c7e9c138);
+
+        let position = Position::from_fen("rnbqkbnr/8/8/8/pPPPpPPp/8/7P/RNBQKBNR b KQkq g3 0 1", None);
+        assert_eq!(position.get_hash(), 0xcf06001050152e80);
+
+        let position = Position::from_fen("rnbqkbnr/8/8/8/pPPPpPpP/8/8/RNBQKBNR b KQkq h3 0 1", None);
+
+
+        // En passant for white
+        let position = Position::from_fen("rbnqknbr/pppppppp/8/PPPPPPPP/8/8/8/RBNQKNBR b KQkq - 0 1", None);
+        assert_eq!(position.get_hash(), 0x2fb2c51fed28a34e);
+
+        let position = Position::from_fen("rbnqknbr/1ppppppp/8/pPPPPPPP/8/8/8/RBNQKNBR w KQkq a6 0 1", None);
+        assert_eq!(position.get_hash(), 0x45723021c8c25d73);
+
+        let position = Position::from_fen("rbnqknbr/2pppppp/8/ppPPPPPP/8/8/8/RBNQKNBR w KQkq b6 0 1", None);
+        assert_eq!(position.get_hash(), 0xfc84484f238d0959);
+
+        let position = Position::from_fen("rbnqknbr/3ppppp/8/pPpPPPPP/8/8/8/RBNQKNBR w KQkq c6 0 1", None);
+        assert_eq!(position.get_hash(), 0x9e59bbf864faf07f);
+
+        let position = Position::from_fen("rbnqknbr/4pppp/8/pPBpPPPP/8/8/8/RBNQKN1R w KQkq d6 0 1", None);
+        assert_eq!(position.get_hash(), 0x87973947f59667fd);
+
+        let position = Position::from_fen("rbnqknbr/5ppp/8/pPpppPPP/8/8/8/RBNQKN1R w KQkq e6 0 1", None);
+        assert_eq!(position.get_hash(), 0xf3773c3b91e55bd6);
+
+        let position = Position::from_fen("rbnqknbr/6pp/8/pPppppPP/8/8/8/RBNQKN1R w KQkq f6 0 1", None);
+        assert_eq!(position.get_hash(), 0x1a6fd715bb64c649);
+
+        let position = Position::from_fen("rbnqknbr/7p/8/pPpppppP/8/8/8/RBNQKN1R w KQkq g6 0 1", None);
+        assert_eq!(position.get_hash(), 0x8a5895747f8a183f);
+
+        let position = Position::from_fen("rbnqknbr/8/8/pPpppppp/8/8/8/RBNQKN1R w KQkq h6 0 1", None);
+        assert_eq!(position.get_hash(), 0x7b12dcf34309a006);
+
+        // Tests from http://hgm.nubati.net/book_format.html
+        let mut position = Position::from_fen(START_POSITION, None);
+        assert_eq!(position.get_hash(), 0x463b96181691fc9c);
+
+        let mov = Move::from_uci_notation("e2e4", &position);
+        position.make_move(&mov, None);
+        assert_eq!(position.get_hash(), 0x823c9b50fd114196);
+
+        let mov = Move::from_uci_notation("d7d5", &position);
+        position.make_move(&mov, None);
+        assert_eq!(position.get_hash(), 0x0756b94461c50fb0);
+
+        let mov = Move::from_uci_notation("e4e5", &position);
+        position.make_move(&mov, None);
+        assert_eq!(position.get_hash(), 0x662fafb965db29d4);
+
+        let mov = Move::from_uci_notation("f7f5", &position);
+        position.make_move(&mov, None);
+        assert_eq!(position.get_hash(), 0x22a48b5a8e47ff78);
+
+        let mov = Move::from_uci_notation("e1e2", &position);
+        position.make_move(&mov, None);
+        assert_eq!(position.get_hash(), 0x652a607ca3f242c1);
+
+        let mov = Move::from_uci_notation("e8f7", &position);
+        position.make_move(&mov, None);
+        assert_eq!(position.get_hash(), 0x00fdd303c946bdd9);
+
+
+        let mut position = Position::from_fen(START_POSITION, None);
+        let moves = "a2a4 b7b5 h2h4 b5b4 c2c4".split_whitespace();
+        moves.for_each(|move_string| position.make_move(&uci_move(move_string, &position), None));
+        assert_eq!(position.get_hash(), 0x3c8123ea7b067637);
+
+        let mov = Move::from_uci_notation("b4c3", &position);
+        position.make_move(&mov, None);
+        let mov = Move::from_uci_notation("a1a3", &position);
+        position.make_move(&mov, None);
+        assert_eq!(position.get_hash(), 0x5c3f9b829b279560);
+    }
 
     #[test]
     fn test_zobrist_hash_normal_move_by_white() {

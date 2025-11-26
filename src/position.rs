@@ -3,7 +3,13 @@ use crate::moves::{Move, MoveType};
 use crate::moves_generator::{generate_move_mask_for_bishop, generate_move_mask_for_rook};
 use crate::piece::{Piece, PieceColor, PieceType};
 use crate::psqt::{BISHOP_PHASE, KNIGHT_PHASE, PAWN_PHASE, PHASE_TABLE, QUEEN_PHASE, ROOK_PHASE, TOTAL_PHASE};
-use crate::utils::{BLACK_PAWNS_ATTACKS, KING_ATTACKS, KNIGHT_ATTACKS, WHITE_PAWNS_ATTACKS, ZOBRIST_CASTLING_RIGHTS_KEYS, ZOBRIST_EN_PASSANT_FILES_KEYS, ZOBRIST_POSITION_KEYS, ZOBRIST_SIDE_KEY};
+use crate::utils::{BLACK_PAWNS_ATTACKS, BLACK_PAWNS_OCCUPANCY_OBLIGATION_FOR_EN_PASSANT, KING_ATTACKS, KNIGHT_ATTACKS, WHITE_PAWNS_ATTACKS, WHITE_PAWNS_OCCUPANCY_OBLIGATION_FOR_EN_PASSANT};
+use crate::zobrist_hash::ZobristHash;
+
+pub static WHITE_CAN_SHORT_CASTLE: u8 = 1u8 << 0;
+pub static WHITE_CAN_LONG_CASTLE: u8 = 1u8 << 1;
+pub static BLACK_CAN_SHORT_CASTLE: u8 = 1u8 << 2;
+pub static BLACK_CAN_LONG_CASTLE: u8 = 1u8 << 3;
 
 /*
     Directions and shifts
@@ -160,10 +166,10 @@ impl Position {
         if castling_part != "-" {
             for ch in castling_part.chars() {
                 match ch {
-                    'K' => castling_rights |= 1u8 << 0,
-                    'Q' => castling_rights |= 1u8 << 1,
-                    'k' => castling_rights |= 1u8 << 2,
-                    'q' => castling_rights |= 1u8 << 3,
+                    'K' => castling_rights |= WHITE_CAN_SHORT_CASTLE,
+                    'Q' => castling_rights |= WHITE_CAN_LONG_CASTLE,
+                    'k' => castling_rights |= BLACK_CAN_SHORT_CASTLE,
+                    'q' => castling_rights |= BLACK_CAN_LONG_CASTLE,
                     _ => {}
                 }
             }
@@ -181,40 +187,52 @@ impl Position {
 
         let mut hash: u64 = 0;
         let boards: [u64; 6] = [pawns_board, knights_board, bishops_board, rooks_board, queens_board, kings_board];
+        let pieces: [Piece; 12] = [Piece { color: PieceColor::White, piece_type: PieceType::Pawn }, Piece { color: PieceColor::White, piece_type: PieceType::Knight },
+            Piece { color: PieceColor::White, piece_type: PieceType::Bishop }, Piece { color: PieceColor::White, piece_type: PieceType::Rook },
+            Piece { color: PieceColor::White, piece_type: PieceType::Queen }, Piece { color: PieceColor::White, piece_type: PieceType::King },
+            Piece { color: PieceColor::Black, piece_type: PieceType::Pawn }, Piece { color: PieceColor::Black, piece_type: PieceType::Knight },
+            Piece { color: PieceColor::Black, piece_type: PieceType::Bishop }, Piece { color: PieceColor::Black, piece_type: PieceType::Rook },
+            Piece { color: PieceColor::Black, piece_type: PieceType::Queen }, Piece { color: PieceColor::Black, piece_type: PieceType::King }];
+        let mut phase = TOTAL_PHASE;
+
         for piece in 0..6 {
             let mut board = boards[piece] & white_board;
             while board != 0 {
-                hash ^= ZOBRIST_POSITION_KEYS[piece * 64 + board.trailing_zeros() as usize];
+                phase -= PHASE_TABLE[piece];
+
+                hash ^= ZobristHash::get_piece_key(&pieces[piece], &(board.trailing_zeros() as u8));
                 board &= board - 1;
             }
 
             board = boards[piece] & black_board;
             while board != 0 {
-                hash ^= ZOBRIST_POSITION_KEYS[(6 + piece) * 64 + board.trailing_zeros() as usize];
+                phase -= PHASE_TABLE[piece];
+
+                hash ^= ZobristHash::get_piece_key(&pieces[piece + 6], &(board.trailing_zeros() as u8));
                 board &= board - 1;
             }
         }
 
-        hash ^= ZOBRIST_CASTLING_RIGHTS_KEYS[castling_rights as usize];
+        hash ^= ZobristHash::get_castling_key(&castling_rights);
 
-        hash ^= ZOBRIST_EN_PASSANT_FILES_KEYS[en_passant_file as usize];
-
-        if turn == PieceColor::Black { hash ^= ZOBRIST_SIDE_KEY };
-
-        let boards: [u64; 6] = [pawns_board, knights_board, bishops_board, rooks_board, queens_board, kings_board];
-        let mut phase = TOTAL_PHASE;
-        for i in 0..6 {
-            let mut board = boards[i] & white_board;
-            while board != 0 {
-                phase -= PHASE_TABLE[i];
-                board &= board - 1;
-            }
-            board = boards[i] & black_board;
-            while board != 0 {
-                phase -= PHASE_TABLE[i];
-                board &= board - 1;
+        // En passant key is only applied if the opponent can take the en passant at his turn
+        if en_passant_file < 8 {
+            match turn {
+                PieceColor::White => {
+                    if pawns_board & white_board & WHITE_PAWNS_OCCUPANCY_OBLIGATION_FOR_EN_PASSANT[en_passant_file as usize] != 0 {
+                        hash ^= ZobristHash::get_en_passant_file_key(&en_passant_file);
+                    } else { en_passant_file = 0; };
+                }
+                PieceColor::Black => {
+                    if pawns_board & black_board & BLACK_PAWNS_OCCUPANCY_OBLIGATION_FOR_EN_PASSANT[en_passant_file as usize] != 0 {
+                        hash ^= ZobristHash::get_en_passant_file_key(&en_passant_file);
+                    } else { en_passant_file = 0; };
+                }
+                PieceColor::None => {}
             }
         }
+
+        hash ^= u64::from(turn == PieceColor::White) * ZobristHash::get_side_key();
 
         let position = Position {
             white_board,
@@ -263,47 +281,47 @@ impl Position {
         let old_half_move_clock = self.half_move_clock;
         self.half_move_clock = 0;
 
-        self.hash ^= ZOBRIST_SIDE_KEY;
+        self.hash ^= ZobristHash::get_side_key();
 
         // Putting 0 at the index of the destination
         match destination_piece.piece_type {
             PieceType::Pawn => {
                 self.pawns_board &= !destination_mask;
-                self.hash ^= ZOBRIST_POSITION_KEYS[destination_piece.to_usize() * 64 + destination as usize];
+                self.hash ^= ZobristHash::get_piece_key(&destination_piece, &destination);
 
                 self.phase += PAWN_PHASE;
             }
             PieceType::Knight => {
                 self.knights_board &= !destination_mask;
-                self.hash ^= ZOBRIST_POSITION_KEYS[destination_piece.to_usize() * 64 + destination as usize];
+                self.hash ^= ZobristHash::get_piece_key(&destination_piece, &destination);
 
                 self.phase += KNIGHT_PHASE;
             }
             PieceType::Bishop => {
                 self.bishops_board &= !destination_mask;
-                self.hash ^= ZOBRIST_POSITION_KEYS[destination_piece.to_usize() * 64 + destination as usize];
+                self.hash ^= ZobristHash::get_piece_key(&destination_piece, &destination);
 
                 self.phase += BISHOP_PHASE;
             }
             PieceType::Rook => {
                 self.rooks_board &= !destination_mask;
-                self.hash ^= ZOBRIST_POSITION_KEYS[destination_piece.to_usize() * 64 + destination as usize];
+                self.hash ^= ZobristHash::get_piece_key(&destination_piece, &destination);
 
                 if destination == 7 {
-                    self.castling_rights &= 0b11111110;
+                    self.castling_rights &= !WHITE_CAN_SHORT_CASTLE;
                 } else if destination == 0 {
-                    self.castling_rights &= 0b11111101;
+                    self.castling_rights &= !WHITE_CAN_LONG_CASTLE;
                 } else if destination == 63 {
-                    self.castling_rights &= 0b11111011;
+                    self.castling_rights &= !BLACK_CAN_SHORT_CASTLE;
                 } else if destination == 56 {
-                    self.castling_rights &= 0b11110111;
+                    self.castling_rights &= !BLACK_CAN_LONG_CASTLE;
                 }
 
                 self.phase += ROOK_PHASE;
             }
             PieceType::Queen => {
                 self.queens_board &= !destination_mask;
-                self.hash ^= ZOBRIST_POSITION_KEYS[destination_piece.to_usize() * 64 + destination as usize];
+                self.hash ^= ZobristHash::get_piece_key(&destination_piece, &destination);
 
                 self.phase += QUEEN_PHASE;
             }
@@ -314,8 +332,8 @@ impl Position {
         }
 
 
-        self.hash ^= ZOBRIST_POSITION_KEYS[source_piece.to_usize() * 64 + source as usize];
-        self.hash ^= ZOBRIST_POSITION_KEYS[source_piece.to_usize() * 64 + destination as usize];
+        self.hash ^= ZobristHash::get_piece_key(&source_piece, &source);
+        self.hash ^= ZobristHash::get_piece_key(&source_piece, &destination);
 
         // Putting 0 at the index of the source
         // And moving the piece at the destination by putting 1 at the destination for the corresponding piece
@@ -332,16 +350,16 @@ impl Position {
             PieceType::Rook => {
                 self.rooks_board ^= source_mask | destination_mask;
                 if source == 7 {
-                    self.castling_rights &= 0b11111110;
+                    self.castling_rights &= !WHITE_CAN_SHORT_CASTLE;
                 }
                 if source == 0 {
-                    self.castling_rights &= 0b11111101;
+                    self.castling_rights &= !WHITE_CAN_LONG_CASTLE;
                 }
                 if source == 63 {
-                    self.castling_rights &= 0b11111011;
+                    self.castling_rights &= !BLACK_CAN_SHORT_CASTLE;
                 }
                 if source == 56 {
-                    self.castling_rights &= 0b11110111;
+                    self.castling_rights &= !BLACK_CAN_LONG_CASTLE;
                 }
             }
             PieceType::King => {
@@ -350,21 +368,19 @@ impl Position {
                     PieceColor::None => {}
                     PieceColor::White => {
                         self.white_king_square = destination;
-                        self.castling_rights &= 0b11111100;
+                        self.castling_rights &= !(WHITE_CAN_SHORT_CASTLE | WHITE_CAN_LONG_CASTLE);
                     }
                     PieceColor::Black => {
                         self.black_king_square = destination;
-                        self.castling_rights &= 0b11110011;
+                        self.castling_rights &= !(BLACK_CAN_SHORT_CASTLE | BLACK_CAN_LONG_CASTLE);
                     }
                 }
             }
             _ => {}
         }
 
-        self.hash ^= ZOBRIST_CASTLING_RIGHTS_KEYS[old_castling_rights as usize];
-        self.hash ^= ZOBRIST_CASTLING_RIGHTS_KEYS[self.castling_rights as usize];
-
-        self.hash ^= ZOBRIST_EN_PASSANT_FILES_KEYS[self.en_passant_file as usize];
+        self.hash ^= ZobristHash::get_castling_key(&old_castling_rights);
+        self.hash ^= ZobristHash::get_castling_key(&self.castling_rights);
 
         // Updating the boards (for each color)
         match source_piece.color {
@@ -380,113 +396,134 @@ impl Position {
         };
 
         // Applying castling and promotions rules
-        if move_type == MoveType::ShortCastle {
-            // ShortCastle
-            match source_piece.color {
-                PieceColor::None => {}
-                PieceColor::White => {
-                    self.rooks_board ^= 160; // 1u64 << 7 | 1u64 << 5
-                    self.white_board ^= 160; // 1u64 << 7 | 1u64 << 5
+        match move_type {
+            MoveType::Normal => {}
+            MoveType::ShortCastle => {
+                match source_piece.color {
+                    PieceColor::None => {}
+                    PieceColor::White => {
+                        self.rooks_board ^= 160; // 1u64 << 7 | 1u64 << 5
+                        self.white_board ^= 160; // 1u64 << 7 | 1u64 << 5
 
-                    // Piece { color: PieceColor::White, piece_type: PieceType::Rook }.to_usize() == 3
-                    self.hash ^= ZOBRIST_POSITION_KEYS[3 * 64 + 7];
-                    self.hash ^= ZOBRIST_POSITION_KEYS[3 * 64 + 5];
-                }
-                PieceColor::Black => {
-                    self.rooks_board ^= 11529215046068469760; // 1u64 << 63 | 1u64 << 61
-                    self.black_board ^= 11529215046068469760; // 1u64 << 63 | 1u64 << 61
+                        let white_rook = Piece { color: PieceColor::White, piece_type: PieceType::Rook };
+                        self.hash ^= ZobristHash::get_piece_key(&white_rook, &7);
+                        self.hash ^= ZobristHash::get_piece_key(&white_rook, &5);
+                    }
+                    PieceColor::Black => {
+                        self.rooks_board ^= 11529215046068469760; // 1u64 << 63 | 1u64 << 61
+                        self.black_board ^= 11529215046068469760; // 1u64 << 63 | 1u64 << 61
 
-                    // Piece { color: PieceColor::Black, piece_type: PieceType::Rook }.to_usize() == 9
-                    self.hash ^= ZOBRIST_POSITION_KEYS[9 * 64 + 63];
-                    self.hash ^= ZOBRIST_POSITION_KEYS[9 * 64 + 61];
-                }
-            }
-        } else if move_type == MoveType::LongCastle {
-            // LongCastle
-            match source_piece.color {
-                PieceColor::None => {}
-                PieceColor::White => {
-                    self.rooks_board ^= 9; // 1u64 << 0 | 1u64 << 3
-                    self.white_board ^= 9; // 1u64 << 0 | 1u64 << 3
-
-                    // Piece { color: PieceColor::White, piece_type: PieceType::Rook }.to_usize() == 3
-                    self.hash ^= ZOBRIST_POSITION_KEYS[3 * 64 + 0];
-                    self.hash ^= ZOBRIST_POSITION_KEYS[3 * 64 + 3];
-                }
-                PieceColor::Black => {
-                    self.rooks_board ^= 648518346341351424; // 1u64 << 56 | 1u64 << 59
-                    self.black_board ^= 648518346341351424; // 1u64 << 56 | 1u64 << 59
-
-                    // Piece { color: PieceColor::Black, piece_type: PieceType::Rook }.to_usize() == 9
-                    self.hash ^= ZOBRIST_POSITION_KEYS[9 * 64 + 56];
-                    self.hash ^= ZOBRIST_POSITION_KEYS[9 * 64 + 59];
+                        let black_rook = Piece { color: PieceColor::Black, piece_type: PieceType::Rook };
+                        self.hash ^= ZobristHash::get_piece_key(&black_rook, &63);
+                        self.hash ^= ZobristHash::get_piece_key(&black_rook, &61);
+                    }
                 }
             }
-        } else if move_type == MoveType::EnPassant {
-            // Updating the boards (for each color)
-            match source_piece.color {
-                PieceColor::White => {
-                    self.pawns_board &= !(1u64 << (destination - 8));
-                    self.black_board &= !(1u64 << (destination - 8));
+            MoveType::LongCastle => {
+                match source_piece.color {
+                    PieceColor::None => {}
+                    PieceColor::White => {
+                        self.rooks_board ^= 9; // 1u64 << 0 | 1u64 << 3
+                        self.white_board ^= 9; // 1u64 << 0 | 1u64 << 3
 
-                    self.hash ^= ZOBRIST_POSITION_KEYS[6 * 64 + destination as usize - 8];
+                        let white_rook = Piece { color: PieceColor::White, piece_type: PieceType::Rook };
+                        self.hash ^= ZobristHash::get_piece_key(&white_rook, &0);
+                        self.hash ^= ZobristHash::get_piece_key(&white_rook, &3);
+                    }
+                    PieceColor::Black => {
+                        self.rooks_board ^= 648518346341351424; // 1u64 << 56 | 1u64 << 59
+                        self.black_board ^= 648518346341351424; // 1u64 << 56 | 1u64 << 59
+
+                        let black_rook = Piece { color: PieceColor::Black, piece_type: PieceType::Rook };
+                        self.hash ^= ZobristHash::get_piece_key(&black_rook, &56);
+                        self.hash ^= ZobristHash::get_piece_key(&black_rook, &59);
+                    }
                 }
-                PieceColor::Black => {
-                    self.pawns_board &= !(1u64 << (destination + 8));
-                    self.white_board &= !(1u64 << (destination + 8));
-
-                    self.hash ^= ZOBRIST_POSITION_KEYS[0 * 64 + destination as usize + 8];
-                }
-                PieceColor::None => panic!("Invalid color")
-            };
-
-            self.phase += PAWN_PHASE;
-        } else {
-            let mut promotion_index: usize = 0;
-            let mut promotion_phase: i32 = 0;
-
-            if move_type == MoveType::PawnToKnight {
-                self.pawns_board &= !destination_mask;
-                self.knights_board |= destination_mask;
-                promotion_index = 1;
-                promotion_phase = KNIGHT_PHASE;
-            } else if move_type == MoveType::PawnToBishop {
-                self.pawns_board &= !destination_mask;
-                self.bishops_board |= destination_mask;
-                promotion_index = 2;
-                promotion_phase = BISHOP_PHASE;
-            } else if move_type == MoveType::PawnToRook {
-                self.pawns_board &= !destination_mask;
-                self.rooks_board |= destination_mask;
-                promotion_index = 3;
-                promotion_phase = ROOK_PHASE;
-            } else if move_type == MoveType::PawnToQueen {
-                self.pawns_board &= !destination_mask;
-                self.queens_board |= destination_mask;
-                promotion_index = 4;
-                promotion_phase = QUEEN_PHASE;
             }
+            MoveType::EnPassant => {
+                match source_piece.color {
+                    PieceColor::White => {
+                        self.pawns_board &= !(1u64 << (destination - 8));
+                        self.black_board &= !(1u64 << (destination - 8));
 
-            // WHITE_PAWN or BLACK_PAWN
-            let pawn: usize = (self.turn.to_u8() * 6) as usize;
-            self.hash ^= ZOBRIST_POSITION_KEYS[pawn * 64 + destination as usize] ^ ZOBRIST_POSITION_KEYS[(pawn + promotion_index) * 64 + destination as usize];
+                        let black_pawn = Piece { color: PieceColor::Black, piece_type: PieceType::Pawn };
+                        self.hash ^= ZobristHash::get_piece_key(&black_pawn, &(destination - 8));
+                    }
+                    PieceColor::Black => {
+                        self.pawns_board &= !(1u64 << (destination + 8));
+                        self.white_board &= !(1u64 << (destination + 8));
 
-            self.phase += PAWN_PHASE - promotion_phase;
+                        let white_pawn = Piece { color: PieceColor::White, piece_type: PieceType::Pawn };
+                        self.hash ^= ZobristHash::get_piece_key(&white_pawn, &(destination + 8));
+                    }
+                    PieceColor::None => panic!("Invalid color")
+                };
+
+                self.phase += PAWN_PHASE;
+            }
+            MoveType::PawnToKnight | MoveType::PawnToBishop | MoveType::PawnToRook | MoveType::PawnToQueen => {
+                let mut promotion_phase: i32 = 0;
+                let mut promotion_piece_type: PieceType = PieceType::Knight;
+
+                if move_type == MoveType::PawnToKnight {
+                    self.pawns_board &= !destination_mask;
+                    self.knights_board |= destination_mask;
+                    promotion_piece_type = PieceType::Knight;
+
+                    promotion_phase = KNIGHT_PHASE;
+                } else if move_type == MoveType::PawnToBishop {
+                    self.pawns_board &= !destination_mask;
+                    self.bishops_board |= destination_mask;
+                    promotion_piece_type = PieceType::Bishop;
+
+                    promotion_phase = BISHOP_PHASE;
+                } else if move_type == MoveType::PawnToRook {
+                    self.pawns_board &= !destination_mask;
+                    self.rooks_board |= destination_mask;
+                    promotion_piece_type = PieceType::Rook;
+
+                    promotion_phase = ROOK_PHASE;
+                } else if move_type == MoveType::PawnToQueen {
+                    self.pawns_board &= !destination_mask;
+                    self.queens_board |= destination_mask;
+                    promotion_piece_type = PieceType::Queen;
+
+                    promotion_phase = QUEEN_PHASE;
+                }
+
+                // WHITE_PAWN or BLACK_PAWN
+                let pawn = Piece { color: self.turn, piece_type: PieceType::Pawn };
+                self.hash ^= ZobristHash::get_piece_key(&pawn, &destination);
+
+                self.hash ^= ZobristHash::get_piece_key(&Piece { color: self.turn, piece_type: promotion_piece_type }, &destination);
+
+                self.phase += PAWN_PHASE - promotion_phase;
+            }
         }
 
+        // Reset the en passant
+        self.hash ^= ZobristHash::get_en_passant_file_key(&self.en_passant_file);
         self.en_passant_file = 8;
+
         if source_piece.piece_type == PieceType::Pawn && source.abs_diff(destination) == 16 {
+            // En passant key is only applied if the opponent can take the en passant at his turn
             match source_piece.color {
                 PieceColor::None => {}
                 PieceColor::White => {
                     self.en_passant_file = (destination - 8) & 7;
+
+                    if self.pawns_board & self.black_board & BLACK_PAWNS_OCCUPANCY_OBLIGATION_FOR_EN_PASSANT[self.en_passant_file as usize] != 0 {
+                        self.hash ^= ZobristHash::get_en_passant_file_key(&self.en_passant_file);
+                    } else { self.en_passant_file = 8; }
                 }
                 PieceColor::Black => {
                     self.en_passant_file = (destination + 8) & 7;
+
+                    if self.pawns_board & self.white_board & WHITE_PAWNS_OCCUPANCY_OBLIGATION_FOR_EN_PASSANT[self.en_passant_file as usize] != 0 {
+                        self.hash ^= ZobristHash::get_en_passant_file_key(&self.en_passant_file);
+                    } else { self.en_passant_file = 8; }
                 }
             }
-
-            self.hash ^= ZOBRIST_EN_PASSANT_FILES_KEYS[self.en_passant_file as usize];
         }
 
         self.number_of_move += u8::from(self.turn == PieceColor::Black);
@@ -681,41 +718,29 @@ impl Position {
     #[inline(always)]
     pub fn can_white_short_castle(&self) -> bool {
         let board = self.white_board | self.black_board;
-        (self.castling_rights & 0b00000001) != 0
-            && (board & (32 | 64)) == 0 // 1u64 << (5 | 6)
-            && !self.is_square_attack_by(&4, &PieceColor::Black)
-            && !self.is_square_attack_by(&5, &PieceColor::Black)
-            && !self.is_square_attack_by(&6, &PieceColor::Black)
+        (self.castling_rights & 0b00000001) != 0 && (board & (32 | 64)) == 0 // 1u64 << (5 | 6)
+            && !self.is_square_attack_by(&4, &PieceColor::Black) && !self.is_square_attack_by(&5, &PieceColor::Black) && !self.is_square_attack_by(&6, &PieceColor::Black)
     }
 
     #[inline(always)]
     pub fn can_black_short_castle(&self) -> bool {
         let board = self.white_board | self.black_board;
-        (self.castling_rights & 0b00000100) != 0
-            && (board & (2305843009213693952u64 | 4611686018427387904u64)) == 0 // 1u64 << (61 | 62)
-            && !self.is_square_attack_by(&60, &PieceColor::White)
-            && !self.is_square_attack_by(&61, &PieceColor::White)
-            && !self.is_square_attack_by(&62, &PieceColor::White)
+        (self.castling_rights & 0b00000100) != 0 && (board & (2305843009213693952u64 | 4611686018427387904u64)) == 0 // 1u64 << (61 | 62)
+            && !self.is_square_attack_by(&60, &PieceColor::White) && !self.is_square_attack_by(&61, &PieceColor::White) && !self.is_square_attack_by(&62, &PieceColor::White)
     }
 
     #[inline(always)]
     pub fn can_white_long_castle(&self) -> bool {
         let board = self.white_board | self.black_board;
-        (self.castling_rights & 0b00000010) != 0
-            && (board & (8 | 4 | 2)) == 0 // 1u64 << (3 | 2 | 1)
-            && !self.is_square_attack_by(&4, &PieceColor::Black)
-            && !self.is_square_attack_by(&3, &PieceColor::Black)
-            && !self.is_square_attack_by(&2, &PieceColor::Black)
+        (self.castling_rights & 0b00000010) != 0 && (board & (8 | 4 | 2)) == 0 // 1u64 << (3 | 2 | 1)
+            && !self.is_square_attack_by(&4, &PieceColor::Black) && !self.is_square_attack_by(&3, &PieceColor::Black) && !self.is_square_attack_by(&2, &PieceColor::Black)
     }
 
     #[inline(always)]
     pub fn can_black_long_castle(&self) -> bool {
         let board = self.white_board | self.black_board;
-        (self.castling_rights & 0b00001000) != 0
-            && (board & (576460752303423488u64 | 288230376151711744u64 | 144115188075855872u64)) == 0 // 1u64 << (59 | 58 | 57)
-            && !self.is_square_attack_by(&60, &PieceColor::White)
-            && !self.is_square_attack_by(&59, &PieceColor::White)
-            && !self.is_square_attack_by(&58, &PieceColor::White)
+        (self.castling_rights & 0b00001000) != 0 && (board & (576460752303423488u64 | 288230376151711744u64 | 144115188075855872u64)) == 0 // 1u64 << (59 | 58 | 57)
+            && !self.is_square_attack_by(&60, &PieceColor::White) && !self.is_square_attack_by(&59, &PieceColor::White) && !self.is_square_attack_by(&58, &PieceColor::White)
     }
 
     #[inline(always)]
