@@ -9,6 +9,7 @@ use crate::pos_eval::{Evaluation, PosEval, MATE_SCORE};
 use crate::position::Position;
 use crate::transposition_table::{TTEntry, TTFlag, TranspositionTable};
 use crate::piece::PieceType;
+use crate::polyglot_book::PolyglotBook;
 use crate::utils::ZENO_INFINITY;
 
 pub static MAX_PLY: i32 = 128;
@@ -41,6 +42,8 @@ pub struct Searcher {
     current_pv_line: Vec<Vec<Move>>,
     killers: [(Move, Move); 1 + MAX_PLY as usize],
     pv_line_per_depth: Vec<Vec<Move>>,
+
+    polyglot_book: PolyglotBook
 }
 
 impl Searcher {
@@ -63,10 +66,20 @@ impl Searcher {
             current_pv_line: vec![],
             killers: [(Move::new(0, 0, MoveType::Normal), Move::new(0, 0, MoveType::Normal)); 1 + MAX_PLY as usize],
             pv_line_per_depth: vec![],
+
+            polyglot_book: PolyglotBook::new("opening_books/Human.bin")
         }
     }
 
     pub fn search(&mut self, position: &Position, history: &mut History, transposition_table: &mut TranspositionTable, thinking_time: u128) -> Option<Move> {
+        match self.polyglot_book.get_book_move(&position.get_hash()) {
+            None => {}
+            Some(mov) => {
+                println!("Book move found: {}", mov);
+                return Some(mov);
+            }
+        }
+
         self.thinking_time = thinking_time;
         self.timer = Instant::now();
 

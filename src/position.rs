@@ -221,12 +221,12 @@ impl Position {
                 PieceColor::White => {
                     if pawns_board & white_board & WHITE_PAWNS_OCCUPANCY_OBLIGATION_FOR_EN_PASSANT[en_passant_file as usize] != 0 {
                         hash ^= ZobristHash::get_en_passant_file_key(&en_passant_file);
-                    } else { en_passant_file = 0; };
+                    } else { en_passant_file = 0; }; // Reset if the opponent can take the en passant at his turn
                 }
                 PieceColor::Black => {
                     if pawns_board & black_board & BLACK_PAWNS_OCCUPANCY_OBLIGATION_FOR_EN_PASSANT[en_passant_file as usize] != 0 {
                         hash ^= ZobristHash::get_en_passant_file_key(&en_passant_file);
-                    } else { en_passant_file = 0; };
+                    } else { en_passant_file = 0; }; // Reset if the opponent can take the en passant at his turn
                 }
                 PieceColor::None => {}
             }
@@ -514,14 +514,14 @@ impl Position {
 
                     if self.pawns_board & self.black_board & BLACK_PAWNS_OCCUPANCY_OBLIGATION_FOR_EN_PASSANT[self.en_passant_file as usize] != 0 {
                         self.hash ^= ZobristHash::get_en_passant_file_key(&self.en_passant_file);
-                    } else { self.en_passant_file = 8; }
+                    } else { self.en_passant_file = 8; } // Reset if the opponent can take the en passant at his turn
                 }
                 PieceColor::Black => {
                     self.en_passant_file = (destination + 8) & 7;
 
                     if self.pawns_board & self.white_board & WHITE_PAWNS_OCCUPANCY_OBLIGATION_FOR_EN_PASSANT[self.en_passant_file as usize] != 0 {
                         self.hash ^= ZobristHash::get_en_passant_file_key(&self.en_passant_file);
-                    } else { self.en_passant_file = 8; }
+                    } else { self.en_passant_file = 8; } // Reset if the opponent can take the en passant at his turn
                 }
             }
         }

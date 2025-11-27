@@ -14,3 +14,4 @@ pub mod pos_eval;
 pub mod history;
 pub mod transposition_table;
 pub mod zobrist_hash;
+pub mod polyglot_book;

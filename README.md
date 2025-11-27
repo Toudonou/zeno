@@ -41,7 +41,7 @@ including castling and en passant.
     - [ ] Aspiration window
     - [ ] Multi-threading
 - [x] Time management (partially)
-- [ ] Opening book support: [Polyglot book format](http://hgm.nubati.net/book_format.html)
+- [x] Opening book support: [Polyglot book format](http://hgm.nubati.net/book_format.html)
 - [ ] Endgame tablebases
 
 ## Author
