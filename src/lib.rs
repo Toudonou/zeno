@@ -1,6 +1,6 @@
 pub mod bitboard;
 pub mod containers;
-pub mod evaluate;
+pub mod evaluator;
 pub mod lookup_tables;
 pub mod moves;
 pub mod moves_generator;
@@ -8,6 +8,7 @@ pub mod perft;
 pub mod piece;
 pub mod pos_eval;
 pub mod position;
+pub mod psqt;
 pub mod search;
 pub mod square;
 pub mod uci;

@@ -1,0 +1,208 @@
+use crate::containers::ByPieceType;
+use crate::piece::{PieceColor, PieceType};
+
+// Values from https://github.com/jhonnold/berserk (Initial Release)
+static MG_PAWN_VALUE: i32 = 100;
+static MG_KNIGHT_VALUE: i32 = 554;
+static MG_BISHOP_VALUE: i32 = 557;
+static MG_ROOK_VALUE: i32 = 698;
+static MG_QUEEN_VALUE: i32 = 1578;
+
+static EG_PAWN_VALUE: i32 = 146;
+static EG_KNIGHT_VALUE: i32 = 400;
+static EG_BISHOP_VALUE: i32 = 427;
+static EG_ROOK_VALUE: i32 = 765;
+static EG_QUEEN_VALUE: i32 = 1451;
+
+static KING_VALUE: i32 = 10_000;
+
+static MG_PIECES_VALUES: ByPieceType<i32> = ByPieceType::new(MG_PAWN_VALUE, MG_KNIGHT_VALUE, MG_BISHOP_VALUE, MG_ROOK_VALUE, MG_QUEEN_VALUE, KING_VALUE);
+static EG_PIECES_VALUES: ByPieceType<i32> = ByPieceType::new(EG_PAWN_VALUE, EG_KNIGHT_VALUE, EG_BISHOP_VALUE, EG_ROOK_VALUE, EG_QUEEN_VALUE, KING_VALUE);
+
+static PAWN_PHASE: i32 = 0;
+static KNIGHT_PHASE: i32 = 1;
+static BISHOP_PHASE: i32 = 1;
+static ROOK_PHASE: i32 = 2;
+static QUEEN_PHASE: i32 = 4;
+static PHASE_TABLE: ByPieceType<i32> = ByPieceType::new(PAWN_PHASE, KNIGHT_PHASE, BISHOP_PHASE, ROOK_PHASE, QUEEN_PHASE, 0);
+pub static TOTAL_PHASE: i32 = PAWN_PHASE * 16 + KNIGHT_PHASE * 4 + BISHOP_PHASE * 4 + ROOK_PHASE * 4 + QUEEN_PHASE * 2;
+
+#[rustfmt::skip]
+ static MG_PAWN_TABLE: [i32; 64] = [
+     0,   0,   0,   0,   0,   0,   0,   0,
+    86,  63,  69,  78,  78,  69,  63,  86,
+   -21,  11,  63,  41,  41,  63,  11, -21,
+   -21,  24,  22,  49,  49,  22,  24, -21,
+   -26,   6,  16,  42,  42,  16,   6, -26,
+   -17,  21,  18,  22,  22,  18,  21, -17,
+   -38,  13,  13,   3,   3,  13,  13, -38,
+     0,   0,   0,   0,   0,   0,   0,   0,
+];
+
+#[rustfmt::skip]
+ static EG_PAWN_TABLE: [i32; 64] = [
+      0,   0,   0,   0,   0,   0,   0,   0,
+    165, 164, 121, 100, 100, 121, 164, 165,
+     82,  73,  28,   5,   5,  28,  73,  82,
+      2, -12, -26, -48, -48, -26, -12,   2,
+    -19, -27, -37, -49, -49, -37, -17, -19,
+    -32, -40, -40, -33, -33, -40, -40, -32,
+    -22, -40, -27, -22, -22, -27, -40, -22,
+      0,   0,   0,   0,   0,   0,   0,   0,
+];
+
+#[rustfmt::skip]
+ static MG_KNIGHT_TABLE: [i32; 64] = [
+    -198, -90, -121, -42, -42, -121, -90, -198,
+     -65, -40,   89, -13, -13,   89, -40,  -65,
+     -33,  80,   57,  66,  66,   57,  80,  -33,
+       8,   7,   32,  28,  28,   32,   7,    8,
+       1,  19,   22,  26,  26,   22,  19,    1,
+     -18,   3,   16,  22,  22,   16,   3,  -18,
+     -20, -42,    2,   6,   6,    2, -42,  -20,
+     -69, -20,  -43, -19, -19,  -43, -20,  -69,
+];
+
+#[rustfmt::skip]
+ static EG_KNIGHT_TABLE: [i32; 64] = [
+    -70, -55, -26, -39, -39, -26, -55, -70,
+    -30, -11, -48, -10, -10, -48, -11, -30,
+    -38, -30,  13,   1,   1,  13, -30, -38,
+    -18,   7,  28,  30,  30,  28,   7, -18,
+    -10,   2,  28,  32,  32,  28,   2, -10,
+    -13,  -3,   9,  28,  28,   9,  -3, -13,
+    -23,  -6,  -2,  11,  11,  -2,  -6, -23,
+    -23, -33,  -3,   3,   3,  -3, -33, -23,
+];
+
+#[rustfmt::skip]
+ static MG_BISHOP_TABLE: [i32; 64] = [
+    -31, -20, -121, -80, -80, -121, -20, -31,
+    -58,  12,   10, -10, -10,   10,  12, -58,
+    -30,  26,   46,  21,  21,   46,  26, -30,
+    -12, -18,   13,  35,  35,   13, -18, -12,
+     -9,   1,    6,  25,  25,    6,   1,  -9,
+    -12,  16,   18,  13,  13,   18,  16, -12,
+      9,  27,   20,  10,  10,   20,  27,   9,
+    -52, -21,   -9, -18, -18,   -9, -21, -52,
+];
+
+#[rustfmt::skip]
+ static EG_BISHOP_TABLE: [i32; 64] = [
+    -11, -10,  -2,  -3,  -3,  -2, -10, -11,
+      8,  -2,  -3,  -8,  -8,  -3,  12,   8,
+     20,   4,   1,  -1,  -1,   1,   4,  20,
+      9,  19,  15,  12,  12,  15,  19,   9,
+      1,   3,  12,  14,  14,  12,   3,   1,
+      1,  -3,   7,  19,  19,   7,  -3,   1,
+    -21, -23,  -6,  15,  15,  -6, -23, -21,
+    -15,   3,  -5,  11,  11,  -5,   3, -15,
+];
+
+#[rustfmt::skip]
+ static MG_ROOK_TABLE: [i32; 64] = [
+      1,  26,  -3,  54,  54,  -3,  26,   1,
+      6,   3,  70,  56,  56,  70,   3,   6,
+     -7,  52,  33,  47,  47,  33,  52,  -7,
+    -18,  -2,  27,  51,  51,  27,  -2, -18,
+    -35,   1,  -3,  25,  25,  -3,   1, -35,
+    -46,  -8,  -1,  11,  11,  -1,  -8, -46,
+    -68,  -5,  -7,  10,  10,  -7,  -5, -68,
+    -12, -16,   6,  40,  40,   6, -16, -12,
+];
+
+#[rustfmt::skip]
+ static EG_ROOK_TABLE: [i32; 64] = [
+     32,  19,  26,  15,  15,  26,  19,  32,
+     12,  15,  -6,  -9,  -9,  -6,  15,  12,
+      0,  -9,  -5,  -9,  -9,  -5,  -9,   0,
+     10,   2,  10,  -9,  -9,  10,   2,  10,
+     17,   5,   9,  -4,  -4,   9,   5,  17,
+     13,   7,  -7,  -9,  -9,  -7,   7,  13,
+     24,   1,   1,  -1,  -1,   1,   1,  24,
+      4,  17,   6,  -3,  -3,   6,  17,   4,
+];
+
+#[rustfmt::skip]
+ static MG_QUEEN_TABLE: [i32; 64] = [
+      3,  23,  36,  52,  52,  36,  23,   3,
+    -14, -50,  24,   8,   8,  24, -50, -14,
+     19,  20,  25,  34,  34,  25,  20,  19,
+     -9, -27, -10, -10, -10, -10, -27,  -9,
+    -13, -13, -14, -14, -14, -14, -13, -13,
+    -20,   7, -10, -11, -11, -10,   7, -20,
+    -52, -25,  16,   0,   0,  16, -25, -52,
+    -36, -34, -26,   6,   6, -26, -34, -36,
+];
+
+#[rustfmt::skip]
+ static EG_QUEEN_TABLE: [i32; 64] = [
+    -10,   4,  12,  13,  13,  12,   4, -10,
+    -16,  -5,  12,  16,  16,  12,  -5, -16,
+    -13,  -6,  11,  16,  16,  11,  -6, -13,
+     -3,  18,  18,  24,  24,  18,  18,  -3,
+     -6,  24,  21,  24,  24,  21,  24,  -6,
+     -3, -21,  15,  14,  14,  15, -21,  -3,
+    -19, -23, -22,  -4,  -4, -22, -23, -19,
+    -24, -25, -26, -46, -46, -26, -25, -24,
+];
+
+#[rustfmt::skip]
+ static MG_KING_TABLE: [i32; 64] = [
+    -51,   6,   6, -19, -19,   6,   6, -51,
+      9,  57,  78,  72,  72,  78,  57,   9,
+     38, 123,  69,  45,  45,  69, 123,  38,
+    -12,  34,  29,  -5,  -5,  29,  34, -12,
+   -102,   3, -47, -65, -65, -47,   3, -102,
+    -51,  15, -31, -50, -50, -31,  15, -51,
+     36,  38, -40, -78, -78, -40,  38,  36,
+     28,  68, -41,  34,  34, -41,  68,  28,
+];
+
+#[rustfmt::skip]
+ static EG_KING_TABLE: [i32; 64] = [
+    -41,  -6,  -6, -14, -14,  -6,  -6, -41,
+      4,  33,  39,  27,  27,  39,  33,   4,
+      7,  42,  57,  29,  29,  57,  42,   7,
+     -7,  42,  53,  55,  55,  53,  42,  -7,
+     -2,  20,  57,  67,  67,  57,  20,  -2,
+     -6,  19,  45,  58,  58,  45,  19,  -6,
+    -32,   1,  34,  48,  48,  34,   1, -32,
+    -95, -61, -17, -34, -34, -17, -61, -95,
+];
+
+static MG_PIECES_SQUARES_TABLES: ByPieceType<[i32; 64]> = ByPieceType::new(MG_PAWN_TABLE, MG_KNIGHT_TABLE, MG_BISHOP_TABLE, MG_ROOK_TABLE, MG_QUEEN_TABLE, MG_KING_TABLE);
+static EG_PIECES_SQUARES_TABLES: ByPieceType<[i32; 64]> = ByPieceType::new(EG_PAWN_TABLE, EG_KNIGHT_TABLE, EG_BISHOP_TABLE, EG_ROOK_TABLE, EG_QUEEN_TABLE, EG_KING_TABLE);
+
+#[inline(always)]
+pub fn to_psqt_index(side: PieceColor, square: u8) -> usize {
+  match side {
+    PieceColor::White => (square ^ 56) as usize,
+    _ => square as usize,
+  }
+}
+
+#[inline(always)]
+pub fn get_phase(piece_type: PieceType) -> i32 {
+  PHASE_TABLE[piece_type]
+}
+
+#[inline(always)]
+pub fn get_mg_piece_value(piece_type: PieceType) -> i32 {
+  MG_PIECES_VALUES[piece_type]
+}
+
+#[inline(always)]
+pub fn get_eg_piece_value(piece_type: PieceType) -> i32 {
+  EG_PIECES_VALUES[piece_type]
+}
+
+#[inline(always)]
+pub fn get_mg_psqt_value(piece_type: PieceType, side: PieceColor, square: u8) -> i32 {
+  MG_PIECES_SQUARES_TABLES[piece_type][to_psqt_index(side, square)]
+}
+
+#[inline(always)]
+pub fn get_eg_psqt_value(piece_type: PieceType, side: PieceColor, square: u8) -> i32 {
+  EG_PIECES_SQUARES_TABLES[piece_type][to_psqt_index(side, square)]
+}

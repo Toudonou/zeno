@@ -1,4 +1,4 @@
-use crate::evaluate::Evaluator;
+use crate::evaluator::Evaluator;
 use crate::moves::{Move, MoveList};
 use crate::moves_generator::generate_legal_moves;
 use crate::pos_eval::Evaluation;
