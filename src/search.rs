@@ -1,6 +1,6 @@
 use crate::evaluator::Evaluator;
-use crate::moves::{Move, MoveList};
-use crate::moves_generator::generate_legal_moves;
+use crate::moves::Move;
+use crate::moves_picker::MovePicker;
 use crate::pos_eval::Evaluation;
 use crate::position::Position;
 use crate::utils::ZENO_INFINITY;
@@ -27,6 +27,7 @@ impl Searcher {
 
   pub fn search(&mut self, position: &mut Position) -> Option<Move> {
     let timer = Instant::now();
+    self.search_stats.number_of_nodes_visited = 0;
 
     self.pv_line = vec![vec![]; (MAX_PLY + 1) as usize];
     let score = self.nega_max_alpha_beta(position, 1, MAX_PLY, -ZENO_INFINITY, ZENO_INFINITY);
@@ -46,14 +47,11 @@ impl Searcher {
 
     if current_ply > max_ply {
       self.pv_line[0] = vec![];
-      return Evaluation::Score(Evaluator::evaluate(position) * position.get_side().to_i32());
+      return self.quiescence_search(position, alpha, beta);
     }
 
-    let mut move_list = MoveList::new();
-    generate_legal_moves(position, &mut move_list);
-
-    if move_list.count == 0 {
-      self.pv_line[0] = vec![];
+    let mut move_picker: MovePicker = MovePicker::new(position, false);
+    if move_picker.get_moves_count() == 0 {
       if position.is_check(position.get_side()) {
         return Evaluation::MateIn(-1 * (current_ply as i32));
       }
@@ -61,9 +59,7 @@ impl Searcher {
     }
 
     let mut best_eval = Evaluation::Score(alpha);
-
-    for idx in 0..move_list.count {
-      let mov = move_list.moves[idx];
+    while let Some(mov) = move_picker.pick_best_move(position) {
       let mut temp_position = position.clone();
       temp_position.make_move(mov);
 
@@ -75,7 +71,6 @@ impl Searcher {
 
         self.pv_line[depth as usize].clear();
         self.pv_line[depth as usize].push(mov);
-
         let temp = self.pv_line[(depth - 1) as usize].clone();
         self.pv_line[depth as usize].extend(temp);
       }
@@ -84,6 +79,38 @@ impl Searcher {
         break;
       }
     }
+    best_eval
+  }
+
+  fn quiescence_search(&mut self, position: &mut Position, mut alpha: i32, beta: i32) -> Evaluation {
+    let static_evaluation = Evaluation::Score(Evaluator::evaluate(position) * position.get_side().to_i32());
+
+    let mut best_eval = static_evaluation;
+    if best_eval.value() >= beta {
+      return best_eval;
+    }
+    if best_eval.value() > alpha {
+      alpha = best_eval.value();
+    }
+
+    let mut move_picker: MovePicker = MovePicker::new(position, true);
+    while let Some(mov) = move_picker.pick_best_move(position) {
+      let mut temp_position = position.clone();
+      temp_position.make_move(mov);
+
+      let eval = self.quiescence_search(&mut temp_position, -beta, -alpha) * -1;
+
+      if eval.value() >= beta {
+        return eval;
+      }
+      if eval.value() > alpha {
+        alpha = eval.value();
+      }
+      if eval.value() > best_eval.value() {
+        best_eval = eval;
+      }
+    }
+
     best_eval
   }
 

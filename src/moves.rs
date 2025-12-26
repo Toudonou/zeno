@@ -156,7 +156,7 @@ impl Display for Move {
 }
 
 pub struct MoveList {
-  pub moves: [Move; 252], // For padding; Total size 512
+  pub moves: [Move; MOVE_LIST_MAX_SIZE], // For padding; Total size 512
   pub count: usize,
 }
 

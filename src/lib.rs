@@ -4,6 +4,7 @@ pub mod evaluator;
 pub mod lookup_tables;
 pub mod moves;
 pub mod moves_generator;
+pub mod moves_picker;
 pub mod perft;
 pub mod piece;
 pub mod pos_eval;
