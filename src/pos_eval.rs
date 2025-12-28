@@ -23,6 +23,24 @@ impl Evaluation {
       Evaluation::MateIn(mate_in) => (if *mate_in > 0 { 1 } else { -1 }) * (MATE_SCORE + MAX_PLY as i32 - (*mate_in).abs()),
     }
   }
+
+  // Move the score from [-(MATE_SCORE + MAX_PLY); MATE_SCORE + MAX_PLY]
+  // To [0; 2 * (MATE_SCORE + MAX_PLY)]; so the evaluation will be stored on 3 bytes in the transposition table
+  #[inline(always)]
+  pub fn to_u32(&self) -> u32 {
+    (self.value() + MATE_SCORE + MAX_PLY as i32) as u32
+  }
+
+  #[inline(always)]
+  pub fn from_u32(value: u32) -> Evaluation {
+    let new_value = (value - (MATE_SCORE + MAX_PLY as i32) as u32) as i32;
+
+    if new_value.abs() >= MATE_SCORE {
+      Evaluation::MateIn(new_value.signum() * ((MATE_SCORE + MAX_PLY as i32) - new_value.abs()))
+    } else {
+      Evaluation::Score(new_value)
+    }
+  }
 }
 
 impl Mul<i32> for Evaluation {

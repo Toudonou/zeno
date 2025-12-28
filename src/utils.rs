@@ -1,4 +1,4 @@
-use crate::bitboard::BitBoard;
+use crate::{bitboard::BitBoard, containers::ByColor};
 use rand::Rng;
 use std::fmt::Display;
 
@@ -13,6 +13,13 @@ pub static RANK_7: BitBoard = 0xFF000000000000;
 pub static NOT_FILE_A: BitBoard = !0x101010101010101;
 pub static NOT_FILE_H: BitBoard = !0x8080808080808080;
 pub static BITBOARD_FILL_WITH_ONE: BitBoard = !0;
+
+#[rustfmt::skip]
+static WHITE_PAWNS_OCCUPANCY_OBLIGATION_FOR_EN_PASSANT: [BitBoard; 8] = [0x200000000, 0x500000000, 0xA00000000, 0x1400000000, 0x2800000000, 0x5000000000, 0xA000000000, 0x4000000000];
+#[rustfmt::skip]
+static BLACK_PAWNS_OCCUPANCY_OBLIGATION_FOR_EN_PASSANT: [BitBoard; 8] = [0x2000000, 0x5000000, 0xA000000, 0x14000000, 0x28000000, 0x50000000, 0xA0000000, 0x40000000];
+#[rustfmt::skip]
+pub static PAWNS_OCCUPANCY_OBLIGATION_FOR_EN_PASSANT: ByColor<[BitBoard; 8]> = ByColor::new(WHITE_PAWNS_OCCUPANCY_OBLIGATION_FOR_EN_PASSANT, BLACK_PAWNS_OCCUPANCY_OBLIGATION_FOR_EN_PASSANT);
 
 pub static ZENO_INFINITY: i32 = 1_000_000_000;
 

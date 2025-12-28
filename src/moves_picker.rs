@@ -3,9 +3,9 @@ use crate::moves::{MOVE_LIST_MAX_SIZE, Move, MoveList, MoveType};
 use crate::moves_generator::{generate_legal_moves, generate_quiescences_moves};
 use crate::piece::PieceType;
 use crate::position::Position;
-use crate::psqt::get_mg_piece_value;
 use crate::utils::ZENO_INFINITY;
 
+static TT_MOVE_SCORE: i32 = 500_000;
 static PROMOTION_MOVE_SCORE: i32 = 400_000;
 static CASTLE_MOVE_SCORE: i32 = 100_000;
 static EN_PASSANT_MOVE_SCORE: i32 = 6002;
@@ -24,11 +24,14 @@ pub struct MovePicker {
   moves_list: MoveList,
   scores: [i32; MOVE_LIST_MAX_SIZE],
   start_index: usize,
+  tt_move: Move,
 }
 
 impl MovePicker {
   #[inline(always)]
-  pub fn new(position: &mut Position, is_quiescence_search: bool) -> Self {
+  pub fn new(position: &mut Position, tt_move: Option<Move>, is_quiescence_search: bool) -> Self {
+    let tt_move = tt_move.unwrap_or_default();
+
     let mut moves = MoveList::new();
     if is_quiescence_search {
       generate_quiescences_moves(position, &mut moves);
@@ -36,7 +39,7 @@ impl MovePicker {
       generate_legal_moves(position, &mut moves);
     }
 
-    Self { moves_list: moves, scores: [-ZENO_INFINITY; MOVE_LIST_MAX_SIZE], start_index: 0 }
+    Self { moves_list: moves, scores: [-ZENO_INFINITY; MOVE_LIST_MAX_SIZE], start_index: 0, tt_move }
   }
 
   #[inline(always)]
@@ -50,12 +53,12 @@ impl MovePicker {
     let mut best_score = self.scores[self.start_index];
 
     if best_score == -ZENO_INFINITY {
-      best_score = MovePicker::evaluate_move(best_move, position);
+      best_score = MovePicker::evaluate_move(best_move, position, self.tt_move);
     }
 
     for i in (self.start_index + 1)..self.moves_list.count {
       if self.scores[i] == -ZENO_INFINITY {
-        self.scores[i] = MovePicker::evaluate_move(self.moves_list.moves[i], position);
+        self.scores[i] = MovePicker::evaluate_move(self.moves_list.moves[i], position, self.tt_move);
       }
 
       if self.scores[i] > best_score {
@@ -81,14 +84,18 @@ impl MovePicker {
   }
 
   #[inline(always)]
-  fn evaluate_move(mov: Move, position: &Position) -> i32 {
-    let mut primary_score = 0;
+  fn evaluate_move(mov: Move, position: &Position, tt_move: Move) -> i32 {
+    let mut score = 0;
 
     let source_piece = position.get_piece_on_square(mov.source());
     let destination_piece = position.get_piece_on_square(mov.destination());
 
+    if mov == tt_move {
+      score = TT_MOVE_SCORE;
+    }
+
     // Promotion bonus
-    primary_score += match mov.move_type() {
+    score += match mov.move_type() {
       MoveType::Normal => 0,
       MoveType::ShortCastle => CASTLE_MOVE_SCORE,
       MoveType::LongCastle => CASTLE_MOVE_SCORE,
@@ -100,10 +107,8 @@ impl MovePicker {
     };
 
     if destination_piece.piece_type != PieceType::None {
-      primary_score += MVV_LVA[source_piece.piece_type][destination_piece.piece_type];
-    } else {
-      primary_score = get_mg_piece_value(PieceType::King) - get_mg_piece_value(source_piece.piece_type);
+      score += MVV_LVA[source_piece.piece_type][destination_piece.piece_type];
     }
-    primary_score
+    score
   }
 }

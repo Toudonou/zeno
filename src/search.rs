@@ -1,12 +1,13 @@
 use crate::evaluator::Evaluator;
 use crate::moves::Move;
 use crate::moves_picker::MovePicker;
-use crate::pos_eval::Evaluation;
+use crate::pos_eval::{Evaluation, MATE_SCORE};
 use crate::position::Position;
+use crate::transposition_table::{TTEntry, TTFlag, TranspositionTable};
 use crate::utils::ZENO_INFINITY;
 use std::time::Instant;
 
-pub static MAX_PLY: u32 = 6;
+pub static MAX_PLY: u32 = 128;
 
 #[derive(Copy, Clone)]
 struct SearchStats {
@@ -16,69 +17,169 @@ struct SearchStats {
 }
 
 pub struct Searcher {
+  timer: Instant,
+  thinking_time: u128,
+  max_depth: u32,
+  is_search_cancel_early: bool,
   search_stats: SearchStats,
-  pv_line: Vec<Vec<Move>>,
+  pv_line: Vec<Move>,
 }
 
 impl Searcher {
   pub fn new() -> Searcher {
-    Searcher { search_stats: SearchStats { number_of_nodes_visited: 0, search_time: 0, search_depth: 0 }, pv_line: Vec::with_capacity(MAX_PLY as usize) }
+    Searcher {
+      timer: Instant::now(),
+      thinking_time: 3000,
+      max_depth: MAX_PLY as u32,
+      is_search_cancel_early: false,
+      search_stats: SearchStats { number_of_nodes_visited: 0, search_time: 0, search_depth: 0 },
+      pv_line: Vec::with_capacity(MAX_PLY as usize),
+    }
   }
 
-  pub fn search(&mut self, position: &mut Position) -> Option<Move> {
-    let timer = Instant::now();
+  pub fn search(&mut self, position: &mut Position, transposition_table: &mut TranspositionTable, thinking_time: u128) -> Option<Move> {
+    transposition_table.clear();
+
+    let mut score = Evaluation::Score(0);
+    self.timer = Instant::now();
+    self.thinking_time = thinking_time;
     self.search_stats.number_of_nodes_visited = 0;
+    self.is_search_cancel_early = false;
+    self.pv_line.clear();
 
-    self.pv_line = vec![vec![]; (MAX_PLY + 1) as usize];
-    let score = self.nega_max_alpha_beta(position, 1, MAX_PLY, -ZENO_INFINITY, ZENO_INFINITY);
+    // Iterative deepening
+    for depth in 1..=self.max_depth as usize {
+      let iterative_timer = Instant::now();
+      self.search_stats = SearchStats { number_of_nodes_visited: 0, search_time: 0, search_depth: 0 };
+      let mut triangular_pv: Vec<Vec<Move>> = vec![vec![]; depth + 1];
 
-    self.search_stats.search_time = timer.elapsed().as_millis().max(1);
-    self.search_stats.search_depth = MAX_PLY;
+      if self.timer.elapsed().as_millis() > self.thinking_time {
+        break;
+      }
 
-    self.print_info(MAX_PLY as usize, self.search_stats, score);
+      // Aspiration Window
+      let mut aspiration_window_delta = 30;
+      loop {
+        if depth == 1 {
+          score = self.nega_max_alpha_beta_with_tt(position, transposition_table, &mut triangular_pv, 1, depth as u32, -ZENO_INFINITY, ZENO_INFINITY);
+          break;
+        } else {
+          let alpha = score.value() - aspiration_window_delta;
+          let beta = score.value() + aspiration_window_delta;
 
-    self.pv_line[MAX_PLY as usize].first().copied()
+          score = self.nega_max_alpha_beta_with_tt(position, transposition_table, &mut triangular_pv, 1, depth as u32, alpha, beta);
+
+          if !(alpha < score.value() && score.value() < beta) {
+            aspiration_window_delta *= 2;
+          } else {
+            break;
+          }
+        }
+      }
+
+      self.search_stats.search_depth = depth as u32;
+      self.search_stats.search_time = iterative_timer.elapsed().as_millis().max(1);
+      if !self.is_search_cancel_early {
+        self.pv_line = triangular_pv.last().unwrap().clone();
+        self.print_info(depth, self.search_stats, score);
+
+        // Stop the search if a mate was found
+        if score.value().abs() >= MATE_SCORE {
+          break;
+        }
+
+        let estimated_time_ms = self.estimate_time_for_the_next_search(self.search_stats, depth + 1);
+        if estimated_time_ms > self.thinking_time - self.timer.elapsed().as_millis() {
+          break;
+        }
+      }
+    }
+
+    self.pv_line.first().copied()
   }
 
-  fn nega_max_alpha_beta(&mut self, position: &mut Position, current_ply: u32, max_ply: u32, mut alpha: i32, beta: i32) -> Evaluation {
+  fn nega_max_alpha_beta_with_tt(
+    &mut self,
+    position: &mut Position,
+    transposition_table: &mut TranspositionTable,
+    triangular_pv: &mut Vec<Vec<Move>>,
+    current_ply: u32,
+    max_ply: u32,
+    mut alpha: i32,
+    beta: i32,
+  ) -> Evaluation {
     self.search_stats.number_of_nodes_visited += 1;
 
     let depth = max_ply - current_ply + 1;
 
     if current_ply > max_ply {
-      self.pv_line[0] = vec![];
+      triangular_pv[0] = vec![];
       return self.quiescence_search(position, alpha, beta);
     }
 
-    let mut move_picker: MovePicker = MovePicker::new(position, false);
+    let mut tt_move: Option<Move> = None;
+    let tt_entry = transposition_table.get_entry(position.get_zobrish_hash());
+    if tt_entry.get_flag() != TTFlag::None {
+      tt_move = tt_entry.get_best_move();
+      if tt_entry.get_hash() == position.get_zobrish_hash() && tt_entry.get_depth() >= (max_ply - current_ply) {
+        let will_return_early = tt_entry.get_flag() == TTFlag::Exact
+          || (tt_entry.get_flag() == TTFlag::LowerBound && tt_entry.get_evaluation().value() >= beta)
+          || (tt_entry.get_flag() == TTFlag::UpperBound && tt_entry.get_evaluation().value() <= alpha);
+
+        if will_return_early {
+          triangular_pv[depth as usize] = vec![];
+          return tt_entry.get_evaluation();
+        }
+      }
+    }
+
+    let mut move_picker: MovePicker = MovePicker::new(position, tt_move, false);
     if move_picker.get_moves_count() == 0 {
+      triangular_pv[depth as usize] = vec![];
       if position.is_check(position.get_side()) {
         return Evaluation::MateIn(-1 * (current_ply as i32));
       }
       return Evaluation::Score(0);
     }
 
-    let mut best_eval = Evaluation::Score(alpha);
+    let original_alpha = alpha;
+    let mut best_eval = Evaluation::Score(-ZENO_INFINITY);
+    let mut best_move = None;
     while let Some(mov) = move_picker.pick_best_move(position) {
       let mut temp_position = position.clone();
       temp_position.make_move(mov);
 
-      let eval = self.nega_max_alpha_beta(&mut temp_position, current_ply + 1, max_ply, -beta, -alpha) * -1;
+      let eval = self.nega_max_alpha_beta_with_tt(&mut temp_position, transposition_table, triangular_pv, current_ply + 1, max_ply, -beta, -alpha) * -1;
 
       if eval.value() > alpha {
         alpha = eval.value();
         best_eval = eval;
+        best_move = Some(mov);
 
-        self.pv_line[depth as usize].clear();
-        self.pv_line[depth as usize].push(mov);
-        let temp = self.pv_line[(depth - 1) as usize].clone();
-        self.pv_line[depth as usize].extend(temp);
+        triangular_pv[depth as usize].clear();
+        triangular_pv[depth as usize].push(mov);
+        let temp = triangular_pv[(depth - 1) as usize].clone();
+        triangular_pv[depth as usize].extend(temp);
       }
 
       if alpha >= beta {
         break;
       }
+
+      if self.timer.elapsed().as_millis() > self.thinking_time {
+        self.is_search_cancel_early = true;
+        break;
+      }
     }
+
+    let mut tt_entry = TTEntry::new(position.get_zobrish_hash(), best_move, max_ply - current_ply, TTFlag::Exact, best_eval);
+    if best_eval.value() <= original_alpha {
+      tt_entry = TTEntry::new(position.get_zobrish_hash(), best_move, max_ply - current_ply, TTFlag::UpperBound, best_eval);
+    } else if best_eval.value() >= beta {
+      tt_entry = TTEntry::new(position.get_zobrish_hash(), best_move, max_ply - current_ply, TTFlag::LowerBound, best_eval);
+    }
+    transposition_table.add_entry(tt_entry);
+
     best_eval
   }
 
@@ -93,7 +194,7 @@ impl Searcher {
       alpha = best_eval.value();
     }
 
-    let mut move_picker: MovePicker = MovePicker::new(position, true);
+    let mut move_picker: MovePicker = MovePicker::new(position, None, true);
     while let Some(mov) = move_picker.pick_best_move(position) {
       let mut temp_position = position.clone();
       temp_position.make_move(mov);
@@ -109,13 +210,18 @@ impl Searcher {
       if eval.value() > best_eval.value() {
         best_eval = eval;
       }
+
+      if self.timer.elapsed().as_millis() > self.thinking_time {
+        self.is_search_cancel_early = true;
+        break;
+      }
     }
 
     best_eval
   }
 
   fn print_info(&self, depth: usize, stats: SearchStats, nega_max_score: Evaluation) {
-    print!("info depth {} nodes {} time {} nps {} ", depth, stats.number_of_nodes_visited, stats.search_time, (1000 * stats.number_of_nodes_visited as u128 / stats.search_time));
+    print!("info depth {depth} nodes {} time {} nps {} ", stats.number_of_nodes_visited, stats.search_time, (1000 * stats.number_of_nodes_visited as u128 / stats.search_time));
 
     match nega_max_score {
       Evaluation::Score(score) => print!("score cp {} ", score),
@@ -123,9 +229,28 @@ impl Searcher {
     }
 
     print!("pv ");
-    for mov in self.pv_line[depth].clone() {
+    for mov in self.pv_line.clone() {
       print!("{} ", mov)
     }
     println!();
+  }
+
+  fn estimate_time_for_the_next_search(&self, search_stats: SearchStats, future_depth: usize) -> u128 {
+    // I try to predict the time need to search the next depth.
+    // If there is no enough time, the search is automatically canceled
+
+    let speed = 1000 * search_stats.number_of_nodes_visited as u128 / search_stats.search_time;
+    let branching_factor = if search_stats.search_depth > 1 {
+      (search_stats.number_of_nodes_visited as f32).powf(1.0 / (search_stats.search_depth as f32))
+    } else {
+      0.0
+    };
+
+    // Geometric series because of the iterative deepening
+    let nodes_needed = (branching_factor.powf((future_depth + 1) as f32) - 1.0) / (branching_factor - 1.0);
+    // I only take 70% of the time because the prediction is not that accurate
+    let estimated_time_ms = ((0.7 * (nodes_needed / speed as f32) * 1000.0) as u128).max(1);
+
+    estimated_time_ms
   }
 }
