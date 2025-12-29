@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use crate::evaluator::Evaluator;
 use crate::moves::Move;
 use crate::moves_picker::MovePicker;
@@ -5,7 +7,6 @@ use crate::pos_eval::{Evaluation, MATE_SCORE};
 use crate::position::Position;
 use crate::transposition_table::{TTEntry, TTFlag, TranspositionTable};
 use crate::utils::ZENO_INFINITY;
-use std::time::Instant;
 
 pub static MAX_PLY: u32 = 128;
 
@@ -143,7 +144,7 @@ impl Searcher {
     }
 
     let original_alpha = alpha;
-    let mut best_eval = Evaluation::Score(-ZENO_INFINITY);
+    let mut best_eval = Evaluation::Score(alpha);
     let mut best_move = None;
     while let Some(mov) = move_picker.pick_best_move(position) {
       let mut temp_position = position.clone();

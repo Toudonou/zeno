@@ -1,10 +1,9 @@
-use std::fs::File;
-use std::io;
-use std::path::Path;
-
 #[cfg(test)]
 mod pertf_tests {
-  use super::*;
+  use std::fs::File;
+  use std::io;
+  use std::path::Path;
+
   use std::io::BufRead;
   use zeno::perft;
   use zeno::position::Position;

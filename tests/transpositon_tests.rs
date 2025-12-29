@@ -12,7 +12,7 @@ mod transposition_tests {
     let best_move = Some(Move::new(25, 35, MoveType::EnPassant));
     let depth = 5;
     let flag = TTFlag::LowerBound;
-    let evaluation = Evaluation::MateIn(5);
+    let evaluation = Evaluation::MateIn(25);
 
     let tt_entry = TTEntry::new(position.get_zobrish_hash(), best_move, depth, flag, evaluation);
 

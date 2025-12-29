@@ -1,10 +1,11 @@
+use std::collections::HashSet;
+use std::sync::LazyLock;
+
 use crate::bitboard::BitBoard;
 use crate::containers::ByColor;
 use crate::piece::PieceColor;
 use crate::square::Square;
 use crate::utils::random_u64_few_bits;
-use std::collections::HashSet;
-use std::sync::LazyLock;
 
 static SQUARE_TO_SQUARE_RAY: LazyLock<SquareToSquareRay> = LazyLock::new(|| SquareToSquareRay::init());
 static LOOK_UP_TABLE: LazyLock<LookUpTable> = LazyLock::new(|| LookUpTable::init());

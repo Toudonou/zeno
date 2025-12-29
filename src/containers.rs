@@ -1,5 +1,6 @@
-use crate::piece::{PieceColor, PieceType};
 use std::ops::{Index, IndexMut};
+
+use crate::piece::{PieceColor, PieceType};
 
 #[derive(Clone, Copy, Debug)]
 pub struct ByColor<T> {

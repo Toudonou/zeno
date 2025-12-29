@@ -14,6 +14,7 @@ static BLACK_CAN_SHORT_CASTLE: u8 = 1u8 << 2;
 static BLACK_CAN_LONG_CASTLE: u8 = 1u8 << 3;
 pub static CAN_SHORT_CASTLE: ByColor<u8> = ByColor::new(WHITE_CAN_SHORT_CASTLE, BLACK_CAN_SHORT_CASTLE);
 pub static CAN_LONG_CASTLE: ByColor<u8> = ByColor::new(WHITE_CAN_LONG_CASTLE, BLACK_CAN_LONG_CASTLE);
+
 static SHORT_CASTLE_ROOK_MASK: ByColor<BitBoard> = ByColor::new(1u64 << 7 | 1u64 << 5, 1u64 << 63 | 1u64 << 61);
 static LONG_CASTLE_ROOK_MASK: ByColor<BitBoard> = ByColor::new(1u64 << 0 | 1u64 << 3, 1u64 << 56 | 1u64 << 59);
 

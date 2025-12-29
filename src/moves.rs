@@ -1,9 +1,10 @@
+use regex::Regex;
+use std::fmt::{Display, Formatter};
+
 use crate::piece::{Piece, PieceColor};
 use crate::position::Position;
 use crate::square::SquareOps;
 use crate::{piece::PieceType, square::Square};
-use regex::Regex;
-use std::fmt::{Display, Formatter};
 
 pub static MOVE_LIST_MAX_SIZE: usize = 252;
 

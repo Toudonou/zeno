@@ -1,3 +1,7 @@
+use std::io;
+use std::time::Instant;
+use thousands::Separable;
+
 use crate::moves::Move;
 use crate::perft;
 use crate::piece::PieceColor;
@@ -5,9 +9,6 @@ use crate::position::Position;
 use crate::search::Searcher;
 use crate::transposition_table::TranspositionTable;
 use crate::utils::START_POSITION;
-use std::io;
-use std::time::Instant;
-use thousands::Separable;
 
 pub fn uci_loop() {
   let mut searcher = Searcher::new();
