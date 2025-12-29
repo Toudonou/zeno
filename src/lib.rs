@@ -1,6 +1,7 @@
 pub mod bitboard;
 pub mod containers;
 pub mod evaluator;
+pub mod history;
 pub mod lookup_tables;
 pub mod moves;
 pub mod moves_generator;

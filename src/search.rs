@@ -1,6 +1,7 @@
 use std::time::Instant;
 
 use crate::evaluator::Evaluator;
+use crate::history::History;
 use crate::moves::Move;
 use crate::moves_picker::MovePicker;
 use crate::pos_eval::{Evaluation, MATE_SCORE};
@@ -38,7 +39,7 @@ impl Searcher {
     }
   }
 
-  pub fn search(&mut self, position: &mut Position, transposition_table: &mut TranspositionTable, thinking_time: u128) -> Option<Move> {
+  pub fn search(&mut self, position: &mut Position, transposition_table: &mut TranspositionTable, history: &mut History, thinking_time: u128) -> Option<Move> {
     transposition_table.clear();
 
     let mut score = Evaluation::Score(0);
@@ -62,13 +63,13 @@ impl Searcher {
       let mut aspiration_window_delta = 30;
       loop {
         if depth == 1 {
-          score = self.nega_max_alpha_beta_with_tt(position, transposition_table, &mut triangular_pv, 1, depth as u32, -ZENO_INFINITY, ZENO_INFINITY);
+          score = self.nega_max_alpha_beta_with_tt(position, transposition_table, history, &mut triangular_pv, 1, depth as u32, -ZENO_INFINITY, ZENO_INFINITY);
           break;
         } else {
           let alpha = score.value() - aspiration_window_delta;
           let beta = score.value() + aspiration_window_delta;
 
-          score = self.nega_max_alpha_beta_with_tt(position, transposition_table, &mut triangular_pv, 1, depth as u32, alpha, beta);
+          score = self.nega_max_alpha_beta_with_tt(position, transposition_table, history, &mut triangular_pv, 1, depth as u32, alpha, beta);
 
           if !(alpha < score.value() && score.value() < beta) {
             aspiration_window_delta *= 2;
@@ -103,6 +104,7 @@ impl Searcher {
     &mut self,
     position: &mut Position,
     transposition_table: &mut TranspositionTable,
+    history: &mut History,
     triangular_pv: &mut Vec<Vec<Move>>,
     current_ply: u32,
     max_ply: u32,
@@ -112,6 +114,12 @@ impl Searcher {
     self.search_stats.number_of_nodes_visited += 1;
 
     let depth = max_ply - current_ply + 1;
+
+    // Check for threefold repetition and draw by insufficient material
+    if history.get_position_occurrences_count(position) >= 3 {
+      triangular_pv[depth as usize] = vec![];
+      return Evaluation::Score(0);
+    }
 
     if current_ply > max_ply {
       triangular_pv[0] = vec![];
@@ -148,9 +156,9 @@ impl Searcher {
     let mut best_move = None;
     while let Some(mov) = move_picker.pick_best_move(position) {
       let mut temp_position = position.clone();
-      temp_position.make_move(mov);
-
-      let eval = self.nega_max_alpha_beta_with_tt(&mut temp_position, transposition_table, triangular_pv, current_ply + 1, max_ply, -beta, -alpha) * -1;
+      temp_position.make_move(mov, Some(history));
+      let eval = self.nega_max_alpha_beta_with_tt(&mut temp_position, transposition_table, history, triangular_pv, current_ply + 1, max_ply, -beta, -alpha) * -1;
+      history.pop_last_entry();
 
       if eval.value() > alpha {
         alpha = eval.value();
@@ -198,7 +206,7 @@ impl Searcher {
     let mut move_picker: MovePicker = MovePicker::new(position, None, true);
     while let Some(mov) = move_picker.pick_best_move(position) {
       let mut temp_position = position.clone();
-      temp_position.make_move(mov);
+      temp_position.make_move(mov, None);
 
       let eval = self.quiescence_search(&mut temp_position, -beta, -alpha) * -1;
 
@@ -249,8 +257,8 @@ impl Searcher {
 
     // Geometric series because of the iterative deepening
     let nodes_needed = (branching_factor.powf((future_depth + 1) as f32) - 1.0) / (branching_factor - 1.0);
-    // I only take 70% of the time because the prediction is not that accurate
-    let estimated_time_ms = ((0.7 * (nodes_needed / speed as f32) * 1000.0) as u128).max(1);
+    // I only take 80% of the time because the prediction is not that accurate
+    let estimated_time_ms = ((0.8 * (nodes_needed / speed as f32) * 1000.0) as u128).max(1);
 
     estimated_time_ms
   }

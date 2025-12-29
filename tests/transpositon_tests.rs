@@ -8,7 +8,7 @@ mod transposition_tests {
 
   #[test]
   fn test_entry_encoding_and_decoding() {
-    let position = Position::from_fen(START_POSITION);
+    let position = Position::from_fen(START_POSITION, None);
     let best_move = Some(Move::new(25, 35, MoveType::EnPassant));
     let depth = 5;
     let flag = TTFlag::LowerBound;

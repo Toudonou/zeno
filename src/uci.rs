@@ -2,6 +2,7 @@ use std::io;
 use std::time::Instant;
 use thousands::Separable;
 
+use crate::history::History;
 use crate::moves::Move;
 use crate::perft;
 use crate::piece::PieceColor;
@@ -13,12 +14,13 @@ use crate::utils::START_POSITION;
 pub fn uci_loop() {
   let mut searcher = Searcher::new();
   let mut transposition_table = TranspositionTable::new();
+  let mut history = History::new();
 
-  let mut position = Position::from_fen(START_POSITION);
+  let mut position = Position::from_fen(START_POSITION, Some(&mut history));
   perft::perft(1, &mut position); // To init the lookup tables
 
   loop {
-    position.print_board();
+    // position.print_board();
     let mut command = String::new();
     io::stdin().read_line(&mut command).unwrap();
     let command = command.trim();
@@ -27,10 +29,10 @@ pub fn uci_loop() {
       "uci" | "help" => uci_commands(),
       "isready" => println!("readyok"),
       "ucinewgame" => {
-        position = Position::from_fen(START_POSITION);
+        position = Position::from_fen(START_POSITION, Some(&mut history));
       }
-      c if c.starts_with("position") => uci_position(command, &mut position),
-      c if c.starts_with("go") => go(command, &mut position, &mut searcher, &mut transposition_table),
+      c if c.starts_with("position") => uci_position(command, &mut position, &mut history),
+      c if c.starts_with("go") => go(command, &mut position, &mut searcher, &mut transposition_table, &mut history),
       "stop" => {}
       "quit" => break,
       _ => println!("Command not found {}", command),
@@ -62,19 +64,19 @@ fn uci_commands() {
   println!("uciok\n");
 }
 
-fn uci_position(command: &str, position: &mut Position) {
+fn uci_position(command: &str, position: &mut Position, history: &mut History) {
   if command.starts_with("position fen") {
     let is_there_some_moves = command.find("moves");
     match is_there_some_moves {
       None => {
-        *position = Position::from_fen(&command[13usize..]);
+        *position = Position::from_fen(&command[13usize..], Some(history));
       }
       Some(moves_index) => {
-        *position = Position::from_fen(&command[13usize..moves_index]);
+        *position = Position::from_fen(&command[13usize..moves_index], Some(history));
 
         let moves = command[(moves_index + "moves".len())..].split_whitespace();
         moves.for_each(|move_string| match Move::from_uci_notation(move_string, position) {
-          Some(mov) => position.make_move(mov),
+          Some(mov) => position.make_move(mov, Some(history)),
           None => {}
         });
       }
@@ -82,19 +84,19 @@ fn uci_position(command: &str, position: &mut Position) {
   }
 
   if command.starts_with("position startpos") {
-    *position = Position::from_fen(START_POSITION);
+    *position = Position::from_fen(START_POSITION, Some(history));
   }
 
   if command.starts_with("position startpos moves") {
     let moves = command.strip_prefix("position startpos moves").unwrap().split_whitespace();
     moves.for_each(|move_string| match Move::from_uci_notation(move_string, position) {
-      Some(mov) => position.make_move(mov),
+      Some(mov) => position.make_move(mov, Some(history)),
       None => {}
     });
   }
 }
 
-fn go(command: &str, position: &mut Position, searcher: &mut Searcher, transposition_table: &mut TranspositionTable) {
+fn go(command: &str, position: &mut Position, searcher: &mut Searcher, transposition_table: &mut TranspositionTable, history: &mut History) {
   if command.starts_with("go perft") {
     handle_perft(command, position);
     return;
@@ -104,7 +106,7 @@ fn go(command: &str, position: &mut Position, searcher: &mut Searcher, transposi
   if command.starts_with("go infinite") {
     search_time = 60 * 1000;
   } else if command.starts_with("go movetime") {
-    search_time = command[("go movetime".len() + 1)..].parse().unwrap();
+    search_time = command[("go movetime".len() + 1)..].parse().unwrap_or(search_time);
   } else if command.starts_with("go wtime") {
     let mut w_time: u32 = 0;
     let mut b_time: u32 = 0;
@@ -146,7 +148,7 @@ fn go(command: &str, position: &mut Position, searcher: &mut Searcher, transposi
   }
 
   search_time = search_time.max(100);
-  match searcher.search(position, transposition_table, search_time) {
+  match searcher.search(position, transposition_table, history, search_time) {
     Some(best_move) => println!("bestmove {}", best_move),
     None => println!("bestmove 0000"),
   }
