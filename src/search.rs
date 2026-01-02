@@ -61,14 +61,13 @@ impl Searcher {
       let mut aspiration_window_delta = 30;
       loop {
         if depth == 1 {
-          score = self.nega_max_alpha_beta_with_tt(position, transposition_table, history, &mut triangular_pv, 1, depth as u32, -ZENO_INFINITY, ZENO_INFINITY);
+          score = self.pv_search(position, transposition_table, history, &mut triangular_pv, 1, depth as u32, -ZENO_INFINITY, ZENO_INFINITY);
           break;
         } else {
           let alpha = score.value() - aspiration_window_delta;
           let beta = score.value() + aspiration_window_delta;
 
-          score = self.nega_max_alpha_beta_with_tt(position, transposition_table, history, &mut triangular_pv, 1, depth as u32, alpha, beta);
-
+          score = self.pv_search(position, transposition_table, history, &mut triangular_pv, 1, depth as u32, alpha, beta);
           if !(alpha < score.value() && score.value() < beta) {
             aspiration_window_delta *= 2;
           } else {
@@ -98,7 +97,7 @@ impl Searcher {
     self.pv_line.first().copied()
   }
 
-  fn nega_max_alpha_beta_with_tt(
+  fn pv_search(
     &mut self,
     position: &mut Position,
     transposition_table: &mut TranspositionTable,
@@ -152,11 +151,28 @@ impl Searcher {
     let original_alpha = alpha;
     let mut best_eval = Evaluation::Score(alpha);
     let mut best_move = None;
+    let mut first_move = true;
     while let Some(mov) = move_picker.pick_best_move(position) {
       let mut temp_position = position.clone();
       temp_position.make_move(mov);
       history.save_hash(position.get_zobrish_hash());
-      let eval = self.nega_max_alpha_beta_with_tt(&mut temp_position, transposition_table, history, triangular_pv, current_ply + 1, max_ply, -beta, -alpha) * -1;
+
+      let mut eval: Evaluation;
+      // Pv move or first move - Full Search
+      match first_move {
+        true => {
+          first_move = false;
+          eval = self.pv_search(&mut temp_position, transposition_table, history, triangular_pv, current_ply + 1, max_ply, -beta, -alpha) * -1;
+        }
+        false => {
+          eval = self.pv_search(&mut temp_position, transposition_table, history, triangular_pv, current_ply + 1, max_ply, -alpha - 1, -alpha) * -1;
+          // If all search that fail-high (score > alpha) do full research in the full windows and at the max depth
+          if alpha < eval.value() && eval.value() < beta {
+            eval = self.pv_search(&mut temp_position, transposition_table, history, triangular_pv, current_ply + 1, max_ply, -beta, -alpha) * -1;
+          }
+        }
+      }
+
       history.pop_last_entry();
 
       if eval.value() > alpha {

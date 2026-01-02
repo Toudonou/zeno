@@ -5,7 +5,7 @@ use crate::piece::PieceType;
 use crate::position::Position;
 use crate::utils::ZENO_INFINITY;
 
-static TT_MOVE_SCORE: i32 = 500_000;
+static TT_MOVE_SCORE: i32 = 600_000;
 static PROMOTION_MOVE_SCORE: i32 = 400_000;
 static CASTLE_MOVE_SCORE: i32 = 100_000;
 static EN_PASSANT_MOVE_SCORE: i32 = 6002;

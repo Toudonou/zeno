@@ -30,6 +30,8 @@ pub fn uci_loop() {
       "isready" => println!("readyok"),
       "ucinewgame" => {
         position = Position::from_fen(START_POSITION);
+        history.clear();
+        history.save_hash(position.get_zobrish_hash());
       }
       c if c.starts_with("position") => uci_position(command, &mut position, &mut history),
       c if c.starts_with("go") => go(command, &mut position, &mut searcher, &mut transposition_table, &mut history),
@@ -153,9 +155,6 @@ fn go(command: &str, position: &mut Position, searcher: &mut Searcher, transposi
       PieceColor::Black => search_time = allocate_time(position, b_time, b_inc, moves_to_go),
       PieceColor::None => {}
     }
-  } else {
-    println!("Invalid command\nType help to see available commands");
-    return;
   }
 
   search_time = search_time.max(100);
