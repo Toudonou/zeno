@@ -1,6 +1,6 @@
 use crate::piece::{PieceColor, PieceType};
 use crate::position::Position;
-use crate::psqt::{TOTAL_PHASE, get_eg_piece_value, get_eg_psqt_value, get_mg_piece_value, get_mg_psqt_value, get_phase};
+use crate::psqt::{get_eg_piece_value, get_eg_psqt_value, get_mg_piece_value, get_mg_psqt_value, get_phase, TOTAL_PHASE};
 use crate::square::{Square, SquareOps};
 use crate::zobrist_hash::BoardHash;
 use crate::{get_lsb, pop_lsb};
@@ -70,7 +70,7 @@ impl Evaluator {
       eg_evaluation -= Evaluator::king_cornering(position.get_king_square(PieceColor::Black), position.get_king_square(PieceColor::White));
     }
 
-    ((mg_evaluation * (256 - phase)) + (eg_evaluation * phase)) / 256
+    ((mg_evaluation * (256 - phase)) + (eg_evaluation * phase)) >> 8
   }
 
   fn king_cornering(friendly_square: Square, opponent_square: Square) -> i32 {

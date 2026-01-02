@@ -1,7 +1,7 @@
 use std::fmt::{Display, Formatter};
 use std::ops::{Mul, MulAssign};
 
-use crate::search::MAX_PLY;
+use crate::utils::MAX_PLY;
 
 pub static MATE_SCORE: i32 = 1_000_000;
 
@@ -35,7 +35,6 @@ impl Evaluation {
   #[inline(always)]
   pub fn from_u32(value: u32) -> Evaluation {
     let new_value = (value - (MATE_SCORE + MAX_PLY as i32) as u32) as i32;
-
     if new_value.abs() >= MATE_SCORE {
       Evaluation::MateIn(new_value.signum() * ((MATE_SCORE + MAX_PLY as i32) - new_value.abs()))
     } else {

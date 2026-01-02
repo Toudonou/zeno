@@ -7,9 +7,7 @@ use crate::moves_picker::MovePicker;
 use crate::pos_eval::{Evaluation, MATE_SCORE};
 use crate::position::Position;
 use crate::transposition_table::{TTEntry, TTFlag, TranspositionTable};
-use crate::utils::ZENO_INFINITY;
-
-pub static MAX_PLY: u32 = 128;
+use crate::utils::{MAX_PLY, ZENO_INFINITY};
 
 #[derive(Copy, Clone)]
 struct SearchStats {
@@ -156,7 +154,8 @@ impl Searcher {
     let mut best_move = None;
     while let Some(mov) = move_picker.pick_best_move(position) {
       let mut temp_position = position.clone();
-      temp_position.make_move(mov, Some(history));
+      temp_position.make_move(mov);
+      history.save_hash(position.get_zobrish_hash());
       let eval = self.nega_max_alpha_beta_with_tt(&mut temp_position, transposition_table, history, triangular_pv, current_ply + 1, max_ply, -beta, -alpha) * -1;
       history.pop_last_entry();
 
@@ -206,7 +205,7 @@ impl Searcher {
     let mut move_picker: MovePicker = MovePicker::new(position, None, true);
     while let Some(mov) = move_picker.pick_best_move(position) {
       let mut temp_position = position.clone();
-      temp_position.make_move(mov, None);
+      temp_position.make_move(mov);
 
       let eval = self.quiescence_search(&mut temp_position, -beta, -alpha) * -1;
 

@@ -1,6 +1,5 @@
 use crate::bitboard::BitBoard;
 use crate::containers::{ByColor, ByPieceType};
-use crate::history::History;
 use crate::lookup_tables::{get_bishop_attacks, get_bishop_square_to_square_ray, get_king_attacks, get_knight_attacks, get_pawns_attacks, get_rook_attacks, get_rook_square_to_square_ray};
 use crate::moves::{Move, MoveType};
 use crate::piece::{Piece, PieceColor, PieceType};
@@ -77,7 +76,7 @@ pub struct Position {
 
 impl Position {
   // https://www.freechess.org/Help/HelpFiles/fen.html
-  pub fn from_fen(fen: &str, history: Option<&mut History>) -> Position {
+  pub fn from_fen(fen: &str) -> Position {
     let mut board_index: u64 = 56;
 
     let mut white_board: BitBoard = 0;
@@ -237,7 +236,7 @@ impl Position {
     let side_occupancies = ByColor::new(white_board, black_board);
     let pieces_occupancies = ByPieceType::new(pawns_board, knights_board, bishops_board, rooks_board, queens_board, kings_board);
 
-    let position = Position {
+    Position {
       side_occupancies,
       pieces_occupancies,
       castling_rights,
@@ -246,21 +245,11 @@ impl Position {
       number_of_move: number_of_moves_move_part.parse().unwrap_or(0),
       half_move_clock: half_move_part.parse().unwrap_or(0),
       zobrish_hash,
-    };
-
-    match history {
-      Some(history) => {
-        history.clear();
-        history.save_position(&position);
-      }
-      None => {}
     }
-
-    position
   }
 
   #[inline(always)]
-  pub fn make_move(&mut self, mov: Move, history: Option<&mut History>) {
+  pub fn make_move(&mut self, mov: Move) {
     let our_side = self.side;
     let enemy_side = our_side.opposite();
 
@@ -369,13 +358,6 @@ impl Position {
     self.zobrish_hash ^= ZobristHash::get_side_key();
     self.number_of_move += u8::from(self.side == PieceColor::Black);
     self.side = enemy_side;
-
-    match history {
-      Some(history) => {
-        history.save_position(self);
-      }
-      None => {}
-    }
   }
 
   #[inline(always)]

@@ -21,7 +21,7 @@ mod pertf_tests {
       let mut parts = line.split(';');
       let fen = parts.next().unwrap().trim();
 
-      let mut position = Position::from_fen(fen, None);
+      let mut position = Position::from_fen(fen);
       let mut depth = 0;
 
       loop {

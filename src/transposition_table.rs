@@ -2,6 +2,7 @@ use thousands::Separable;
 
 use crate::moves::Move;
 use crate::pos_eval::Evaluation;
+use crate::zobrist_hash::BoardHash;
 
 pub static ZENO_TRANSPOSITION_TABLE_SIZE: usize = 16 * 1024 * 1024; // 16MB
 
@@ -43,13 +44,13 @@ impl TTFlag {
 /// - 4 bytes for the evaluation
 #[derive(Clone, Copy)]
 pub struct TTEntry {
-  hash: u64,
+  hash: BoardHash,
   others_informations: u64,
 }
 
 impl TTEntry {
   #[inline(always)]
-  pub fn new(hash: u64, best_move: Option<Move>, depth: u32, flag: TTFlag, evaluation: Evaluation) -> TTEntry {
+  pub fn new(hash: BoardHash, best_move: Option<Move>, depth: u32, flag: TTFlag, evaluation: Evaluation) -> TTEntry {
     let best_move = if let Some(m) = best_move { m.to_u16() } else { 0 } as u64;
     let flag = flag.to_u32() as u64;
     let evaluation = evaluation.to_u32() as u64;
@@ -59,7 +60,7 @@ impl TTEntry {
   }
 
   #[inline(always)]
-  pub fn get_hash(&self) -> u64 {
+  pub fn get_hash(&self) -> BoardHash {
     self.hash
   }
 
@@ -99,7 +100,7 @@ impl TranspositionTable {
   }
 
   #[inline(always)]
-  pub fn get_entry(&self, hash: u64) -> TTEntry {
+  pub fn get_entry(&self, hash: BoardHash) -> TTEntry {
     self.table[hash as usize % self.max_entries]
   }
 

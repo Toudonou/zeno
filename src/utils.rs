@@ -23,6 +23,7 @@ static BLACK_PAWNS_OCCUPANCY_OBLIGATION_FOR_EN_PASSANT: [BitBoard; 8] = [0x20000
 pub static PAWNS_OCCUPANCY_OBLIGATION_FOR_EN_PASSANT: ByColor<[BitBoard; 8]> = ByColor::new(WHITE_PAWNS_OCCUPANCY_OBLIGATION_FOR_EN_PASSANT, BLACK_PAWNS_OCCUPANCY_OBLIGATION_FOR_EN_PASSANT);
 
 pub static ZENO_INFINITY: i32 = 1_000_000_000;
+pub static MAX_PLY: u32 = 128;
 
 pub fn random_u64() -> u64 {
   // https://www.chessprogramming.org/index.php?title=Looking_for_Magics&oldid=2272

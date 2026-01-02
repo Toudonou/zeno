@@ -5,9 +5,9 @@ mod evaluation_tests {
   use zeno::moves::Move;
   use zeno::pos_eval::{Evaluation, MATE_SCORE};
   use zeno::position::Position;
-  use zeno::search::{MAX_PLY, Searcher};
+  use zeno::search::Searcher;
   use zeno::transposition_table::TranspositionTable;
-  use zeno::utils::START_POSITION;
+  use zeno::utils::{MAX_PLY, START_POSITION};
 
   #[test]
   fn test_evaluation_conversion_from_i32_to_u32_and_reverse() {
@@ -30,10 +30,14 @@ mod evaluation_tests {
   fn is_draw_by_repetition() {
     // Game link: https://lichess.org/7WQb1tNl
     let mut history = History::new();
-    let mut position = Position::from_fen(START_POSITION, Some(&mut history));
+    let mut position = Position::from_fen(START_POSITION);
+    history.save_hash(position.get_zobrish_hash());
     let moves = "d2d4 b7b6 c2c4 c8b7 b1c3 e7e6 e2e4 g8f6 f1d3 c7c5 d4d5 d7d6 d1c2 e6e5 g1e2 g7g6 e1g1 f8g7 f2f4 e8g8 f4f5 b8d7 e2g3 d8e7 c1g5 h7h6 g5e3 g6g5 h2h3 f6h5 g3h5 f7f6 h5g7 e7g7 g1f2 a7a6 h3h4 g8f7 h4g5 h6g5 f1g1 f8h8 f2e2 h8h4 e3f2 h4h2 f2g3 h2h5 e2d2 a8h8 d3e2 h5h6 a1f1 d7f8 c2d3 f8d7 d3e3 d7f8 e3f2 f8d7 f2e3 d7b8 c3a4 b8d7 a4c3".split_whitespace();
     moves.for_each(|move_string| match Move::from_uci_notation(move_string, &position) {
-      Some(mov) => position.make_move(mov, Some(&mut history)),
+      Some(mov) => {
+        position.make_move(mov);
+        history.save_hash(position.get_zobrish_hash());
+      }
       None => {}
     });
     let mut searcher = Searcher::new();
@@ -43,10 +47,14 @@ mod evaluation_tests {
 
     // Game link: https://lichess.org/hTK2QMUTul1t
     let mut history = History::new();
-    let mut position = Position::from_fen(START_POSITION, Some(&mut history));
+    let mut position = Position::from_fen(START_POSITION);
+    history.save_hash(position.get_zobrish_hash());
     let moves = "d2d4 g8f6 b1c3 e7e6 d1d3 b8c6 a2a3 d7d5 g1f3 f8d6 h2h4 e8g8 h4h5 h7h6 c3b5 f6g4 h1h4 e6e5 b5d6 c7d6 d4e5 g4e5 f3e5 d8h4 e5c6 b7c6 d3f3 c8g4 f3f4 f8d8 c1e3 h4h5 f2f3 g4e6 g2g4 h5h4 e3f2 h4g5 f4g5 h6g5 e1d2 c6c5 f1g2 a8b8 b2b3 a7a5 f2g3 b8c8 a3a4 c5c4 b3c4 c8c4 e2e3 d8c8 a1c1 c8d8 c1a1 d8c8 a1c1 c8d8 c1a1".split_whitespace();
     moves.for_each(|move_string| match Move::from_uci_notation(move_string, &position) {
-      Some(mov) => position.make_move(mov, Some(&mut history)),
+      Some(mov) => {
+        position.make_move(mov);
+        history.save_hash(position.get_zobrish_hash());
+      }
       None => {}
     });
     let mut searcher = Searcher::new();
@@ -57,24 +65,24 @@ mod evaluation_tests {
 
   #[test]
   fn is_draw_by_insufficient_material_k_vs_k() {
-    assert_eq!(Evaluator::is_draw_by_insufficient_material(&Position::from_fen("8/7K/8/8/8/8/k7/8 w - - 0 1", None)), true);
+    assert_eq!(Evaluator::is_draw_by_insufficient_material(&Position::from_fen("8/7K/8/8/8/8/k7/8 w - - 0 1")), true);
   }
 
   #[test]
   fn is_draw_by_insufficient_material_kn_vs_k() {
-    assert_eq!(Evaluator::is_draw_by_insufficient_material(&Position::from_fen("8/7K/8/4N3/8/8/k7/8 b - - 0 1", None)), true);
-    assert_eq!(Evaluator::is_draw_by_insufficient_material(&Position::from_fen("8/7K/8/8/8/8/k2n4/8 w - - 0 1", None)), true);
+    assert_eq!(Evaluator::is_draw_by_insufficient_material(&Position::from_fen("8/7K/8/4N3/8/8/k7/8 b - - 0 1")), true);
+    assert_eq!(Evaluator::is_draw_by_insufficient_material(&Position::from_fen("8/7K/8/8/8/8/k2n4/8 w - - 0 1")), true);
   }
 
   #[test]
   fn is_draw_by_insufficient_material_k_vs_kb() {
-    assert_eq!(Evaluator::is_draw_by_insufficient_material(&Position::from_fen("8/7K/8/4b3/8/8/k7/8 w - - 0 1", None)), true);
-    assert_eq!(Evaluator::is_draw_by_insufficient_material(&Position::from_fen("8/7K/8/3B4/8/8/k7/8 b - - 0 1", None)), true);
+    assert_eq!(Evaluator::is_draw_by_insufficient_material(&Position::from_fen("8/7K/8/4b3/8/8/k7/8 w - - 0 1")), true);
+    assert_eq!(Evaluator::is_draw_by_insufficient_material(&Position::from_fen("8/7K/8/3B4/8/8/k7/8 b - - 0 1")), true);
   }
 
   #[test]
   fn is_draw_by_insufficient_material_kb_same_square_color_vs_kb_same_square_color() {
-    assert_eq!(Evaluator::is_draw_by_insufficient_material(&Position::from_fen("8/5K2/8/4b3/8/8/1k3B2/8 b - - 0 1", None)), true);
-    assert_eq!(Evaluator::is_draw_by_insufficient_material(&Position::from_fen("8/5K2/8/2B1b3/8/3b3B/1k6/8 w - - 0 1", None)), false, "There should only one bishop one each side");
+    assert_eq!(Evaluator::is_draw_by_insufficient_material(&Position::from_fen("8/5K2/8/4b3/8/8/1k3B2/8 b - - 0 1")), true);
+    assert_eq!(Evaluator::is_draw_by_insufficient_material(&Position::from_fen("8/5K2/8/2B1b3/8/3b3B/1k6/8 w - - 0 1")), false, "There should only one bishop one each side");
   }
 }

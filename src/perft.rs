@@ -20,7 +20,7 @@ pub fn perft(depth: i32, position: &mut Position) -> u64 {
   let mut nodes: u64 = 0;
   for idx in 0..move_list.count {
     let mut temp_position = position.clone();
-    temp_position.make_move(move_list.moves[idx], None);
+    temp_position.make_move(move_list.moves[idx]);
     nodes += perft(depth - 1, &mut temp_position);
   }
 
@@ -35,7 +35,7 @@ pub fn perft_divide(depth: i32, position: &mut Position) {
   generate_legal_moves(position, &mut move_list);
   for idx in 0..move_list.count {
     let mut temp_position = position.clone();
-    temp_position.make_move(move_list.moves[idx], None);
+    temp_position.make_move(move_list.moves[idx]);
     let nodes = perft(depth - 1, &mut temp_position);
 
     println!("{}: {}", move_list.moves[idx], nodes);

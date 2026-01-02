@@ -4,19 +4,19 @@ pub static HISTORY_MAX_SIZE: usize = 512;
 
 #[derive(Debug, Clone)]
 pub struct History {
-  pub history: [BoardHash; HISTORY_MAX_SIZE],
-  pub count: usize,
+  history: [BoardHash; HISTORY_MAX_SIZE],
+  count: usize,
 }
 
 impl History {
   #[inline(always)]
   pub fn new() -> History {
-    History { history: [0; HISTORY_MAX_SIZE], count: 0 }
+    History { history: [0u64; HISTORY_MAX_SIZE], count: 0 }
   }
 
   #[inline(always)]
-  pub fn save_position(&mut self, position: &Position) {
-    self.history[self.count] = position.get_zobrish_hash();
+  pub fn save_hash(&mut self, hash: BoardHash) {
+    self.history[self.count] = hash;
     self.count += 1;
   }
 

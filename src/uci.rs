@@ -16,7 +16,7 @@ pub fn uci_loop() {
   let mut transposition_table = TranspositionTable::new();
   let mut history = History::new();
 
-  let mut position = Position::from_fen(START_POSITION, Some(&mut history));
+  let mut position = Position::from_fen(START_POSITION);
   perft::perft(1, &mut position); // To init the lookup tables
 
   loop {
@@ -29,7 +29,7 @@ pub fn uci_loop() {
       "uci" | "help" => uci_commands(),
       "isready" => println!("readyok"),
       "ucinewgame" => {
-        position = Position::from_fen(START_POSITION, Some(&mut history));
+        position = Position::from_fen(START_POSITION);
       }
       c if c.starts_with("position") => uci_position(command, &mut position, &mut history),
       c if c.starts_with("go") => go(command, &mut position, &mut searcher, &mut transposition_table, &mut history),
@@ -69,14 +69,21 @@ fn uci_position(command: &str, position: &mut Position, history: &mut History) {
     let is_there_some_moves = command.find("moves");
     match is_there_some_moves {
       None => {
-        *position = Position::from_fen(&command[13usize..], Some(history));
+        *position = Position::from_fen(&command[13usize..]);
+        history.clear();
+        history.save_hash(position.get_zobrish_hash());
       }
       Some(moves_index) => {
-        *position = Position::from_fen(&command[13usize..moves_index], Some(history));
+        *position = Position::from_fen(&command[13usize..moves_index]);
+        history.clear();
+        history.save_hash(position.get_zobrish_hash());
 
         let moves = command[(moves_index + "moves".len())..].split_whitespace();
         moves.for_each(|move_string| match Move::from_uci_notation(move_string, position) {
-          Some(mov) => position.make_move(mov, Some(history)),
+          Some(mov) => {
+            position.make_move(mov);
+            history.save_hash(position.get_zobrish_hash());
+          }
           None => {}
         });
       }
@@ -84,13 +91,17 @@ fn uci_position(command: &str, position: &mut Position, history: &mut History) {
   }
 
   if command.starts_with("position startpos") {
-    *position = Position::from_fen(START_POSITION, Some(history));
+    *position = Position::from_fen(START_POSITION);
+    history.clear();
   }
 
   if command.starts_with("position startpos moves") {
     let moves = command.strip_prefix("position startpos moves").unwrap().split_whitespace();
     moves.for_each(|move_string| match Move::from_uci_notation(move_string, position) {
-      Some(mov) => position.make_move(mov, Some(history)),
+      Some(mov) => {
+        position.make_move(mov);
+        history.save_hash(position.get_zobrish_hash());
+      }
       None => {}
     });
   }
