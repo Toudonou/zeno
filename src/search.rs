@@ -4,6 +4,7 @@ use crate::evaluator::Evaluator;
 use crate::history::History;
 use crate::moves::Move;
 use crate::moves_picker::MovePicker;
+use crate::piece::PieceType;
 use crate::pos_eval::{Evaluation, MATE_SCORE};
 use crate::position::Position;
 use crate::transposition_table::{TTEntry, TTFlag, TranspositionTable};
@@ -22,6 +23,7 @@ pub struct Searcher {
   max_depth: u32,
   is_search_cancel_early: bool,
   search_stats: SearchStats,
+  killers: [(Move, Move); 1 + MAX_PLY as usize],
   pv_line: Vec<Move>,
 }
 
@@ -33,6 +35,7 @@ impl Searcher {
       max_depth: MAX_PLY as u32,
       is_search_cancel_early: false,
       search_stats: SearchStats { number_of_nodes_visited: 0, search_time: 0, search_depth: 0 },
+      killers: [(Move::default(), Move::default()); 1 + MAX_PLY as usize],
       pv_line: Vec::with_capacity(MAX_PLY as usize),
     }
   }
@@ -139,7 +142,7 @@ impl Searcher {
       }
     }
 
-    let mut move_picker: MovePicker = MovePicker::new(position, tt_move, false);
+    let mut move_picker: MovePicker = MovePicker::new(position, tt_move, Some(self.killers[current_ply as usize]), false);
     if move_picker.get_moves_count() == 0 {
       triangular_pv[depth as usize] = vec![];
       if position.is_check(position.get_side()) {
@@ -153,11 +156,13 @@ impl Searcher {
     let mut best_move = None;
     let mut first_move = true;
     while let Some(mov) = move_picker.pick_best_move(position) {
+      let mut eval: Evaluation;
+      let is_quiet = position.get_piece_on_square(mov.destination()).piece_type != PieceType::None;
+
       let mut temp_position = position.clone();
       temp_position.make_move(mov);
       history.save_hash(position.get_zobrish_hash());
 
-      let mut eval: Evaluation;
       // Pv move or first move - Full Search
       match first_move {
         true => {
@@ -187,6 +192,12 @@ impl Searcher {
       }
 
       if alpha >= beta {
+        if !is_quiet {
+          if mov != self.killers[current_ply as usize].0 {
+            self.killers[current_ply as usize].1 = self.killers[current_ply as usize].0;
+            self.killers[current_ply as usize].0 = mov;
+          }
+        }
         break;
       }
 
@@ -218,7 +229,7 @@ impl Searcher {
       alpha = best_eval.value();
     }
 
-    let mut move_picker: MovePicker = MovePicker::new(position, None, true);
+    let mut move_picker: MovePicker = MovePicker::new(position, None, None, true);
     while let Some(mov) = move_picker.pick_best_move(position) {
       let mut temp_position = position.clone();
       temp_position.make_move(mov);
