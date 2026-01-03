@@ -19,8 +19,10 @@ pub fn uci_loop() {
   let mut position = Position::from_fen(START_POSITION);
   perft::perft(1, &mut position); // To init the lookup tables
 
+  println!("id name {}", "Zeno 1.0");
+  println!("id author {}\n", "Toudonou");
+
   loop {
-    // position.print_board();
     let mut command = String::new();
     io::stdin().read_line(&mut command).unwrap();
     let command = command.trim();
@@ -43,7 +45,7 @@ pub fn uci_loop() {
 }
 
 fn uci_commands() {
-  println!("\nid name {}", "Zeno");
+  println!("\nid name {}", "Zeno 1.0");
   println!("id author {}\n", "Toudonou");
 
   println!("Available UCI commands:");
