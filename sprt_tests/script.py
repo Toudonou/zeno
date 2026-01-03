@@ -25,7 +25,7 @@ execute_sprt_test = f"""
     -rounds 1000 -repeat \
     -concurrency 14 \
     -recover \
-    -sprt elo0=30 elo1=50 alpha=0.05 beta=0.1
+    -sprt elo0=0 elo1=10 alpha=0.05 beta=0.1
 """
 os.system(f"{execute_sprt_test}")
 

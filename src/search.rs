@@ -116,7 +116,7 @@ impl Searcher {
     let depth = max_ply - current_ply + 1;
 
     // Check for threefold repetition and draw by insufficient material
-    if history.get_position_occurrences_count(position) >= 3 {
+    if history.get_position_occurrences_count(position) >= 3 || position.get_half_move_clock() >= 100 {
       triangular_pv[depth as usize] = vec![];
       return Evaluation::Score(0);
     }
@@ -161,7 +161,7 @@ impl Searcher {
 
       let mut temp_position = position.clone();
       temp_position.make_move(mov);
-      history.save_hash(position.get_zobrish_hash());
+      history.save_hash(temp_position.get_zobrish_hash());
 
       // Pv move or first move - Full Search
       match first_move {
