@@ -1,7 +1,8 @@
 import os
 
-zeno_current = "../target/release/zeno"
+zeno_current = "../../target/release/zeno"
 develop = "https://github.com/toudonou/zeno"
+zeno_1_0 = "./zeno-1.0"
 
 # Compile the current version
 os.system("cd ../ && cargo build --release")
@@ -19,13 +20,14 @@ execute_sprt_test = f"""
 ./fastchess \
     -engine cmd={zeno_current} name="Zeno current" \
     -engine cmd={zeno_develop} name="Zeno develop" \
+    -engine cmd={zeno_1_0} name="Zeno 1.0" \
     -pgnout file="games.pgn" \
     -openings file=8moves_v3.pgn format=pgn order=random \
     -each tc=8+0.08 \
     -rounds 1000 -repeat \
     -concurrency 14 \
     -recover \
-    -sprt elo0=0 elo1=10 alpha=0.05 beta=0.1
+    -sprt elo0=0 elo1=5 alpha=0.05 beta=0.1
 """
 os.system(f"{execute_sprt_test}")
 
