@@ -32,6 +32,23 @@ including castling and en passant.
     - [x] Aspiration window
 - [x] Time management (partially)
 
+## Installation
+1. Clone the repository:
+    ```sh
+    git clone https://github.com/Toudonou/zeno.git
+    ```
+2. Navigate to the project directory:
+    ```sh
+    cd zeno
+    ```
+3. Build the project using `cargo`:
+    ```sh
+    cargo build --release
+    ```
+   ```sh
+    ./target/release/zeno
+    ```
+
 ## Author
 
 - [Toudonou](https://github.com/Toudonou)
@@ -54,6 +71,7 @@ including castling and en passant.
 - https://billylevin.dev/posts/chess-engine-programming/
 - https://www.chessprogramming.org/Mop-up_Evaluation
 - https://cs.stackexchange.com/questions/1134/how-does-the-negascout-algorithm-work
+- [Polyglot Format](http://hgm.nubati.net/book_format.html)
 - [Polyglot Zobrist Key Generator](https://shinkarom.github.io/zobrist/)
 - [Implementing Game Algorithms: Minimax and Alpha-Beta Pruning](https://algocademy.com/blog/implementing-game-algorithms-minimax-and-alpha-beta-pruning/)
 - [AlphaDeepChess](https://docta.ucm.es/rest/api/core/bitstreams/4e289e34-0b84-4c1b-9d19-bc0911cfb48b/content)
