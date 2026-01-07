@@ -21,5 +21,4 @@ Cargo.lock
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 .idea/
 /scripts/sprt_tests/config.json
-/scripts/sprt_tests/ratings.txt
 /scripts/pgn_to_uci/venv

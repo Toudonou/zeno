@@ -12,7 +12,7 @@ use crate::utils::ZENO_INFINITY;
 // 4. Captures
 // 5. Killers moves
 // 6. Castles moves
-// 7. Quiets moves
+// 7. The others Quiets moves
 static TT_MOVE_SCORE: i32 = 600_000;
 static PROMOTION_MOVE_SCORE: i32 = 250_000;
 static CAPTURE_MOVE_SCORE: i32 = 200_000;

@@ -74,7 +74,6 @@ pub fn generate_legal_moves(position: &mut Position, move_list: &mut MoveList) {
   if position.can_long_castle(side) {
     move_list.push(Move::new(king_square, king_square - 2, MoveType::LongCastle));
   }
-
   let mut attacks = non_own_pieces & get_king_attacks(king_square);
   while attacks != 0 {
     let destination = get_lsb!(attacks);

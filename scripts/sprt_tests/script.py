@@ -20,11 +20,24 @@ execute_sprt_test = f"""
 ./fastchess \
     -engine cmd={zeno_current} name="Zeno current" \
     -engine cmd={zeno_develop} name="Zeno develop" \
-    -engine cmd={zeno_1_0} name="Zeno 1.0" \
     -pgnout file="games.pgn" \
     -openings file=8moves_v3.pgn format=pgn order=random \
     -each tc=8+0.08 \
-    -rounds 1000 -repeat \
+    -rounds 2000 -repeat \
+    -concurrency 14 \
+    -recover \
+    -sprt elo0=0 elo1=5 alpha=0.05 beta=0.1
+"""
+os.system(f"{execute_sprt_test}")
+
+execute_sprt_test = f"""
+./fastchess \
+    -engine cmd={zeno_current} name="Zeno current" \
+    -engine cmd={zeno_1_0} name="Zeno 1.0" \
+    -pgnout file="games_vs_releases.pgn" \
+    -openings file=8moves_v3.pgn format=pgn order=random \
+    -each tc=8+0.08 \
+    -rounds 2000 -repeat \
     -concurrency 14 \
     -recover \
     -sprt elo0=0 elo1=5 alpha=0.05 beta=0.1
@@ -34,5 +47,8 @@ os.system(f"{execute_sprt_test}")
 os.system("rm -rf zeno_develop/")
 
 os.system("./ordo -o ratings.txt -- games.pgn ")
+os.system("./ordo -o ratings_vs_releases.txt -- games_vs_releases.pgn ")
 os.system("cat ratings.txt")
+os.system("cat ratings_vs_releases.txt")
 os.system("rm games.pgn")
+os.system("rm games_vs_releases.pgn")

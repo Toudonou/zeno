@@ -54,7 +54,7 @@ impl Searcher {
     for depth in 1..=self.max_depth as usize {
       let iterative_timer = Instant::now();
       self.search_stats = SearchStats { number_of_nodes_visited: 0, search_time: 0, search_depth: 0 };
-      let mut triangular_pv: Vec<Vec<Move>> = vec![vec![]; depth + 1];
+      let mut triangular_pv: Vec<Vec<Move>> = vec![vec![Move::default(); depth]; depth + 1];
 
       if self.timer.elapsed().as_millis() > self.thinking_time {
         break;
@@ -146,18 +146,18 @@ impl Searcher {
     if move_picker.get_moves_count() == 0 {
       triangular_pv[depth as usize] = vec![];
       if position.is_check(position.get_side()) {
-        return Evaluation::MateIn(-1 * (current_ply as i32));
+        return Evaluation::MateIn(-(current_ply as i32));
       }
       return Evaluation::Score(0);
     }
 
     let original_alpha = alpha;
-    let mut best_eval = Evaluation::Score(alpha);
+    let mut best_eval = Evaluation::Score(-ZENO_INFINITY);
     let mut best_move = None;
     let mut first_move = true;
     while let Some(mov) = move_picker.pick_best_move(position) {
       let mut eval: Evaluation;
-      let is_quiet = position.get_piece_on_square(mov.destination()).piece_type != PieceType::None;
+      let is_capture = position.get_piece_on_square(mov.destination()).piece_type != PieceType::None;
 
       let mut temp_position = position.clone();
       temp_position.make_move(mov);
@@ -180,8 +180,7 @@ impl Searcher {
 
       history.pop_last_entry();
 
-      if eval.value() > alpha {
-        alpha = eval.value();
+      if eval.value() > best_eval.value() {
         best_eval = eval;
         best_move = Some(mov);
 
@@ -191,8 +190,10 @@ impl Searcher {
         triangular_pv[depth as usize].extend(temp);
       }
 
+      alpha = alpha.max(best_eval.value());
+
       if alpha >= beta {
-        if !is_quiet {
+        if !is_capture {
           if mov != self.killers[current_ply as usize].0 {
             self.killers[current_ply as usize].1 = self.killers[current_ply as usize].0;
             self.killers[current_ply as usize].0 = mov;
@@ -284,8 +285,6 @@ impl Searcher {
     // Geometric series because of the iterative deepening
     let nodes_needed = (branching_factor.powf((future_depth + 1) as f32) - 1.0) / (branching_factor - 1.0);
     // I only take 80% of the time because the prediction is not that accurate
-    let estimated_time_ms = ((0.8 * (nodes_needed / speed as f32) * 1000.0) as u128).max(1);
-
-    estimated_time_ms
+    ((0.8 * (nodes_needed / speed as f32) * 1000.0) as u128).max(1)
   }
 }

@@ -1,6 +1,6 @@
 use crate::{position::Position, zobrist_hash::BoardHash};
 
-pub static HISTORY_MAX_SIZE: usize = 512;
+pub static HISTORY_MAX_SIZE: usize = 1024;
 
 #[derive(Debug, Clone)]
 pub struct History {
