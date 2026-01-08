@@ -404,6 +404,26 @@ impl Position {
   }
 
   #[inline(always)]
+  pub fn make_null_move(&mut self) -> u8 {
+    let ancient_en_passant_file = self.en_passant_file;
+
+    self.zobrish_hash ^= ZobristHash::get_en_passant_file_key(ancient_en_passant_file);
+    self.zobrish_hash ^= ZobristHash::get_side_key();
+    self.en_passant_file = 8;
+    self.side = self.side.opposite();
+
+    ancient_en_passant_file
+  }
+
+  #[inline(always)]
+  pub fn unmake_null_move(&mut self, ancient_en_passant_file: u8) {
+    self.zobrish_hash ^= ZobristHash::get_en_passant_file_key(ancient_en_passant_file);
+    self.zobrish_hash ^= ZobristHash::get_side_key();
+    self.en_passant_file = ancient_en_passant_file;
+    self.side = self.side.opposite();
+  }
+
+  #[inline(always)]
   pub fn get_smallest_attacker(&self, victim_square: Square, enemy_side: PieceColor) -> (PieceType, Square) {
     let full_board = self.get_full_board();
 
@@ -701,6 +721,11 @@ impl Position {
   pub fn get_en_passant(&self) -> Square {
     static EN_PASSANT_FILE_TO_SQUARE_FOR_BLACK: [u8; 9] = [16, 17, 18, 19, 20, 21, 22, 23, 64];
     EN_PASSANT_FILE_TO_SQUARE_FOR_BLACK[self.en_passant_file as usize] + 3 * 8 * self.side as u8
+  }
+
+  #[inline(always)]
+  pub fn has_non_pawn_material(&self) -> bool {
+    self.pieces_occupancies[PieceType::Knight] != 0 && self.pieces_occupancies[PieceType::Bishop] != 0 && self.pieces_occupancies[PieceType::Rook] != 0 && self.pieces_occupancies[PieceType::Queen] != 0
   }
 
   pub fn print_board(&self) {

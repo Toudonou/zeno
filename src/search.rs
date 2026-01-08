@@ -64,13 +64,13 @@ impl Searcher {
       let mut aspiration_window_delta = 30;
       loop {
         if depth == 1 {
-          score = self.pv_search(position, transposition_table, history, &mut triangular_pv, 1, depth as u32, -ZENO_INFINITY, ZENO_INFINITY);
+          score = self.pv_search(position, transposition_table, history, &mut triangular_pv, 1, depth as u32, -ZENO_INFINITY, ZENO_INFINITY, true, true);
           break;
         } else {
           let alpha = score.value() - aspiration_window_delta;
           let beta = score.value() + aspiration_window_delta;
 
-          score = self.pv_search(position, transposition_table, history, &mut triangular_pv, 1, depth as u32, alpha, beta);
+          score = self.pv_search(position, transposition_table, history, &mut triangular_pv, 1, depth as u32, alpha, beta, true, true);
           if !(alpha < score.value() && score.value() < beta) {
             aspiration_window_delta *= 2;
           } else {
@@ -110,6 +110,8 @@ impl Searcher {
     max_ply: u32,
     mut alpha: i32,
     beta: i32,
+    is_pv_line: bool,
+    allow_null_move: bool,
   ) -> Evaluation {
     self.search_stats.number_of_nodes_visited += 1;
 
@@ -151,6 +153,22 @@ impl Searcher {
       return Evaluation::Score(0);
     }
 
+    let null_move_depth_reduction = 2;
+    let can_do_null_move = allow_null_move && !is_pv_line && ((max_ply - current_ply) > null_move_depth_reduction) && position.has_non_pawn_material() && !position.is_check(position.get_side());
+    if can_do_null_move {
+      let ancient_en_passant = position.make_null_move();
+      history.save_hash(position.get_zobrish_hash());
+
+      let eval = self.pv_search(position, transposition_table, history, triangular_pv, current_ply + 1, max_ply - null_move_depth_reduction, -beta, -(beta - 1), false, false) * -1;
+
+      position.unmake_null_move(ancient_en_passant);
+      history.pop_last_entry();
+
+      if eval.value() > beta {
+        return eval;
+      }
+    }
+
     let original_alpha = alpha;
     let mut best_eval = Evaluation::Score(-ZENO_INFINITY);
     let mut best_move = None;
@@ -167,13 +185,13 @@ impl Searcher {
       match first_move {
         true => {
           first_move = false;
-          eval = self.pv_search(&mut temp_position, transposition_table, history, triangular_pv, current_ply + 1, max_ply, -beta, -alpha) * -1;
+          eval = self.pv_search(&mut temp_position, transposition_table, history, triangular_pv, current_ply + 1, max_ply, -beta, -alpha, is_pv_line, allow_null_move) * -1;
         }
         false => {
-          eval = self.pv_search(&mut temp_position, transposition_table, history, triangular_pv, current_ply + 1, max_ply, -alpha - 1, -alpha) * -1;
+          eval = self.pv_search(&mut temp_position, transposition_table, history, triangular_pv, current_ply + 1, max_ply, -alpha - 1, -alpha, false, allow_null_move) * -1;
           // If all search that fail-high (score > alpha) do full research in the full windows and at the max depth
           if alpha < eval.value() && eval.value() < beta {
-            eval = self.pv_search(&mut temp_position, transposition_table, history, triangular_pv, current_ply + 1, max_ply, -beta, -alpha) * -1;
+            eval = self.pv_search(&mut temp_position, transposition_table, history, triangular_pv, current_ply + 1, max_ply, -beta, -alpha, false, allow_null_move) * -1;
           }
         }
       }

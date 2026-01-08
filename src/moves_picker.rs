@@ -1,5 +1,5 @@
 use crate::containers::ByPieceType;
-use crate::moves::{MOVE_LIST_MAX_SIZE, Move, MoveList, MoveType};
+use crate::moves::{Move, MoveList, MoveType, MOVE_LIST_MAX_SIZE};
 use crate::moves_generator::{generate_legal_moves, generate_quiescences_moves};
 use crate::piece::PieceType;
 use crate::position::Position;

@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod position_tests {
   use zeno::moves::Move;
+  use zeno::piece::PieceColor;
   use zeno::position::Position;
   use zeno::utils::START_POSITION;
 
@@ -50,5 +51,41 @@ mod position_tests {
 
     assert_eq!(position.get_half_move_clock(), 25);
     assert_eq!(position.get_number_of_move(), 33);
+  }
+
+  #[test]
+  fn correct_make_unmake_null_move() {
+    let mut position = Position::from_fen("r2qr1k1/ppp2p1p/3pbn2/3Nn3/4PPp1/3Q4/PP2B1PP/R1B2RK1 b - f3 0 1");
+    assert_eq!(position.get_zobrish_hash(), 0x8B930E1F20BFB09C);
+    assert_eq!(position.get_side(), PieceColor::Black);
+    assert_eq!(position.get_en_passant(), 21);
+
+    let ancient_en_passant = position.make_null_move();
+    assert_eq!(position.get_zobrish_hash(), Position::from_fen("r2qr1k1/ppp2p1p/3pbn2/3Nn3/4PPp1/3Q4/PP2B1PP/R1B2RK1 w - - 0 1").get_zobrish_hash());
+    assert_eq!(position.get_side(), PieceColor::White);
+    assert!(position.get_en_passant() >= 64);
+
+    position.unmake_null_move(ancient_en_passant);
+    assert_eq!(position.get_zobrish_hash(), 0x8B930E1F20BFB09C);
+    assert_eq!(position.get_side(), PieceColor::Black);
+    assert_eq!(position.get_en_passant(), 21);
+  }
+
+  #[test]
+  fn correct_has_non_pawn_material() {
+    let position = Position::from_fen(START_POSITION);
+    assert!(position.has_non_pawn_material());
+
+    let position = Position::from_fen("7k/pppppppp/8/8/8/8/PPPPPPPP/4K3 w - - 0 1");
+    assert_eq!(position.has_non_pawn_material(), false);
+
+    let position = Position::from_fen("8/1P4p1/2p2kp1/6P1/2PP4/3K4/1P3p2/8 b - - 0 1");
+    assert_eq!(position.has_non_pawn_material(), false);
+
+    let position = Position::from_fen("8/8/8/5k2/8/2K5/8/8 w - - 0 1");
+    assert_eq!(position.has_non_pawn_material(), false);
+
+    let position = Position::from_fen("r3qrk1/1ppb1pb1/p2p1npp/4p3/3PP2B/1P3N1P/P2N1PP1/R2QR1K1 w - - 1 15");
+    assert_eq!(position.has_non_pawn_material(), true);
   }
 }

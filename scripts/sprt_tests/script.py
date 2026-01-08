@@ -16,7 +16,7 @@ os.system(
 
 zeno_develop = "./zeno_develop/target/release/zeno_develop"
 
-execute_sprt_test = f"""
+execute_sprt_test_current_vs_develop = f"""
 ./fastchess \
     -engine cmd={zeno_current} name="Zeno current" \
     -engine cmd={zeno_develop} name="Zeno develop" \
@@ -28,9 +28,12 @@ execute_sprt_test = f"""
     -recover \
     -sprt elo0=0 elo1=5 alpha=0.05 beta=0.1
 """
-os.system(f"{execute_sprt_test}")
+os.system(f"{execute_sprt_test_current_vs_develop}")
+os.system("rm -rf zeno_develop/")
+os.system("./ordo -o ratings.txt -- games.pgn ")
+os.system("rm games.pgn")
 
-execute_sprt_test = f"""
+execute_sprt_test_current_vs_release_1_0 = f"""
 ./fastchess \
     -engine cmd={zeno_current} name="Zeno current" \
     -engine cmd={zeno_1_0} name="Zeno 1.0" \
@@ -40,15 +43,11 @@ execute_sprt_test = f"""
     -rounds 2000 -repeat \
     -concurrency 14 \
     -recover \
-    -sprt elo0=0 elo1=5 alpha=0.05 beta=0.1
+    -sprt elo0=5 elo1=15 alpha=0.05 beta=0.1
 """
-os.system(f"{execute_sprt_test}")
-
-os.system("rm -rf zeno_develop/")
-
-os.system("./ordo -o ratings.txt -- games.pgn ")
+os.system(f"{execute_sprt_test_current_vs_release_1_0}")
 os.system("./ordo -o ratings_vs_releases.txt -- games_vs_releases.pgn ")
+os.system("rm games_vs_releases.pgn")
+
 os.system("cat ratings.txt")
 os.system("cat ratings_vs_releases.txt")
-os.system("rm games.pgn")
-os.system("rm games_vs_releases.pgn")
