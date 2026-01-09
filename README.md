@@ -5,6 +5,8 @@
 Zeno is a chess engine written in Rust. It uses bitboards, magic move generation, and supports standard chess rules
 including castling and en passant.
 <br/>
+<br/>
+![](https://img.shields.io/badge/Lichess-ratings)
 ![Bullet](https://img.shields.io/badge/dynamic/json?label=Bullet&color=black&query=$.perfs.bullet.rating&url=https://lichess.org/api/user/zeno-bot)
 ![Blitz](https://img.shields.io/badge/dynamic/json?label=Blitz&color=darkred&query=$.perfs.blitz.rating&url=https://lichess.org/api/user/zeno-bot)
 ![Rapid](https://img.shields.io/badge/dynamic/json?label=Rapid&color=darkblue&query=$.perfs.rapid.rating&url=https://lichess.org/api/user/zeno-bot)

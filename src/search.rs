@@ -123,7 +123,7 @@ impl Searcher {
       return Evaluation::Score(0);
     }
 
-    if current_ply > max_ply {
+    if depth <= 0 {
       triangular_pv[0] = vec![];
       return self.quiescence_search(position, alpha, beta);
     }
@@ -154,7 +154,7 @@ impl Searcher {
     }
 
     let null_move_depth_reduction = 2;
-    let can_do_null_move = allow_null_move && !is_pv_line && ((max_ply - current_ply) > null_move_depth_reduction) && position.has_non_pawn_material() && !position.is_check(position.get_side());
+    let can_do_null_move = allow_null_move && !is_pv_line && (depth > null_move_depth_reduction) && position.has_non_pawn_material() && !position.is_check(position.get_side());
     if can_do_null_move {
       let ancient_en_passant = position.make_null_move();
       history.save_hash(position.get_zobrish_hash());
