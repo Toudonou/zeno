@@ -72,7 +72,11 @@ impl TTEntry {
   #[inline(always)]
   pub fn get_best_move(&self) -> Option<Move> {
     let move_code = ((self.others_informations >> (2 * 8)) & 0xFFFF) as u16;
-    if move_code != 0 { Some(Move::from_u16(move_code)) } else { None }
+    if move_code != 0 {
+      Some(Move::from_u16(move_code))
+    } else {
+      None
+    }
   }
 
   #[inline(always)]
@@ -96,18 +100,18 @@ impl TranspositionTable {
   #[inline(always)]
   pub fn new() -> TranspositionTable {
     let max_entries = ZENO_TRANSPOSITION_TABLE_SIZE / size_of::<TTEntry>();
-    TranspositionTable { table: vec![TTEntry::new(0, None, 0, TTFlag::None, Evaluation::Score(0)); ZENO_TRANSPOSITION_TABLE_SIZE / size_of::<TTEntry>()], max_entries }
+    TranspositionTable { table: vec![TTEntry::new(0, None, 0, TTFlag::None, Evaluation::Score(0)); max_entries], max_entries }
   }
 
   #[inline(always)]
   pub fn get_entry(&self, hash: BoardHash) -> TTEntry {
-    self.table[hash as usize % self.max_entries]
+    self.table[hash as usize & (self.max_entries - 1)] // max_entries is a power of 2, therefore (x % max_entries) == x & (max_entries)
   }
 
   #[inline(always)]
   pub fn add_entry(&mut self, entry: TTEntry) {
     let hash = entry.hash;
-    self.table[hash as usize & (self.max_entries - 1)] = entry;
+    self.table[hash as usize & (self.max_entries - 1)] = entry; // max_entries is a power of 2, therefore (x % max_entries) == x & (max_entries)
   }
 
   pub fn print_transposition_stats(&self) {
@@ -117,6 +121,6 @@ impl TranspositionTable {
 
   #[inline(always)]
   pub fn clear(&mut self) {
-    self.table = vec![TTEntry::new(0, None, 0, TTFlag::None, Evaluation::Score(0)); ZENO_TRANSPOSITION_TABLE_SIZE / size_of::<TTEntry>()]
+    self.table = vec![TTEntry::new(0, None, 0, TTFlag::None, Evaluation::Score(0)); self.max_entries]
   }
 }

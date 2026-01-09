@@ -87,5 +87,8 @@ mod position_tests {
 
     let position = Position::from_fen("r3qrk1/1ppb1pb1/p2p1npp/4p3/3PP2B/1P3N1P/P2N1PP1/R2QR1K1 w - - 1 15");
     assert_eq!(position.has_non_pawn_material(), true);
+
+    let position = Position::from_fen("8/8/8/4k3/2K3n1/8/8/8 w - - 0 1");
+    assert_eq!(position.has_non_pawn_material(), true);
   }
 }

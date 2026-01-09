@@ -725,7 +725,7 @@ impl Position {
 
   #[inline(always)]
   pub fn has_non_pawn_material(&self) -> bool {
-    self.pieces_occupancies[PieceType::Knight] != 0 && self.pieces_occupancies[PieceType::Bishop] != 0 && self.pieces_occupancies[PieceType::Rook] != 0 && self.pieces_occupancies[PieceType::Queen] != 0
+    self.pieces_occupancies[PieceType::Knight] != 0 || self.pieces_occupancies[PieceType::Bishop] != 0 || self.pieces_occupancies[PieceType::Rook] != 0 || self.pieces_occupancies[PieceType::Queen] != 0
   }
 
   pub fn print_board(&self) {

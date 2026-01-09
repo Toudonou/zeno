@@ -52,25 +52,26 @@ impl Searcher {
 
     // Iterative deepening
     for depth in 1..=self.max_depth as usize {
-      let iterative_timer = Instant::now();
       self.search_stats = SearchStats { number_of_nodes_visited: 0, search_time: 0, search_depth: 0 };
-      let mut triangular_pv: Vec<Vec<Move>> = vec![vec![Move::default(); depth]; depth + 1];
 
-      if self.timer.elapsed().as_millis() > self.thinking_time {
-        break;
-      }
+      let iterative_timer = Instant::now();
+      let mut triangular_pv: Vec<Vec<Move>> = vec![vec![Move::default(); depth]; depth + 1];
 
       // Aspiration Window
       let mut aspiration_window_delta = 30;
       loop {
+        if self.timer.elapsed().as_millis() > self.thinking_time {
+          break;
+        }
+
         if depth == 1 {
-          score = self.pv_search(position, transposition_table, history, &mut triangular_pv, 1, depth as u32, -ZENO_INFINITY, ZENO_INFINITY, true, true);
+          score = self.pv_search(position, transposition_table, history, &mut triangular_pv, 1, depth as u32, -ZENO_INFINITY, ZENO_INFINITY, true);
           break;
         } else {
           let alpha = score.value() - aspiration_window_delta;
           let beta = score.value() + aspiration_window_delta;
 
-          score = self.pv_search(position, transposition_table, history, &mut triangular_pv, 1, depth as u32, alpha, beta, true, true);
+          score = self.pv_search(position, transposition_table, history, &mut triangular_pv, 1, depth as u32, alpha, beta, true);
           if !(alpha < score.value() && score.value() < beta) {
             aspiration_window_delta *= 2;
           } else {
@@ -110,7 +111,6 @@ impl Searcher {
     max_ply: u32,
     mut alpha: i32,
     beta: i32,
-    is_pv_line: bool,
     allow_null_move: bool,
   ) -> Evaluation {
     self.search_stats.number_of_nodes_visited += 1;
@@ -153,19 +153,19 @@ impl Searcher {
       return Evaluation::Score(0);
     }
 
-    let null_move_depth_reduction = 2;
-    let can_do_null_move = allow_null_move && !is_pv_line && (depth > null_move_depth_reduction) && position.has_non_pawn_material() && !position.is_check(position.get_side());
+    let null_move_depth_reduction = 1;
+    let is_null_window = (beta - alpha) == 1;
+    let can_do_null_move = allow_null_move && is_null_window && depth > 3 && position.has_non_pawn_material() && !position.is_check(position.get_side());
     if can_do_null_move {
-      let ancient_en_passant = position.make_null_move();
-      history.save_hash(position.get_zobrish_hash());
+      let mut temp_position = position.clone();
+      temp_position.make_null_move();
 
-      let eval = self.pv_search(position, transposition_table, history, triangular_pv, current_ply + 1, max_ply - null_move_depth_reduction, -beta, -(beta - 1), false, false) * -1;
-
-      position.unmake_null_move(ancient_en_passant);
+      history.save_hash(temp_position.get_zobrish_hash());
+      let eval = self.pv_search(&mut temp_position, transposition_table, history, triangular_pv, current_ply + 1, max_ply - null_move_depth_reduction, -beta, -(beta - 1), false) * -1;
       history.pop_last_entry();
 
-      if eval.value() > beta {
-        return eval;
+      if eval.value() >= beta {
+        return Evaluation::Score(beta);
       }
     }
 
@@ -185,13 +185,13 @@ impl Searcher {
       match first_move {
         true => {
           first_move = false;
-          eval = self.pv_search(&mut temp_position, transposition_table, history, triangular_pv, current_ply + 1, max_ply, -beta, -alpha, is_pv_line, allow_null_move) * -1;
+          eval = self.pv_search(&mut temp_position, transposition_table, history, triangular_pv, current_ply + 1, max_ply, -beta, -alpha, allow_null_move) * -1;
         }
         false => {
-          eval = self.pv_search(&mut temp_position, transposition_table, history, triangular_pv, current_ply + 1, max_ply, -alpha - 1, -alpha, false, allow_null_move) * -1;
+          eval = self.pv_search(&mut temp_position, transposition_table, history, triangular_pv, current_ply + 1, max_ply, -alpha - 1, -alpha, allow_null_move) * -1;
           // If all search that fail-high (score > alpha) do full research in the full windows and at the max depth
           if alpha < eval.value() && eval.value() < beta {
-            eval = self.pv_search(&mut temp_position, transposition_table, history, triangular_pv, current_ply + 1, max_ply, -beta, -alpha, false, allow_null_move) * -1;
+            eval = self.pv_search(&mut temp_position, transposition_table, history, triangular_pv, current_ply + 1, max_ply, -beta, -alpha, allow_null_move) * -1;
           }
         }
       }
