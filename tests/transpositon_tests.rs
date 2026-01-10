@@ -14,9 +14,9 @@ mod transposition_tests {
     let flag = TTFlag::LowerBound;
     let evaluation = Evaluation::MateIn(25);
 
-    let tt_entry = TTEntry::new(position.get_zobrish_hash(), best_move, depth, flag, evaluation);
+    let tt_entry = TTEntry::new(position.get_zobrist_hash(), best_move, depth, flag, evaluation);
 
-    assert_eq!(tt_entry.get_hash(), position.get_zobrish_hash());
+    assert_eq!(tt_entry.get_hash(), position.get_zobrist_hash());
     assert_eq!(tt_entry.get_best_move(), best_move);
     assert_eq!(tt_entry.get_depth(), depth);
     assert_eq!(tt_entry.get_flag(), flag);

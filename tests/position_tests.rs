@@ -56,17 +56,17 @@ mod position_tests {
   #[test]
   fn correct_make_unmake_null_move() {
     let mut position = Position::from_fen("r2qr1k1/ppp2p1p/3pbn2/3Nn3/4PPp1/3Q4/PP2B1PP/R1B2RK1 b - f3 0 1");
-    assert_eq!(position.get_zobrish_hash(), 0x8B930E1F20BFB09C);
+    assert_eq!(position.get_zobrist_hash(), 0x8B930E1F20BFB09C);
     assert_eq!(position.get_side(), PieceColor::Black);
     assert_eq!(position.get_en_passant(), 21);
 
     let ancient_en_passant = position.make_null_move();
-    assert_eq!(position.get_zobrish_hash(), Position::from_fen("r2qr1k1/ppp2p1p/3pbn2/3Nn3/4PPp1/3Q4/PP2B1PP/R1B2RK1 w - - 0 1").get_zobrish_hash());
+    assert_eq!(position.get_zobrist_hash(), Position::from_fen("r2qr1k1/ppp2p1p/3pbn2/3Nn3/4PPp1/3Q4/PP2B1PP/R1B2RK1 w - - 0 1").get_zobrist_hash());
     assert_eq!(position.get_side(), PieceColor::White);
     assert!(position.get_en_passant() >= 64);
 
     position.unmake_null_move(ancient_en_passant);
-    assert_eq!(position.get_zobrish_hash(), 0x8B930E1F20BFB09C);
+    assert_eq!(position.get_zobrist_hash(), 0x8B930E1F20BFB09C);
     assert_eq!(position.get_side(), PieceColor::Black);
     assert_eq!(position.get_en_passant(), 21);
   }

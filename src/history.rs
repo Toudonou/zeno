@@ -30,7 +30,7 @@ impl History {
     // A position cannot be repeated after an undoable moves.
     // So the repetition check should only concern the last n (half_move_clock) reversible moves
     // https://www.freechess.org/Help/HelpFiles/fen.html
-    let hash = position.get_zobrish_hash();
+    let hash = position.get_zobrist_hash();
     self.history.iter().take(self.count).rev().take(1 + position.get_half_move_clock() as usize).filter(|k| **k == hash).count()
   }
 

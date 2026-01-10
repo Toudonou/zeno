@@ -71,7 +71,7 @@ pub struct Position {
   number_of_move: u8,
   half_move_clock: u8,
 
-  zobrish_hash: BoardHash,
+  zobrist_hash: BoardHash,
 }
 
 impl Position {
@@ -244,7 +244,7 @@ impl Position {
       side,
       number_of_move: number_of_moves_move_part.parse().unwrap_or(0),
       half_move_clock: half_move_part.parse().unwrap_or(0),
-      zobrish_hash,
+        zobrist_hash: zobrish_hash,
     }
   }
 
@@ -265,7 +265,7 @@ impl Position {
     // Putting 0 at the index of the destination
     if destination_piece.piece_type != PieceType::None {
       self.pieces_occupancies[destination_piece.piece_type] &= !destination_mask;
-      self.zobrish_hash ^= ZobristHash::get_piece_key(destination_piece, destination);
+      self.zobrist_hash ^= ZobristHash::get_piece_key(destination_piece, destination);
 
       // If the destination is not empty, the half move clock will be reset
       self.half_move_clock = 0;
@@ -280,16 +280,16 @@ impl Position {
     }
 
     // Update castling rights
-    self.zobrish_hash ^= ZobristHash::get_castling_key(self.castling_rights);
+    self.zobrist_hash ^= ZobristHash::get_castling_key(self.castling_rights);
     self.castling_rights &= !CASTLING_AVAILABILITY_TABLE[destination as usize];
     self.castling_rights &= !CASTLING_AVAILABILITY_TABLE[source as usize];
-    self.zobrish_hash ^= ZobristHash::get_castling_key(self.castling_rights);
+    self.zobrist_hash ^= ZobristHash::get_castling_key(self.castling_rights);
 
     // Putting 0 at the index of the source
     // And moving the piece at the destination by putting 1 at the destination for the corresponding piece
     self.pieces_occupancies[source_piece.piece_type] ^= source_mask | destination_mask;
-    self.zobrish_hash ^= ZobristHash::get_piece_key(source_piece, source);
-    self.zobrish_hash ^= ZobristHash::get_piece_key(source_piece, destination);
+    self.zobrist_hash ^= ZobristHash::get_piece_key(source_piece, source);
+    self.zobrist_hash ^= ZobristHash::get_piece_key(source_piece, destination);
 
     // Updating the boards (for each color)
     self.side_occupancies[our_side] ^= source_mask | destination_mask;
@@ -305,8 +305,8 @@ impl Position {
         self.pieces_occupancies[PieceType::Rook] ^= SHORT_CASTLE_ROOK_MASK[our_side];
         self.side_occupancies[our_side] ^= SHORT_CASTLE_ROOK_MASK[our_side];
 
-        self.zobrish_hash ^= ZobristHash::get_piece_key(Piece { color: our_side, piece_type: PieceType::Rook }, INITIALS_ROOKS_SQUARES[our_side]);
-        self.zobrish_hash ^= ZobristHash::get_piece_key(Piece { color: our_side, piece_type: PieceType::Rook }, finals_rook_square);
+        self.zobrist_hash ^= ZobristHash::get_piece_key(Piece { color: our_side, piece_type: PieceType::Rook }, INITIALS_ROOKS_SQUARES[our_side]);
+        self.zobrist_hash ^= ZobristHash::get_piece_key(Piece { color: our_side, piece_type: PieceType::Rook }, finals_rook_square);
       }
       MoveType::LongCastle => {
         static INITIALS_ROOKS_SQUARES: ByColor<Square> = ByColor::new(0, 56);
@@ -315,15 +315,15 @@ impl Position {
         self.pieces_occupancies[PieceType::Rook] ^= LONG_CASTLE_ROOK_MASK[our_side];
         self.side_occupancies[our_side] ^= LONG_CASTLE_ROOK_MASK[our_side];
 
-        self.zobrish_hash ^= ZobristHash::get_piece_key(Piece { color: our_side, piece_type: PieceType::Rook }, INITIALS_ROOKS_SQUARES[our_side]);
-        self.zobrish_hash ^= ZobristHash::get_piece_key(Piece { color: our_side, piece_type: PieceType::Rook }, finals_rook_square);
+        self.zobrist_hash ^= ZobristHash::get_piece_key(Piece { color: our_side, piece_type: PieceType::Rook }, INITIALS_ROOKS_SQUARES[our_side]);
+        self.zobrist_hash ^= ZobristHash::get_piece_key(Piece { color: our_side, piece_type: PieceType::Rook }, finals_rook_square);
       }
       MoveType::EnPassant => {
         let enemy_pawn_square = (destination as i8 + EN_PASSANT_OFFSET[our_side]) as Square;
 
         self.pieces_occupancies[PieceType::Pawn] &= !(1u64 << enemy_pawn_square);
         self.side_occupancies[enemy_side] &= !(1u64 << enemy_pawn_square);
-        self.zobrish_hash ^= ZobristHash::get_key_after_en_passant_has_been_taken_by(our_side, enemy_pawn_square);
+        self.zobrist_hash ^= ZobristHash::get_key_after_en_passant_has_been_taken_by(our_side, enemy_pawn_square);
       }
       _ => {
         // MoveType::PawnToKnight | MoveType::PawnToBishop | MoveType::PawnToRook | MoveType::PawnToQueen
@@ -336,26 +336,26 @@ impl Position {
         self.pieces_occupancies[PieceType::Pawn] &= !destination_mask;
         self.pieces_occupancies[promotion_piece_type] |= destination_mask;
 
-        self.zobrish_hash ^= ZobristHash::get_piece_key(Piece { color: our_side, piece_type: PieceType::Pawn }, destination);
-        self.zobrish_hash ^= ZobristHash::get_piece_key(Piece { color: our_side, piece_type: promotion_piece_type }, destination);
+        self.zobrist_hash ^= ZobristHash::get_piece_key(Piece { color: our_side, piece_type: PieceType::Pawn }, destination);
+        self.zobrist_hash ^= ZobristHash::get_piece_key(Piece { color: our_side, piece_type: promotion_piece_type }, destination);
       }
     }
 
     // Reset the en passant
-    self.zobrish_hash ^= ZobristHash::get_en_passant_file_key(self.en_passant_file);
+    self.zobrist_hash ^= ZobristHash::get_en_passant_file_key(self.en_passant_file);
     self.en_passant_file = 8;
     if source_piece.piece_type == PieceType::Pawn && source.abs_diff(destination) == 16 {
       // En passant key is only applied if the opponent can take the en passant at his turn
       self.en_passant_file = (destination as i8 + EN_PASSANT_OFFSET[our_side]) as Square & 7;
 
       if self.pieces_occupancies[PieceType::Pawn] & self.side_occupancies[enemy_side] & PAWNS_OCCUPANCY_OBLIGATION_FOR_EN_PASSANT[enemy_side][self.en_passant_file as usize] != 0 {
-        self.zobrish_hash ^= ZobristHash::get_en_passant_file_key(self.en_passant_file);
+        self.zobrist_hash ^= ZobristHash::get_en_passant_file_key(self.en_passant_file);
       } else {
         self.en_passant_file = 8;
       }
     }
 
-    self.zobrish_hash ^= ZobristHash::get_side_key();
+    self.zobrist_hash ^= ZobristHash::get_side_key();
     self.number_of_move += u8::from(self.side == PieceColor::Black);
     self.side = enemy_side;
   }
@@ -407,8 +407,8 @@ impl Position {
   pub fn make_null_move(&mut self) -> u8 {
     let ancient_en_passant_file = self.en_passant_file;
 
-    self.zobrish_hash ^= ZobristHash::get_en_passant_file_key(ancient_en_passant_file);
-    self.zobrish_hash ^= ZobristHash::get_side_key();
+    self.zobrist_hash ^= ZobristHash::get_en_passant_file_key(ancient_en_passant_file);
+    self.zobrist_hash ^= ZobristHash::get_side_key();
     self.en_passant_file = 8;
     self.side = self.side.opposite();
 
@@ -417,8 +417,8 @@ impl Position {
 
   #[inline(always)]
   pub fn unmake_null_move(&mut self, ancient_en_passant_file: u8) {
-    self.zobrish_hash ^= ZobristHash::get_en_passant_file_key(ancient_en_passant_file);
-    self.zobrish_hash ^= ZobristHash::get_side_key();
+    self.zobrist_hash ^= ZobristHash::get_en_passant_file_key(ancient_en_passant_file);
+    self.zobrist_hash ^= ZobristHash::get_side_key();
     self.en_passant_file = ancient_en_passant_file;
     self.side = self.side.opposite();
   }
@@ -677,8 +677,8 @@ impl Position {
   }
 
   #[inline(always)]
-  pub fn get_zobrish_hash(&self) -> BoardHash {
-    self.zobrish_hash
+  pub fn get_zobrist_hash(&self) -> BoardHash {
+    self.zobrist_hash
   }
 
   #[inline(always)]

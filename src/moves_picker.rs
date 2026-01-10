@@ -22,12 +22,12 @@ static EN_PASSANT_MOVE_SCORE: i32 = 6002;
 
 // https://open-chess.org/viewtopic.php?t=3058
 static MVV_LVA: ByPieceType<ByPieceType<i32>> = ByPieceType::new(
-  /*P*/ ByPieceType::new(6002, 20225, 20250, 20400, 20800, 26900),
-  /*N*/ ByPieceType::new(4775, 06004, 20025, 20175, 20575, 26675),
-  /*B*/ ByPieceType::new(4750, 04975, 06006, 20150, 20550, 26650),
-  /*R*/ ByPieceType::new(4600, 04825, 04850, 06008, 20400, 26500),
-  /*Q*/ ByPieceType::new(4200, 04425, 04450, 04600, 06010, 26100),
-  /*K*/ ByPieceType::new(3100, 03325, 03350, 03500, 03900, 26000),
+  /*P*/ ByPieceType::new(06002, 20225, 20250, 20400, 20800, 26900),
+  /*N*/ ByPieceType::new(04775, 06004, 20025, 20175, 20575, 26675),
+  /*B*/ ByPieceType::new(04750, 04975, 06006, 20150, 20550, 26650),
+  /*R*/ ByPieceType::new(04600, 04825, 04850, 06008, 20400, 26500),
+  /*Q*/ ByPieceType::new(04200, 04425, 04450, 04600, 06010, 26100),
+  /*K*/ ByPieceType::new(03100, 03325, 03350, 03500, 03900, 26000),
 );
 
 pub struct MovePicker {

@@ -19,7 +19,7 @@ pub fn uci_loop() {
   let mut position = Position::from_fen(START_POSITION);
   perft::perft(1, &mut position); // To init the lookup tables
 
-  println!("id name {}", "Zeno 1.0");
+  println!("id name {}", "Zeno 1.0-dev");
   println!("id author {}\n", "Toudonou");
 
   loop {
@@ -33,7 +33,7 @@ pub fn uci_loop() {
       "ucinewgame" => {
         position = Position::from_fen(START_POSITION);
         history.clear();
-        history.save_hash(position.get_zobrish_hash());
+        history.save_hash(position.get_zobrist_hash());
       }
       c if c.starts_with("position") => uci_position(command, &mut position, &mut history),
       c if c.starts_with("go") => go(command, &mut position, &mut searcher, &mut transposition_table, &mut history),
@@ -45,7 +45,7 @@ pub fn uci_loop() {
 }
 
 fn uci_commands() {
-  println!("\nid name {}", "Zeno 1.0");
+  println!("\nid name {}", "Zeno 1.0-dev");
   println!("id author {}\n", "Toudonou");
 
   println!("Available UCI commands:");
@@ -75,18 +75,18 @@ fn uci_position(command: &str, position: &mut Position, history: &mut History) {
       None => {
         *position = Position::from_fen(&command[13usize..]);
         history.clear();
-        history.save_hash(position.get_zobrish_hash());
+        history.save_hash(position.get_zobrist_hash());
       }
       Some(moves_index) => {
         *position = Position::from_fen(&command[13usize..moves_index]);
         history.clear();
-        history.save_hash(position.get_zobrish_hash());
+        history.save_hash(position.get_zobrist_hash());
 
         let moves = command[(moves_index + "moves".len())..].split_whitespace();
         moves.for_each(|move_string| match Move::from_uci_notation(move_string, position) {
           Some(mov) => {
             position.make_move(mov);
-            history.save_hash(position.get_zobrish_hash());
+            history.save_hash(position.get_zobrist_hash());
           }
           None => {}
         });
@@ -104,7 +104,7 @@ fn uci_position(command: &str, position: &mut Position, history: &mut History) {
     moves.for_each(|move_string| match Move::from_uci_notation(move_string, position) {
       Some(mov) => {
         position.make_move(mov);
-        history.save_hash(position.get_zobrish_hash());
+        history.save_hash(position.get_zobrist_hash());
       }
       None => {}
     });

@@ -65,13 +65,13 @@ impl Searcher {
         }
 
         if depth == 1 {
-          score = self.pv_search(position, transposition_table, history, &mut triangular_pv, 1, depth as u32, -ZENO_INFINITY, ZENO_INFINITY, true);
+          score = self.pv_search(position, transposition_table, history, &mut triangular_pv, 1, depth as u32, -ZENO_INFINITY, ZENO_INFINITY);
           break;
         } else {
           let alpha = score.value() - aspiration_window_delta;
           let beta = score.value() + aspiration_window_delta;
 
-          score = self.pv_search(position, transposition_table, history, &mut triangular_pv, 1, depth as u32, alpha, beta, true);
+          score = self.pv_search(position, transposition_table, history, &mut triangular_pv, 1, depth as u32, alpha, beta);
           if !(alpha < score.value() && score.value() < beta) {
             aspiration_window_delta *= 2;
           } else {
@@ -111,7 +111,6 @@ impl Searcher {
     max_ply: u32,
     mut alpha: i32,
     beta: i32,
-    allow_null_move: bool,
   ) -> Evaluation {
     self.search_stats.number_of_nodes_visited += 1;
 
@@ -129,10 +128,10 @@ impl Searcher {
     }
 
     let mut tt_move: Option<Move> = None;
-    let tt_entry = transposition_table.get_entry(position.get_zobrish_hash());
+    let tt_entry = transposition_table.get_entry(position.get_zobrist_hash());
     if tt_entry.get_flag() != TTFlag::None {
       tt_move = tt_entry.get_best_move();
-      if tt_entry.get_hash() == position.get_zobrish_hash() && tt_entry.get_depth() >= (max_ply - current_ply) {
+      if tt_entry.get_hash() == position.get_zobrist_hash() && tt_entry.get_depth() >= (max_ply - current_ply) {
         let will_return_early = tt_entry.get_flag() == TTFlag::Exact
           || (tt_entry.get_flag() == TTFlag::LowerBound && tt_entry.get_evaluation().value() >= beta)
           || (tt_entry.get_flag() == TTFlag::UpperBound && tt_entry.get_evaluation().value() <= alpha);
@@ -153,22 +152,6 @@ impl Searcher {
       return Evaluation::Score(0);
     }
 
-    let null_move_depth_reduction = 1;
-    let is_null_window = (beta - alpha) == 1;
-    let can_do_null_move = allow_null_move && is_null_window && depth > 3 && position.has_non_pawn_material() && !position.is_check(position.get_side());
-    if can_do_null_move {
-      let mut temp_position = position.clone();
-      temp_position.make_null_move();
-
-      history.save_hash(temp_position.get_zobrish_hash());
-      let eval = self.pv_search(&mut temp_position, transposition_table, history, triangular_pv, current_ply + 1, max_ply - null_move_depth_reduction, -beta, -(beta - 1), false) * -1;
-      history.pop_last_entry();
-
-      if eval.value() >= beta {
-        return Evaluation::Score(beta);
-      }
-    }
-
     let original_alpha = alpha;
     let mut best_eval = Evaluation::Score(-ZENO_INFINITY);
     let mut best_move = None;
@@ -179,19 +162,19 @@ impl Searcher {
 
       let mut temp_position = position.clone();
       temp_position.make_move(mov);
-      history.save_hash(temp_position.get_zobrish_hash());
+      history.save_hash(temp_position.get_zobrist_hash());
 
       // Pv move or first move - Full Search
       match first_move {
         true => {
           first_move = false;
-          eval = self.pv_search(&mut temp_position, transposition_table, history, triangular_pv, current_ply + 1, max_ply, -beta, -alpha, allow_null_move) * -1;
+          eval = self.pv_search(&mut temp_position, transposition_table, history, triangular_pv, current_ply + 1, max_ply, -beta, -alpha) * -1;
         }
         false => {
-          eval = self.pv_search(&mut temp_position, transposition_table, history, triangular_pv, current_ply + 1, max_ply, -alpha - 1, -alpha, allow_null_move) * -1;
+          eval = self.pv_search(&mut temp_position, transposition_table, history, triangular_pv, current_ply + 1, max_ply, -alpha - 1, -alpha) * -1;
           // If all search that fail-high (score > alpha) do full research in the full windows and at the max depth
           if alpha < eval.value() && eval.value() < beta {
-            eval = self.pv_search(&mut temp_position, transposition_table, history, triangular_pv, current_ply + 1, max_ply, -beta, -alpha, allow_null_move) * -1;
+            eval = self.pv_search(&mut temp_position, transposition_table, history, triangular_pv, current_ply + 1, max_ply, -beta, -alpha) * -1;
           }
         }
       }
@@ -226,11 +209,11 @@ impl Searcher {
       }
     }
 
-    let mut tt_entry = TTEntry::new(position.get_zobrish_hash(), best_move, max_ply - current_ply, TTFlag::Exact, best_eval);
+    let mut tt_entry = TTEntry::new(position.get_zobrist_hash(), best_move, max_ply - current_ply, TTFlag::Exact, best_eval);
     if best_eval.value() <= original_alpha {
-      tt_entry = TTEntry::new(position.get_zobrish_hash(), best_move, max_ply - current_ply, TTFlag::UpperBound, best_eval);
+      tt_entry = TTEntry::new(position.get_zobrist_hash(), best_move, max_ply - current_ply, TTFlag::UpperBound, best_eval);
     } else if best_eval.value() >= beta {
-      tt_entry = TTEntry::new(position.get_zobrish_hash(), best_move, max_ply - current_ply, TTFlag::LowerBound, best_eval);
+      tt_entry = TTEntry::new(position.get_zobrist_hash(), best_move, max_ply - current_ply, TTFlag::LowerBound, best_eval);
     }
     transposition_table.add_entry(tt_entry);
 
