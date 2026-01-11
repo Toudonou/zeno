@@ -1,8 +1,9 @@
 use std::time::Instant;
 
+use crate::containers::ByColor;
 use crate::evaluator::Evaluator;
 use crate::history::History;
-use crate::moves::Move;
+use crate::moves::{Move, MoveType};
 use crate::moves_picker::MovePicker;
 use crate::piece::PieceType;
 use crate::pos_eval::{Evaluation, MATE_SCORE};
@@ -24,6 +25,7 @@ pub struct Searcher {
   is_search_cancel_early: bool,
   search_stats: SearchStats,
   killers: [(Move, Move); 1 + MAX_PLY as usize],
+  counters: ByColor<[[Move; 64]; 64]>,
   pv_line: Vec<Move>,
 }
 
@@ -36,6 +38,7 @@ impl Searcher {
       is_search_cancel_early: false,
       search_stats: SearchStats { number_of_nodes_visited: 0, search_time: 0, search_depth: 0 },
       killers: [(Move::default(), Move::default()); 1 + MAX_PLY as usize],
+      counters: ByColor::new([[Move::default(); 64]; 64], [[Move::default(); 64]; 64]),
       pv_line: Vec::with_capacity(MAX_PLY as usize),
     }
   }
@@ -48,6 +51,7 @@ impl Searcher {
     self.thinking_time = thinking_time;
     self.search_stats.number_of_nodes_visited = 0;
     self.is_search_cancel_early = false;
+    self.counters = ByColor::new([[Move::default(); 64]; 64], [[Move::default(); 64]; 64]);
     self.pv_line.clear();
 
     // Iterative deepening
@@ -65,13 +69,13 @@ impl Searcher {
         }
 
         if depth == 1 {
-          score = self.pv_search(position, transposition_table, history, &mut triangular_pv, 1, depth as u32, -ZENO_INFINITY, ZENO_INFINITY);
+          score = self.pv_search(position, transposition_table, history, &mut triangular_pv, 1, depth as u32, -ZENO_INFINITY, ZENO_INFINITY, None);
           break;
         } else {
           let alpha = score.value() - aspiration_window_delta;
           let beta = score.value() + aspiration_window_delta;
 
-          score = self.pv_search(position, transposition_table, history, &mut triangular_pv, 1, depth as u32, alpha, beta);
+          score = self.pv_search(position, transposition_table, history, &mut triangular_pv, 1, depth as u32, alpha, beta, None);
           if !(alpha < score.value() && score.value() < beta) {
             aspiration_window_delta *= 2;
           } else {
@@ -111,6 +115,7 @@ impl Searcher {
     max_ply: u32,
     mut alpha: i32,
     beta: i32,
+    previous_move: Option<Move>,
   ) -> Evaluation {
     self.search_stats.number_of_nodes_visited += 1;
 
@@ -143,7 +148,9 @@ impl Searcher {
       }
     }
 
-    let mut move_picker: MovePicker = MovePicker::new(position, tt_move, Some(self.killers[current_ply as usize]), false);
+    let side = position.get_side();
+    let previous_move = previous_move.unwrap_or_default();
+    let mut move_picker: MovePicker = MovePicker::new(position, tt_move, Some(self.killers[current_ply as usize]), Some(self.counters[side][previous_move.source() as usize][previous_move.destination() as usize]), false);
     if move_picker.get_moves_count() == 0 {
       triangular_pv[depth as usize] = vec![];
       if position.is_check(position.get_side()) {
@@ -156,9 +163,9 @@ impl Searcher {
     let mut best_eval = Evaluation::Score(-ZENO_INFINITY);
     let mut best_move = None;
     let mut first_move = true;
-    while let Some(mov) = move_picker.pick_best_move(position) {
+    while let Some(mov) = move_picker.pick_best_move() {
       let mut eval: Evaluation;
-      let is_capture = position.get_piece_on_square(mov.destination()).piece_type != PieceType::None;
+      let is_capture = position.get_piece_on_square(mov.destination()).piece_type != PieceType::None || mov.move_type() == MoveType::EnPassant;
 
       let mut temp_position = position.clone();
       temp_position.make_move(mov);
@@ -168,13 +175,13 @@ impl Searcher {
       match first_move {
         true => {
           first_move = false;
-          eval = self.pv_search(&mut temp_position, transposition_table, history, triangular_pv, current_ply + 1, max_ply, -beta, -alpha) * -1;
+          eval = self.pv_search(&mut temp_position, transposition_table, history, triangular_pv, current_ply + 1, max_ply, -beta, -alpha, Some(mov)) * -1;
         }
         false => {
-          eval = self.pv_search(&mut temp_position, transposition_table, history, triangular_pv, current_ply + 1, max_ply, -alpha - 1, -alpha) * -1;
+          eval = self.pv_search(&mut temp_position, transposition_table, history, triangular_pv, current_ply + 1, max_ply, -alpha - 1, -alpha, Some(mov)) * -1;
           // If all search that fail-high (score > alpha) do full research in the full windows and at the max depth
           if alpha < eval.value() && eval.value() < beta {
-            eval = self.pv_search(&mut temp_position, transposition_table, history, triangular_pv, current_ply + 1, max_ply, -beta, -alpha) * -1;
+            eval = self.pv_search(&mut temp_position, transposition_table, history, triangular_pv, current_ply + 1, max_ply, -beta, -alpha, Some(mov)) * -1;
           }
         }
       }
@@ -194,10 +201,14 @@ impl Searcher {
       alpha = alpha.max(best_eval.value());
 
       if alpha >= beta {
-        if !is_capture {
+        if !is_capture && !mov.is_promotion() {
           if mov != self.killers[current_ply as usize].0 {
             self.killers[current_ply as usize].1 = self.killers[current_ply as usize].0;
             self.killers[current_ply as usize].0 = mov;
+          }
+
+          if previous_move != Move::default() {
+            self.counters[side][previous_move.source() as usize][previous_move.destination() as usize] = mov;
           }
         }
         break;
@@ -231,8 +242,8 @@ impl Searcher {
       alpha = best_eval.value();
     }
 
-    let mut move_picker: MovePicker = MovePicker::new(position, None, None, true);
-    while let Some(mov) = move_picker.pick_best_move(position) {
+    let mut move_picker: MovePicker = MovePicker::new(position, None, None, None, true);
+    while let Some(mov) = move_picker.pick_best_move() {
       let mut temp_position = position.clone();
       temp_position.make_move(mov);
 

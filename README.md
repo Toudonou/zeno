@@ -43,6 +43,7 @@ including castling and en passant.
     - [x] Aspiration window
 - [x] Time management (partially)
 
+
 ## Installation
 1. Clone the repository:
     ```sh
@@ -64,6 +65,14 @@ including castling and en passant.
 
 - [Toudonou](https://github.com/Toudonou)
 
+
+## Engine Influences
+
+- [Berserk](https://github.com/jhonnold/berserk)
+- [Blunder](https://github.com/deanmchris/blunder)
+- [AlphaDeepChess](https://docta.ucm.es/rest/api/core/bitstreams/4e289e34-0b84-4c1b-9d19-bc0911cfb48b/content)
+
+
 ## Useful Links
 
 - https://www.chessprogramming.org
@@ -76,16 +85,13 @@ including castling and en passant.
 - https://jdhwilkins.com/python-chess-efficient-move-generation-using-bitwise-operations/
 - https://raytran.net/projects/protochess
 - https://lichess.org/@/likeawizard/blog/review-of-different-board-representations-in-computer-chess/S9eQCAWa
-- https://github.com/jhonnold/berserk
 - https://markus7800.github.io/blog/AI/chess_engine.html
-- https://joeyrobert.org/2016/01/06/optimizing-move-generation/
 - https://billylevin.dev/posts/chess-engine-programming/
-- https://www.chessprogramming.org/Mop-up_Evaluation
 - https://cs.stackexchange.com/questions/1134/how-does-the-negascout-algorithm-work
 - [Polyglot Format](http://hgm.nubati.net/book_format.html)
 - [Polyglot Zobrist Key Generator](https://shinkarom.github.io/zobrist/)
 - [Implementing Game Algorithms: Minimax and Alpha-Beta Pruning](https://algocademy.com/blog/implementing-game-algorithms-minimax-and-alpha-beta-pruning/)
-- [AlphaDeepChess](https://docta.ucm.es/rest/api/core/bitstreams/4e289e34-0b84-4c1b-9d19-bc0911cfb48b/content)
+
 
 ## License
 

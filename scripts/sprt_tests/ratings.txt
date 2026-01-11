@@ -1,7 +1,7 @@
 
    # PLAYER          : RATING    POINTS  PLAYED    (%)
-   1 Zeno current    : 2313.8    1272.0    2359   53.9%
-   2 Zeno develop    : 2286.2    1087.0    2359   46.1%
+   1 Zeno current    : 2303.8    2086.0    4083   51.1%
+   2 Zeno develop    : 2296.2    1997.0    4083   48.9%
 
 White advantage = 0.00
 Draw rate (equal opponents) = 50.00 %
