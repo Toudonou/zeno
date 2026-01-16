@@ -26,22 +26,22 @@ pub fn generate_legal_moves(position: &mut Position, move_list: &mut MoveList) {
   let non_own_pieces: BitBoard = !our_board;
   let full_board = position.get_full_board();
 
-  let pin_masks = position.generate_pin_masks(side);
   let obligation_board: BitBoard = generate_obligation_board(position, side, king_square);
+  let pin_masks = generate_pin_masks(position, side, obligation_board);
 
   // Pawns
   let our_pawns = our_board & position.get_pawns_board();
   let enemy_board = full_board & non_own_pieces;
-  generate_quiets_moves_for_pawns(side, our_pawns, !full_board, &pin_masks, obligation_board, move_list);
-  generate_captures_moves_for_pawns(side, our_pawns, enemy_board, &pin_masks, obligation_board, move_list);
-  generate_promotions_moves_for_pawns(side, our_pawns, enemy_board, !full_board, &pin_masks, obligation_board, move_list);
+  generate_quiets_moves_for_pawns(side, our_pawns, !full_board, &pin_masks, move_list);
+  generate_captures_moves_for_pawns(side, our_pawns, enemy_board, &pin_masks, move_list);
+  generate_promotions_moves_for_pawns(side, our_pawns, enemy_board, !full_board, &pin_masks, move_list);
   generate_en_passant_moves(position, king_square, move_list);
 
   // Knights
   let mut knights_board = our_board & position.get_knights_board();
   while knights_board != 0 {
     let square = get_lsb!(knights_board);
-    let attacks = non_own_pieces & get_knight_attacks(square) & pin_masks[square as usize] & obligation_board;
+    let attacks = non_own_pieces & get_knight_attacks(square) & pin_masks[square as usize];
     extract_move_from_mask(attacks, square, MoveType::Normal, move_list);
     pop_lsb!(knights_board);
   }
@@ -52,7 +52,7 @@ pub fn generate_legal_moves(position: &mut Position, move_list: &mut MoveList) {
   while bishops_board != 0 {
     let square = get_lsb!(bishops_board);
     let mut attacks = non_own_pieces & get_bishop_attacks(full_board, square);
-    attacks &= pin_masks[square as usize] & obligation_board;
+    attacks &= pin_masks[square as usize];
     extract_move_from_mask(attacks, square, MoveType::Normal, move_list);
     pop_lsb!(bishops_board);
   }
@@ -62,7 +62,7 @@ pub fn generate_legal_moves(position: &mut Position, move_list: &mut MoveList) {
   while rooks_board != 0 {
     let square = get_lsb!(rooks_board);
     let mut attacks = non_own_pieces & get_rook_attacks(full_board, square);
-    attacks &= pin_masks[square as usize] & obligation_board;
+    attacks &= pin_masks[square as usize];
     extract_move_from_mask(attacks, square, MoveType::Normal, move_list);
     pop_lsb!(rooks_board);
   }
@@ -93,20 +93,20 @@ pub fn generate_quiescences_moves(position: &mut Position, move_list: &mut MoveL
   let full_board = position.get_full_board();
   let enemy_board = full_board & !our_board;
 
-  let pin_masks = position.generate_pin_masks(side);
   let obligation_board: BitBoard = generate_obligation_board(position, side, king_square);
+  let pin_masks = generate_pin_masks(position, side, obligation_board);
 
   // Pawns
   let our_pawns = our_board & position.get_pawns_board();
-  generate_captures_moves_for_pawns(side, our_pawns, enemy_board, &pin_masks, obligation_board, move_list);
-  generate_promotions_moves_for_pawns(side, our_pawns, enemy_board, !full_board, &pin_masks, obligation_board, move_list);
+  generate_captures_moves_for_pawns(side, our_pawns, enemy_board, &pin_masks, move_list);
+  generate_promotions_moves_for_pawns(side, our_pawns, enemy_board, !full_board, &pin_masks, move_list);
   generate_en_passant_moves(position, king_square, move_list);
 
   // Knights
   let mut knights_board = our_board & position.get_knights_board();
   while knights_board != 0 {
     let square = get_lsb!(knights_board);
-    let attacks = enemy_board & get_knight_attacks(square) & pin_masks[square as usize] & obligation_board;
+    let attacks = enemy_board & get_knight_attacks(square) & pin_masks[square as usize];
     extract_move_from_mask(attacks, square, MoveType::Normal, move_list);
     pop_lsb!(knights_board);
   }
@@ -117,7 +117,7 @@ pub fn generate_quiescences_moves(position: &mut Position, move_list: &mut MoveL
   while bishops_board != 0 {
     let square = get_lsb!(bishops_board);
     let mut attacks = enemy_board & get_bishop_attacks(full_board, square);
-    attacks &= pin_masks[square as usize] & obligation_board;
+    attacks &= pin_masks[square as usize];
     extract_move_from_mask(attacks, square, MoveType::Normal, move_list);
     pop_lsb!(bishops_board);
   }
@@ -127,7 +127,7 @@ pub fn generate_quiescences_moves(position: &mut Position, move_list: &mut MoveL
   while rooks_board != 0 {
     let square = get_lsb!(rooks_board);
     let mut attacks = enemy_board & get_rook_attacks(full_board, square);
-    attacks &= pin_masks[square as usize] & obligation_board;
+    attacks &= pin_masks[square as usize];
     extract_move_from_mask(attacks, square, MoveType::Normal, move_list);
     pop_lsb!(rooks_board);
   }
@@ -143,14 +143,14 @@ pub fn generate_quiescences_moves(position: &mut Position, move_list: &mut MoveL
 }
 
 #[inline(always)]
-fn generate_quiets_moves_for_pawns(side: PieceColor, our_pawns: BitBoard, empty_board: BitBoard, pin_masks: &[BitBoard; 64], obligation_board: BitBoard, move_list: &mut MoveList) {
+fn generate_quiets_moves_for_pawns(side: PieceColor, our_pawns: BitBoard, empty_board: BitBoard, pin_masks: &[BitBoard; 64], move_list: &mut MoveList) {
   let non_promotion_pawns = our_pawns & !PRE_PROMOTION_RANK[side];
 
   let mut simple_push = shift!(non_promotion_pawns, FORWARD_OFFSET[side]) & empty_board;
   while simple_push != 0 {
     let destination = get_lsb!(simple_push);
     let source = (destination as i8 - FORWARD_OFFSET[side]) as Square;
-    if (1u64 << destination) & pin_masks[source as usize] & obligation_board != 0 {
+    if (1u64 << destination) & pin_masks[source as usize] != 0 {
       move_list.push(Move::new(source, destination, MoveType::Normal));
     }
     pop_lsb!(simple_push);
@@ -161,7 +161,7 @@ fn generate_quiets_moves_for_pawns(side: PieceColor, our_pawns: BitBoard, empty_
   while double_push != 0 {
     let destination = get_lsb!(double_push);
     let source = (destination as i8 - 2 * FORWARD_OFFSET[side]) as Square;
-    if (1u64 << destination) & pin_masks[source as usize] & obligation_board != 0 {
+    if (1u64 << destination) & pin_masks[source as usize] != 0 {
       move_list.push(Move::new(source, destination, MoveType::Normal));
     }
     pop_lsb!(double_push);
@@ -169,14 +169,14 @@ fn generate_quiets_moves_for_pawns(side: PieceColor, our_pawns: BitBoard, empty_
 }
 
 #[inline(always)]
-fn generate_captures_moves_for_pawns(side: PieceColor, our_pawns: BitBoard, enemy_board: BitBoard, pin_masks: &[BitBoard; 64], obligation_board: BitBoard, move_list: &mut MoveList) {
+fn generate_captures_moves_for_pawns(side: PieceColor, our_pawns: BitBoard, enemy_board: BitBoard, pin_masks: &[BitBoard; 64], move_list: &mut MoveList) {
   let non_promotion_pawns = our_pawns & !PRE_PROMOTION_RANK[side];
 
   let mut left_push = shift!(non_promotion_pawns, LEFT_OFFSET[side]) & NOT_FILE_H & enemy_board;
   while left_push != 0 {
     let destination = get_lsb!(left_push);
     let source = (destination as i8 - LEFT_OFFSET[side]) as Square;
-    if (1u64 << destination) & pin_masks[source as usize] & obligation_board != 0 {
+    if (1u64 << destination) & pin_masks[source as usize] != 0 {
       move_list.push(Move::new(source, destination, MoveType::Normal));
     }
     pop_lsb!(left_push);
@@ -186,7 +186,7 @@ fn generate_captures_moves_for_pawns(side: PieceColor, our_pawns: BitBoard, enem
   while right_push != 0 {
     let destination = get_lsb!(right_push);
     let source = (destination as i8 - RIGHT_OFFSET[side]) as Square;
-    if (1u64 << destination) & pin_masks[source as usize] & obligation_board != 0 {
+    if (1u64 << destination) & pin_masks[source as usize] != 0 {
       move_list.push(Move::new(source, destination, MoveType::Normal));
     }
     pop_lsb!(right_push);
@@ -194,14 +194,14 @@ fn generate_captures_moves_for_pawns(side: PieceColor, our_pawns: BitBoard, enem
 }
 
 #[inline(always)]
-fn generate_promotions_moves_for_pawns(side: PieceColor, our_pawns: BitBoard, enemy_board: BitBoard, empty_board: BitBoard, pin_masks: &[BitBoard; 64], obligation_board: BitBoard, move_list: &mut MoveList) {
+fn generate_promotions_moves_for_pawns(side: PieceColor, our_pawns: BitBoard, enemy_board: BitBoard, empty_board: BitBoard, pin_masks: &[BitBoard; 64], move_list: &mut MoveList) {
   let promotion_pawns = our_pawns & PRE_PROMOTION_RANK[side];
 
   let mut simple_push = shift!(promotion_pawns, FORWARD_OFFSET[side]) & empty_board;
   while simple_push != 0 {
     let destination = get_lsb!(simple_push);
     let source = (destination as i8 - FORWARD_OFFSET[side]) as Square;
-    if (1u64 << destination) & pin_masks[source as usize] & obligation_board != 0 {
+    if (1u64 << destination) & pin_masks[source as usize] != 0 {
       add_promotions_moves(source, destination, move_list);
     }
     pop_lsb!(simple_push);
@@ -211,7 +211,7 @@ fn generate_promotions_moves_for_pawns(side: PieceColor, our_pawns: BitBoard, en
   while left_push != 0 {
     let destination = get_lsb!(left_push);
     let source = (destination as i8 - LEFT_OFFSET[side]) as Square;
-    if (1u64 << destination) & pin_masks[source as usize] & obligation_board != 0 {
+    if (1u64 << destination) & pin_masks[source as usize] != 0 {
       add_promotions_moves(source, destination, move_list);
     }
     pop_lsb!(left_push);
@@ -221,7 +221,7 @@ fn generate_promotions_moves_for_pawns(side: PieceColor, our_pawns: BitBoard, en
   while right_push != 0 {
     let destination = get_lsb!(right_push);
     let source = (destination as i8 - RIGHT_OFFSET[side]) as Square;
-    if (1u64 << destination) & pin_masks[source as usize] & obligation_board != 0 {
+    if (1u64 << destination) & pin_masks[source as usize] != 0 {
       add_promotions_moves(source, destination, move_list);
     }
     pop_lsb!(right_push);
@@ -253,6 +253,51 @@ fn generate_en_passant_moves(position: &mut Position, king_square: Square, move_
       }
     }
   }
+}
+
+#[inline(always)]
+fn generate_pin_masks(position: &Position, side: PieceColor, obligation_board: BitBoard) -> [BitBoard; 64] {
+  let mut pin_masks: [BitBoard; 64] = [obligation_board; 64];
+
+  let enemy_side = side.opposite();
+  let king_square = position.get_king_square(side);
+
+  let full_board = position.get_full_board();
+
+  let our_board = position.get_by_side(side);
+  let enemy_board = position.get_by_side(enemy_side);
+  let board_without_friendlies = enemy_board;
+  let queens_board = position.get_by_type(PieceType::Queen);
+
+  let superior_king_bishop_mask = get_bishop_attacks(full_board, king_square) & our_board;
+  let bishop_mask = get_bishop_attacks(board_without_friendlies, king_square);
+  let mut result = bishop_mask & (position.get_by_type(PieceType::Bishop) | queens_board) & enemy_board;
+  while result != 0 {
+    let bishop_square = get_lsb!(result);
+    let real_pinned_piece = superior_king_bishop_mask & get_bishop_attacks(full_board, bishop_square);
+
+    // It should be only piece
+    if real_pinned_piece != 0 {
+      pin_masks[real_pinned_piece.trailing_zeros() as usize] &= get_bishop_square_to_square_ray(king_square, bishop_square);
+    }
+    pop_lsb!(result);
+  }
+
+  let superior_king_rook_mask = get_rook_attacks(full_board, king_square) & our_board;
+  let rook_mask = get_rook_attacks(board_without_friendlies, king_square);
+  let mut result = rook_mask & (position.get_by_type(PieceType::Rook) | queens_board) & enemy_board;
+  while result != 0 {
+    let rook_square = get_lsb!(result);
+    let real_pinned_piece = superior_king_rook_mask & get_rook_attacks(full_board, rook_square);
+
+    // It should be only piece
+    if real_pinned_piece != 0 {
+      pin_masks[real_pinned_piece.trailing_zeros() as usize] &= get_rook_square_to_square_ray(king_square, rook_square);
+    }
+    pop_lsb!(result);
+  }
+
+  pin_masks
 }
 
 #[inline(always)]

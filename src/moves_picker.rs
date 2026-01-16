@@ -1,36 +1,29 @@
-use crate::containers::ByPieceType;
-use crate::moves::{Move, MoveList, MoveType, MOVE_LIST_MAX_SIZE};
+use std::cmp;
+
+use crate::moves::{MOVE_LIST_MAX_SIZE, Move, MoveList, MoveType};
 use crate::moves_generator::{generate_legal_moves, generate_quiescences_moves};
-use crate::piece::PieceType;
+use crate::piece::{Piece, PieceType};
 use crate::position::Position;
+use crate::psqt::get_mg_piece_value;
+use crate::square::Square;
 use crate::utils::ZENO_INFINITY;
 
 // Move's order
-// 1. TT Move
-// 2. Captures + Promotions
+// 1. TT move
+// 2. Good captures + Promotions
 // 3. Promotions
-// 4. Captures
+// 4. Good captures
 // 5. Killers moves
 // 6. Counters moves
-// 6. Castles moves
-// 7. The others quiets moves
-static TT_MOVE_SCORE: i32 = 600_000;
-static PROMOTION_MOVE_SCORE: i32 = 250_000;
-static CAPTURE_MOVE_SCORE: i32 = 200_000;
-static KILLER_MOVE_SCORE: i32 = 150_000;
-static COUNTER_MOVE_SCORE: i32 = 50_000;
-static CASTLE_MOVE_SCORE: i32 = 10_000;
-static EN_PASSANT_MOVE_SCORE: i32 = CAPTURE_MOVE_SCORE + 6002;
-
-// https://open-chess.org/viewtopic.php?t=3058
-static MVV_LVA: ByPieceType<ByPieceType<i32>> = ByPieceType::new(
-  /*P*/ ByPieceType::new(06002, 20225, 20250, 20400, 20800, 26900),
-  /*N*/ ByPieceType::new(04775, 06004, 20025, 20175, 20575, 26675),
-  /*B*/ ByPieceType::new(04750, 04975, 06006, 20150, 20550, 26650),
-  /*R*/ ByPieceType::new(04600, 04825, 04850, 06008, 20400, 26500),
-  /*Q*/ ByPieceType::new(04200, 04425, 04450, 04600, 06010, 26100),
-  /*K*/ ByPieceType::new(03100, 03325, 03350, 03500, 03900, 26000),
-);
+// 7. Castles moves
+// 8. Bad captures
+// 8. The others quiet moves
+static TT_MOVE_SCORE: i32 = 20_000_000;
+static GOOD_CAPTURE_MOVE_SCORE: i32 = 15_000_000;
+static KILLER_MOVE_SCORE: i32 = 7_000_000;
+static COUNTER_MOVE_SCORE: i32 = 5_000_000;
+static CASTLE_MOVE_SCORE: i32 = 2_000_000;
+static BAD_CAPTURE_MOVE_SCORE: i32 = 1_000_000;
 
 pub struct MovePicker {
   moves_list: MoveList,
@@ -95,39 +88,57 @@ impl MovePicker {
 
   #[inline(always)]
   fn evaluate_move(mov: Move, position: &Position, tt_move: Move, killers: (Move, Move), counter: Move) -> i32 {
-    let mut score = 0;
     let destination_piece = position.get_piece_on_square(mov.destination());
-    let is_ep = mov.move_type() == MoveType::EnPassant;
 
     if mov == tt_move {
-      score = TT_MOVE_SCORE;
-    }
-
-    if destination_piece.piece_type != PieceType::None || is_ep {
-      if is_ep {
-        score += EN_PASSANT_MOVE_SCORE;
+      TT_MOVE_SCORE
+    } else if destination_piece.piece_type != PieceType::None {
+      let source_piece = position.get_piece_on_square(mov.source());
+      let see_value = Self::see_capture(position, source_piece, destination_piece, mov.source(), mov.destination());
+      return if see_value >= 0 {
+        GOOD_CAPTURE_MOVE_SCORE + see_value + if mov.is_promotion() { 9000 } else { 0 }
       } else {
-        let source_piece = position.get_piece_on_square(mov.source());
-        score += CAPTURE_MOVE_SCORE + MVV_LVA[source_piece.piece_type][destination_piece.piece_type];
-      }
+        BAD_CAPTURE_MOVE_SCORE + see_value
+      };
+    } else if mov == killers.0 {
+      KILLER_MOVE_SCORE + 50_000
+    } else if mov == killers.1 {
+      KILLER_MOVE_SCORE
+    } else if mov == counter {
+      COUNTER_MOVE_SCORE
     } else {
-      if mov == killers.0 {
-        score += KILLER_MOVE_SCORE + 500;
-      } else if mov == killers.1 {
-        score += KILLER_MOVE_SCORE;
-      } else if mov == counter {
-        score += COUNTER_MOVE_SCORE;
+      match mov.move_type() {
+        MoveType::ShortCastle | MoveType::LongCastle => CASTLE_MOVE_SCORE,
+        MoveType::PawnToQueen => GOOD_CAPTURE_MOVE_SCORE + 6000,
+        MoveType::PawnToRook => GOOD_CAPTURE_MOVE_SCORE + 5000,
+        MoveType::PawnToBishop => GOOD_CAPTURE_MOVE_SCORE + 4000,
+        MoveType::PawnToKnight => GOOD_CAPTURE_MOVE_SCORE + 3000,
+        _ => 0,
       }
     }
+  }
 
-    score += match mov.move_type() {
-      MoveType::ShortCastle | MoveType::LongCastle => CASTLE_MOVE_SCORE,
-      MoveType::PawnToKnight => PROMOTION_MOVE_SCORE + 300,
-      MoveType::PawnToBishop => PROMOTION_MOVE_SCORE + 400,
-      MoveType::PawnToRook => PROMOTION_MOVE_SCORE + 500,
-      MoveType::PawnToQueen => PROMOTION_MOVE_SCORE + 600,
-      _ => 0,
-    };
-    score
+  // https://www.chessprogramming.org/Static_Exchange_Evaluation#Implementation
+  #[inline(always)]
+  pub fn see_capture(position: &Position, attacker: Piece, victim: Piece, source: Square, destination: Square) -> i32 {
+    let mut temp_position = position.clone();
+    temp_position.make_see_capture(attacker, victim, source, destination);
+
+    get_mg_piece_value(victim.piece_type) - MovePicker::see(&mut temp_position, destination, attacker)
+  }
+
+  #[inline(always)]
+  fn see(position: &mut Position, destination: Square, victim: Piece) -> i32 {
+    let mut value: i32 = 0;
+    let attacker_type_and_square = position.get_smallest_attacker(destination, victim.color.opposite());
+    let attacker = Piece { color: victim.color.opposite(), piece_type: attacker_type_and_square.0 };
+
+    if attacker.piece_type != PieceType::None {
+      position.make_see_capture(attacker, victim, attacker_type_and_square.1, destination);
+      // Should be good, all captures are not forced
+      value = cmp::max(0, get_mg_piece_value(victim.piece_type) - Self::see(position, destination, attacker));
+    }
+
+    value
   }
 }

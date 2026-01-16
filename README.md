@@ -29,16 +29,19 @@ including castling and en passant.
     - [x] [Tapered evaluation](https://www.chessprogramming.org/Tapered_Eval)
     - [x] Draw by insufficient material
     - [x] [Draw by Threefold repetition](https://en.wikipedia.org/wiki/Threefold_repetition)
-    - [x] [Fifty-move rule](https://en.wikipedia.org/wiki/Fifty-move_rule)
+    - [x] [Fifty-move rule (partially)](https://en.wikipedia.org/wiki/Fifty-move_rule)
 - [x] Search
     - [x] [Alpha-beta pruning(Negamax)](https://en.wikipedia.org/wiki/Negamax#Negamax_with_alpha_beta_pruning)
     - [x] Move Ordering
       - [x] TT Move ordering
       - [x] [MVV_LVA](https://www.chessprogramming.org/MVV-LVA)
-      - [x] Killer Heuristic
+      - [x] [Killer Heuristic](https://www.chessprogramming.org/Killer_Heuristic)
+      - [x] [Countermove Heuristic](https://www.chessprogramming.org/Countermove_Heuristic)
+      - [x] [Static exchange evaluation](https://www.chessprogramming.org/Static_Exchange_Evaluation)
+      - [x] `TT_MOVE` → `GOOD_CAPTURES + PROMOTIONS` → `PROMOTIONS` → `GOOD_CAPTURES` → `KILLERS_MOVES` → `COUNTER_MOVE` → `CASTLES` → `BAD_CAPTURES` → `QUIET_MOVES`
     - [x] Iterative deepening
     - [x] [Transposition table](https://en.wikipedia.org/wiki/Negamax#Negamax_with_alpha_beta_pruning_and_transposition_tables)
-    - [x] Quiescence search
+    - [x] [Quiescence search](https://www.chessprogramming.org/Quiescence_Search)
     - [x] [Principal Variation Search (PVS)](https://en.wikipedia.org/wiki/Principal_variation_search)
     - [x] Aspiration window
 - [x] Time management (partially)
@@ -70,7 +73,6 @@ including castling and en passant.
 
 - [Berserk](https://github.com/jhonnold/berserk)
 - [Blunder](https://github.com/deanmchris/blunder)
-- [AlphaDeepChess](https://docta.ucm.es/rest/api/core/bitstreams/4e289e34-0b84-4c1b-9d19-bc0911cfb48b/content)
 
 
 ## Useful Links
@@ -91,7 +93,7 @@ including castling and en passant.
 - [Polyglot Format](http://hgm.nubati.net/book_format.html)
 - [Polyglot Zobrist Key Generator](https://shinkarom.github.io/zobrist/)
 - [Implementing Game Algorithms: Minimax and Alpha-Beta Pruning](https://algocademy.com/blog/implementing-game-algorithms-minimax-and-alpha-beta-pruning/)
-
+- [AlphaDeepChess](https://docta.ucm.es/rest/api/core/bitstreams/4e289e34-0b84-4c1b-9d19-bc0911cfb48b/content)
 
 ## License
 

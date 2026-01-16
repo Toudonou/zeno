@@ -3,9 +3,13 @@ mod evaluation_tests {
   use zeno::evaluator::Evaluator;
   use zeno::history::History;
   use zeno::moves::Move;
+  use zeno::moves_picker::MovePicker;
+  use zeno::piece::{Piece, PieceColor, PieceType};
   use zeno::pos_eval::{Evaluation, MATE_SCORE};
   use zeno::position::Position;
+  use zeno::psqt::get_mg_piece_value;
   use zeno::search::Searcher;
+  use zeno::square::{Square, SquareOps};
   use zeno::transposition_table::TranspositionTable;
   use zeno::utils::{MAX_PLY, START_POSITION};
 
@@ -84,5 +88,51 @@ mod evaluation_tests {
   fn is_draw_by_insufficient_material_kb_same_square_color_vs_kb_same_square_color() {
     assert_eq!(Evaluator::is_draw_by_insufficient_material(&Position::from_fen("8/5K2/8/4b3/8/8/1k3B2/8 b - - 0 1")), true);
     assert_eq!(Evaluator::is_draw_by_insufficient_material(&Position::from_fen("8/5K2/8/2B1b3/8/3b3B/1k6/8 w - - 0 1")), false, "There should only one bishop one each side");
+  }
+
+  #[test]
+  fn test_see_capture() {
+    let position = Position::from_fen("3r1rk1/pnpqb1p1/1p1p1n1p/4p3/P3P3/2PPBN1P/1P3RPN/R2Q2K1 w - - 0 1");
+    let attacker = Piece { color: PieceColor::White, piece_type: PieceType::Knight };
+    let victim = Piece { color: PieceColor::Black, piece_type: PieceType::Pawn };
+    let source = Square::from_algebric_notation("f3");
+    let destination = Square::from_algebric_notation("e5");
+    let see_value = MovePicker::see_capture(&position, attacker, victim, source, destination);
+    assert_eq!(see_value, get_mg_piece_value(PieceType::Pawn) - get_mg_piece_value(PieceType::Knight));
+    assert!(see_value < 0, "This capture is bad for white");
+
+    let position = Position::from_fen("3r1rk1/pnpqb1p1/1p1p1n1p/8/P3p1p1/2PPBN1P/1P2BRPN/R2Q2K1 b - - 0 1");
+    let attacker = Piece { color: PieceColor::Black, piece_type: PieceType::Pawn };
+    let victim = Piece { color: PieceColor::White, piece_type: PieceType::Knight };
+    let source = Square::from_algebric_notation("e4");
+    let destination = Square::from_algebric_notation("f3");
+    let see_value = MovePicker::see_capture(&position, attacker, victim, source, destination);
+    assert_eq!(see_value, get_mg_piece_value(PieceType::Knight) + get_mg_piece_value(PieceType::Pawn) - 2 * get_mg_piece_value(PieceType::Pawn));
+    assert!(see_value > 0, "This capture is good for back");
+
+    let position = Position::from_fen("3r1rk1/pnpqb1p1/1p1p1n1p/8/P5p1/2PPBp1P/1P2BRPN/R2Q2K1 w - - 0 1");
+    let attacker = Piece { color: PieceColor::White, piece_type: PieceType::Pawn };
+    let victim = Piece { color: PieceColor::Black, piece_type: PieceType::Pawn };
+    let source = Square::from_algebric_notation("g2");
+    let destination = Square::from_algebric_notation("f3");
+    let see_value = MovePicker::see_capture(&position, attacker, victim, source, destination);
+    assert_eq!(see_value, 2 * get_mg_piece_value(PieceType::Pawn) - get_mg_piece_value(PieceType::Pawn));
+    assert!(see_value > 0, "This capture is good for back");
+
+    let position = Position::from_fen("3r1rk1/p1pq2p1/1p1pb2p/n7/P1n1p1p1/1P1PB1NP/1P2BR1N/R2Q2K1 b - - 0 1");
+    let attacker = Piece { color: PieceColor::Black, piece_type: PieceType::Pawn };
+    let victim = Piece { color: PieceColor::White, piece_type: PieceType::Knight };
+    let source = Square::from_algebric_notation("b3");
+    let destination = Square::from_algebric_notation("c4");
+    let see_value = MovePicker::see_capture(&position, attacker, victim, source, destination);
+    assert_eq!(see_value, get_mg_piece_value(PieceType::Knight), "It's better for black to just give up the knight");
+
+      let position = Position::from_fen("1k1r3q/1ppn3p/p4b2/4p3/8/P2N2P1/1PP1R1BP/2K1Q3 w - - 0 1");
+      let attacker = Piece { color: PieceColor::White, piece_type: PieceType::Knight };
+      let victim = Piece { color: PieceColor::Black, piece_type: PieceType::Pawn };
+      let source = Square::from_algebric_notation("d3");
+      let destination = Square::from_algebric_notation("e5");
+      let see_value = MovePicker::see_capture(&position, attacker, victim, source, destination);
+      assert_eq!(see_value, get_mg_piece_value(PieceType::Pawn) - get_mg_piece_value(PieceType::Knight));
   }
 }

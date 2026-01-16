@@ -51,6 +51,7 @@ impl Searcher {
     self.thinking_time = thinking_time;
     self.search_stats.number_of_nodes_visited = 0;
     self.is_search_cancel_early = false;
+    self.killers = [(Move::default(), Move::default()); 1 + MAX_PLY as usize];
     self.counters = ByColor::new([[Move::default(); 64]; 64], [[Move::default(); 64]; 64]);
     self.pv_line.clear();
 
@@ -59,7 +60,7 @@ impl Searcher {
       self.search_stats = SearchStats { number_of_nodes_visited: 0, search_time: 0, search_depth: 0 };
 
       let iterative_timer = Instant::now();
-      let mut triangular_pv: Vec<Vec<Move>> = vec![vec![Move::default(); depth]; depth + 1];
+      let mut triangular_pv: Vec<Vec<Move>> = vec![Vec::with_capacity(depth); depth + 1];
 
       // Aspiration Window
       let mut aspiration_window_delta = 30;
@@ -121,7 +122,7 @@ impl Searcher {
 
     let depth = max_ply - current_ply + 1;
 
-    // Check for threefold repetition and draw by insufficient material
+    // Check for threefold repetition and fifty-move rule (partially)
     if history.get_position_occurrences_count(position) >= 3 || position.get_half_move_clock() >= 100 {
       triangular_pv[depth as usize] = vec![];
       return Evaluation::Score(0);
@@ -153,7 +154,7 @@ impl Searcher {
     let mut move_picker: MovePicker = MovePicker::new(position, tt_move, Some(self.killers[current_ply as usize]), Some(self.counters[side][previous_move.source() as usize][previous_move.destination() as usize]), false);
     if move_picker.get_moves_count() == 0 {
       triangular_pv[depth as usize] = vec![];
-      if position.is_check(position.get_side()) {
+      if position.is_check(side) {
         return Evaluation::MateIn(-(current_ply as i32));
       }
       return Evaluation::Score(0);
@@ -268,10 +269,10 @@ impl Searcher {
     best_eval
   }
 
-  fn print_info(&self, depth: usize, stats: SearchStats, nega_max_score: Evaluation) {
+  fn print_info(&self, depth: usize, stats: SearchStats, score: Evaluation) {
     print!("info depth {depth} nodes {} time {} nps {} ", stats.number_of_nodes_visited, stats.search_time, (1000 * stats.number_of_nodes_visited as u128 / stats.search_time));
 
-    match nega_max_score {
+    match score {
       Evaluation::Score(score) => print!("score cp {} ", score),
       Evaluation::MateIn(mate_in) => print!("score mate {} ", mate_in / 2),
     }

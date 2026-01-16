@@ -1,10 +1,10 @@
 use crate::bitboard::BitBoard;
 use crate::containers::{ByColor, ByPieceType};
-use crate::lookup_tables::{get_bishop_attacks, get_bishop_square_to_square_ray, get_king_attacks, get_knight_attacks, get_pawns_attacks, get_rook_attacks, get_rook_square_to_square_ray};
+use crate::lookup_tables::{get_bishop_attacks, get_king_attacks, get_knight_attacks, get_pawns_attacks, get_rook_attacks};
 use crate::moves::{Move, MoveType};
 use crate::piece::{Piece, PieceColor, PieceType};
 use crate::square::Square;
-use crate::utils::{BITBOARD_FILL_WITH_ONE, PAWNS_OCCUPANCY_OBLIGATION_FOR_EN_PASSANT};
+use crate::utils::PAWNS_OCCUPANCY_OBLIGATION_FOR_EN_PASSANT;
 use crate::zobrist_hash::{BoardHash, ZobristHash};
 use crate::{get_lsb, pop_lsb};
 
@@ -244,7 +244,7 @@ impl Position {
       side,
       number_of_move: number_of_moves_move_part.parse().unwrap_or(0),
       half_move_clock: half_move_part.parse().unwrap_or(0),
-        zobrist_hash: zobrish_hash,
+      zobrist_hash: zobrish_hash,
     }
   }
 
@@ -424,6 +424,18 @@ impl Position {
   }
 
   #[inline(always)]
+  pub fn make_see_capture(&mut self, attacker: Piece, victim: Piece, source: Square, destination: Square) {
+    let source_mask = 1u64 << source;
+    let destination_mask = 1u64 << destination;
+
+    self.pieces_occupancies[victim.piece_type] &= !destination_mask;
+    self.pieces_occupancies[attacker.piece_type] ^= source_mask | destination_mask;
+
+    self.side_occupancies[attacker.color] ^= source_mask | destination_mask;
+    self.side_occupancies[victim.color] &= !destination_mask;
+  }
+
+  #[inline(always)]
   pub fn get_smallest_attacker(&self, victim_square: Square, enemy_side: PieceColor) -> (PieceType, Square) {
     let full_board = self.get_full_board();
 
@@ -520,51 +532,6 @@ impl Position {
     }
 
     (checkers, checkers_count)
-  }
-
-  #[inline(always)]
-  pub fn generate_pin_masks(&self, side: PieceColor) -> [BitBoard; 64] {
-    // IMPORTANT: I made the assumption that each piece can move everywhere; thus the initial pinned bitboard should the one that allow all moves ==> !0: one everywhere
-    let mut pin_masks: [BitBoard; 64] = [BITBOARD_FILL_WITH_ONE; 64];
-
-    let enemy_side = side.opposite();
-    let king_square = self.get_king_square(side);
-
-    let full_board = self.get_full_board();
-
-    let our_board = self.side_occupancies[side];
-    let enemy_board = self.side_occupancies[enemy_side];
-    let board_without_friendlies = enemy_board;
-
-    let superior_king_bishop_mask = get_bishop_attacks(full_board, king_square) & our_board;
-    let bishop_mask = get_bishop_attacks(board_without_friendlies, king_square);
-    let mut result = bishop_mask & (self.pieces_occupancies[PieceType::Bishop] | self.pieces_occupancies[PieceType::Queen]) & enemy_board;
-    while result != 0 {
-      let bishop_square = get_lsb!(result);
-      let real_pinned_piece = superior_king_bishop_mask & get_bishop_attacks(full_board, bishop_square);
-
-      // It should be only piece
-      if real_pinned_piece != 0 {
-        pin_masks[real_pinned_piece.trailing_zeros() as usize] = get_bishop_square_to_square_ray(king_square, bishop_square);
-      }
-      pop_lsb!(result);
-    }
-
-    let superior_king_rook_mask = get_rook_attacks(full_board, king_square) & our_board;
-    let rook_mask = get_rook_attacks(board_without_friendlies, king_square);
-    let mut result = rook_mask & (self.pieces_occupancies[PieceType::Rook] | self.pieces_occupancies[PieceType::Queen]) & enemy_board;
-    while result != 0 {
-      let rook_square = get_lsb!(result);
-      let real_pinned_piece = superior_king_rook_mask & get_rook_attacks(full_board, rook_square);
-
-      // It should be only piece
-      if real_pinned_piece != 0 {
-        pin_masks[real_pinned_piece.trailing_zeros() as usize] = get_rook_square_to_square_ray(king_square, rook_square);
-      }
-      pop_lsb!(result);
-    }
-
-    pin_masks
   }
 
   #[inline(always)]
