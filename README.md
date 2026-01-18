@@ -37,6 +37,7 @@ including castling and en passant.
       - [x] [MVV_LVA](https://www.chessprogramming.org/MVV-LVA)
       - [x] [Killer Heuristic](https://www.chessprogramming.org/Killer_Heuristic)
       - [x] [Countermove Heuristic](https://www.chessprogramming.org/Countermove_Heuristic)
+      - [x] [History Heuristic](https://www.chessprogramming.org/History_Heuristic)
       - [x] [Static exchange evaluation](https://www.chessprogramming.org/Static_Exchange_Evaluation)
       - [x] `TT_MOVE` → `GOOD_CAPTURES + PROMOTIONS` → `PROMOTIONS` → `GOOD_CAPTURES` → `KILLERS_MOVES` → `COUNTER_MOVE` → `CASTLES` → `BAD_CAPTURES` → `QUIET_MOVES`
     - [x] Iterative deepening

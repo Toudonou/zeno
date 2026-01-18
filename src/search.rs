@@ -22,10 +22,11 @@ pub struct Searcher {
   timer: Instant,
   thinking_time: u128,
   max_depth: u32,
-  is_search_cancel_early: bool,
+  stop_search: bool,
   search_stats: SearchStats,
   killers: [(Move, Move); 1 + MAX_PLY as usize],
   counters: ByColor<[[Move; 64]; 64]>,
+  history_moves: ByColor<[[i32; 64]; 64]>,
   pv_line: Vec<Move>,
 }
 
@@ -35,10 +36,11 @@ impl Searcher {
       timer: Instant::now(),
       thinking_time: 3000,
       max_depth: MAX_PLY as u32,
-      is_search_cancel_early: false,
+      stop_search: false,
       search_stats: SearchStats { number_of_nodes_visited: 0, search_time: 0, search_depth: 0 },
       killers: [(Move::default(), Move::default()); 1 + MAX_PLY as usize],
       counters: ByColor::new([[Move::default(); 64]; 64], [[Move::default(); 64]; 64]),
+      history_moves: ByColor::new([[0; 64]; 64], [[0; 64]; 64]),
       pv_line: Vec::with_capacity(MAX_PLY as usize),
     }
   }
@@ -50,9 +52,10 @@ impl Searcher {
     self.timer = Instant::now();
     self.thinking_time = thinking_time;
     self.search_stats.number_of_nodes_visited = 0;
-    self.is_search_cancel_early = false;
+    self.stop_search = false;
     self.killers = [(Move::default(), Move::default()); 1 + MAX_PLY as usize];
     self.counters = ByColor::new([[Move::default(); 64]; 64], [[Move::default(); 64]; 64]);
+    self.history_moves = ByColor::new([[0; 64]; 64], [[0; 64]; 64]);
     self.pv_line.clear();
 
     // Iterative deepening
@@ -87,7 +90,7 @@ impl Searcher {
 
       self.search_stats.search_depth = depth as u32;
       self.search_stats.search_time = iterative_timer.elapsed().as_millis().max(1);
-      if !self.is_search_cancel_early {
+      if !self.stop_search {
         self.pv_line = triangular_pv.last().unwrap().clone();
         self.print_info(depth, self.search_stats, score);
 
@@ -151,7 +154,14 @@ impl Searcher {
 
     let side = position.get_side();
     let previous_move = previous_move.unwrap_or_default();
-    let mut move_picker: MovePicker = MovePicker::new(position, tt_move, Some(self.killers[current_ply as usize]), Some(self.counters[side][previous_move.source() as usize][previous_move.destination() as usize]), false);
+    let mut move_picker: MovePicker = MovePicker::new(
+      position,
+      tt_move,
+      Some(self.killers[current_ply as usize]),
+      Some(self.counters[side][previous_move.source() as usize][previous_move.destination() as usize]),
+      Some(&self.history_moves[side]),
+      false,
+    );
     if move_picker.get_moves_count() == 0 {
       triangular_pv[depth as usize] = vec![];
       if position.is_check(side) {
@@ -167,6 +177,7 @@ impl Searcher {
     while let Some(mov) = move_picker.pick_best_move() {
       let mut eval: Evaluation;
       let is_capture = position.get_piece_on_square(mov.destination()).piece_type != PieceType::None || mov.move_type() == MoveType::EnPassant;
+      let is_quiet = !is_capture && !mov.is_promotion();
 
       let mut temp_position = position.clone();
       temp_position.make_move(mov);
@@ -202,7 +213,7 @@ impl Searcher {
       alpha = alpha.max(best_eval.value());
 
       if alpha >= beta {
-        if !is_capture && !mov.is_promotion() {
+        if is_quiet {
           if mov != self.killers[current_ply as usize].0 {
             self.killers[current_ply as usize].1 = self.killers[current_ply as usize].0;
             self.killers[current_ply as usize].0 = mov;
@@ -211,12 +222,16 @@ impl Searcher {
           if previous_move != Move::default() {
             self.counters[side][previous_move.source() as usize][previous_move.destination() as usize] = mov;
           }
+
+          let bonus = (depth * depth) as i32;
+          let clamped_bonus = bonus.clamp(-16384, 16384);
+          self.history_moves[side][mov.source() as usize][mov.destination() as usize] += clamped_bonus - self.history_moves[side][mov.source() as usize][mov.destination() as usize] * clamped_bonus.abs() / 16384;
         }
         break;
       }
 
       if self.timer.elapsed().as_millis() > self.thinking_time {
-        self.is_search_cancel_early = true;
+        self.stop_search = true;
         break;
       }
     }
@@ -243,7 +258,7 @@ impl Searcher {
       alpha = best_eval.value();
     }
 
-    let mut move_picker: MovePicker = MovePicker::new(position, None, None, None, true);
+    let mut move_picker: MovePicker = MovePicker::new(position, None, None, None, None, true);
     while let Some(mov) = move_picker.pick_best_move() {
       let mut temp_position = position.clone();
       temp_position.make_move(mov);
@@ -261,7 +276,7 @@ impl Searcher {
       }
 
       if self.timer.elapsed().as_millis() > self.thinking_time {
-        self.is_search_cancel_early = true;
+        self.stop_search = true;
         break;
       }
     }

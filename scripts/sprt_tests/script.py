@@ -26,7 +26,7 @@ execute_sprt_test_current_vs_develop = f"""
     -rounds 2000 -repeat \
     -concurrency 14 \
     -recover \
-    -sprt elo0=-2 elo1=0 alpha=0.05 beta=0.1
+    -sprt elo0=0 elo1=2 alpha=0.05 beta=0.1
 """
 os.system(f"{execute_sprt_test_current_vs_develop}")
 os.system("rm -rf zeno_develop/")

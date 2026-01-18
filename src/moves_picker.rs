@@ -17,7 +17,7 @@ use crate::utils::ZENO_INFINITY;
 // 6. Counters moves
 // 7. Castles moves
 // 8. Bad captures
-// 8. The others quiet moves
+// 8. The others quiet moves (history bonus)
 static TT_MOVE_SCORE: i32 = 20_000_000;
 static GOOD_CAPTURE_MOVE_SCORE: i32 = 15_000_000;
 static KILLER_MOVE_SCORE: i32 = 7_000_000;
@@ -33,10 +33,11 @@ pub struct MovePicker {
 
 impl MovePicker {
   #[inline(always)]
-  pub fn new(position: &mut Position, tt_move: Option<Move>, killers: Option<(Move, Move)>, counter: Option<Move>, is_quiescence_search: bool) -> Self {
+  pub fn new(position: &mut Position, tt_move: Option<Move>, killers: Option<(Move, Move)>, counter: Option<Move>, history_heuristic: Option<&[[i32; 64]; 64]>, is_quiescence_search: bool) -> Self {
     let tt_move = tt_move.unwrap_or_default();
     let killers = killers.unwrap_or_default();
     let counter = counter.unwrap_or_default();
+    let history_heuristic = history_heuristic.unwrap_or(&[[0; 64]; 64]);
 
     let mut moves_list = MoveList::new();
     if is_quiescence_search {
@@ -47,7 +48,7 @@ impl MovePicker {
 
     let mut scores: [i32; MOVE_LIST_MAX_SIZE] = [-ZENO_INFINITY; MOVE_LIST_MAX_SIZE];
     for i in 0..moves_list.count {
-      scores[i] = MovePicker::evaluate_move(moves_list.moves[i], position, tt_move, killers, counter);
+      scores[i] = MovePicker::evaluate_move(moves_list.moves[i], position, tt_move, killers, counter, history_heuristic);
     }
 
     Self { moves_list, scores, start_index: 0 }
@@ -87,7 +88,7 @@ impl MovePicker {
   }
 
   #[inline(always)]
-  fn evaluate_move(mov: Move, position: &Position, tt_move: Move, killers: (Move, Move), counter: Move) -> i32 {
+  fn evaluate_move(mov: Move, position: &Position, tt_move: Move, killers: (Move, Move), counter: Move, history_heuristic: &[[i32; 64]; 64]) -> i32 {
     let destination_piece = position.get_piece_on_square(mov.destination());
 
     if mov == tt_move {
@@ -113,7 +114,7 @@ impl MovePicker {
         MoveType::PawnToRook => GOOD_CAPTURE_MOVE_SCORE + 5000,
         MoveType::PawnToBishop => GOOD_CAPTURE_MOVE_SCORE + 4000,
         MoveType::PawnToKnight => GOOD_CAPTURE_MOVE_SCORE + 3000,
-        _ => 0,
+        _ => history_heuristic[mov.source() as usize][mov.destination() as usize],
       }
     }
   }
