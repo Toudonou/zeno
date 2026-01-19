@@ -31,7 +31,7 @@ including castling and en passant.
     - [x] [Draw by Threefold repetition](https://en.wikipedia.org/wiki/Threefold_repetition)
     - [x] [Fifty-move rule (partially)](https://en.wikipedia.org/wiki/Fifty-move_rule)
 - [x] Search
-    - [x] [Alpha-beta pruning(Negamax)](https://en.wikipedia.org/wiki/Negamax#Negamax_with_alpha_beta_pruning)
+    - [x] [Alpha-beta pruning (Negamax)](https://en.wikipedia.org/wiki/Negamax#Negamax_with_alpha_beta_pruning)
     - [x] Move Ordering
       - [x] TT Move ordering
       - [x] [MVV_LVA](https://www.chessprogramming.org/MVV-LVA)
@@ -45,6 +45,7 @@ including castling and en passant.
     - [x] [Quiescence search](https://www.chessprogramming.org/Quiescence_Search)
     - [x] [Principal Variation Search (PVS)](https://en.wikipedia.org/wiki/Principal_variation_search)
     - [x] Aspiration window
+    - [x] [Null move pruning](https://web.archive.org/web/20040306081648/http://www.brucemo.com/compchess/programming/nullmove.htm)
 - [x] Time management (partially)
 
 

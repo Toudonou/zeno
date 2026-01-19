@@ -1,8 +1,8 @@
+# SPRT Results
 
    # PLAYER          : RATING    POINTS  PLAYED    (%)
-    1 Zeno current    : 2303.6    2041.0    4000   51.0%
-    2 Zeno develop    : 2296.4    1959.0    4000   49.0%
+   1 Zeno current    : 2371.5    1359.0    1960   69.3%
+   2 Zeno develop    : 2228.5     601.0    1960   30.7%
 
 White advantage = 0.00
 Draw rate (equal opponents) = 50.00 %
-

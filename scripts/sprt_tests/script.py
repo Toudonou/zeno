@@ -26,7 +26,7 @@ execute_sprt_test_current_vs_develop = f"""
     -rounds 2000 -repeat \
     -concurrency 14 \
     -recover \
-    -sprt elo0=0 elo1=2 alpha=0.05 beta=0.1
+    -sprt elo0=120 elo1=125 alpha=0.05 beta=0.1
 """
 os.system(f"{execute_sprt_test_current_vs_develop}")
 os.system("rm -rf zeno_develop/")
@@ -43,7 +43,7 @@ execute_sprt_test_current_vs_release_1_0 = f"""
     -rounds 2000 -repeat \
     -concurrency 14 \
     -recover \
-    -sprt elo0=15 elo1=18 alpha=0.05 beta=0.1
+    -sprt elo0=135 elo1=138 alpha=0.05 beta=0.1
 """
 os.system(f"{execute_sprt_test_current_vs_release_1_0}")
 os.system("./ordo -o ratings_vs_releases.txt -- games_vs_releases.pgn ")
