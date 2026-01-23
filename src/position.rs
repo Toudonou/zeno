@@ -369,7 +369,7 @@ impl Position {
     self.side_occupancies[side] ^= move_mask;
     self.pieces_occupancies[PieceType::King] ^= move_mask;
 
-    let result = self.get_smallest_attacker(destination, side.opposite()) == (PieceType::None, 64);
+    let result = self.get_smallest_attacker_infos(destination, side.opposite()) == (PieceType::None, 64);
 
     self.side_occupancies[side] ^= move_mask;
     self.pieces_occupancies[PieceType::King] ^= move_mask;
@@ -394,7 +394,7 @@ impl Position {
     self.pieces_occupancies[PieceType::Pawn] &= en_passant_mask;
     self.side_occupancies[side.opposite()] &= en_passant_mask;
 
-    let result = self.get_smallest_attacker(king_square, side.opposite()) == (PieceType::None, 64);
+    let result = self.get_smallest_attacker_infos(king_square, side.opposite()) == (PieceType::None, 64);
 
     self.side_occupancies[side] = our_occupancies;
     self.side_occupancies[side.opposite()] = enemy_occupancies;
@@ -436,7 +436,7 @@ impl Position {
   }
 
   #[inline(always)]
-  pub fn get_smallest_attacker(&self, victim_square: Square, enemy_side: PieceColor) -> (PieceType, Square) {
+  pub fn get_smallest_attacker_infos(&self, victim_square: Square, enemy_side: PieceColor) -> (PieceType, Square) {
     let full_board = self.get_full_board();
 
     let enemy_board;
@@ -536,7 +536,7 @@ impl Position {
 
   #[inline(always)]
   pub fn is_square_attack_by(&self, square: Square, attacker_color: PieceColor) -> bool {
-    self.get_smallest_attacker(square, attacker_color) != (PieceType::None, 64)
+    self.get_smallest_attacker_infos(square, attacker_color) != (PieceType::None, 64)
   }
 
   #[inline(always)]

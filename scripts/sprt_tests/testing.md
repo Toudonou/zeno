@@ -1,5 +1,40 @@
 # SPRT results per features
 
+## Search tables refactoring ![Elo Rating](https://img.shields.io/badge/Elo-2100-informational)
+* Zeno current vs Zeno develop
+```
+Results of Zeno current vs Zeno develop (8+0.08, NULL, NULL, 8moves_v3.pgn):
+Elo: 21.14 +/- 9.71, nElo: 28.28 +/- 12.95
+LOS: 100.00 %, DrawRatio: 38.21 %, PairsRatio: 1.25
+Games: 2764, Wins: 951, Losses: 783, Draws: 1030, Points: 1466.0 (53.04 %)
+Ptnml(0-2): [82, 297, 528, 321, 154], WL/DD Ratio: 1.56
+LLR: 2.95 (100.0%) (-2.94, 2.94) [0.00, 5.00]
+--------------------------------------------------
+SPRT ([0.00, 5.00]) completed - H1 was accepted
+
+Player: Zeno current
+  Timeouts: 1
+  Crashed: 0
+
+Finished match
+Total Time: 00:54:56 (hours:minutes:seconds)
+```
+
+* Zeno current vs Zeno-1.0
+```
+Results of Zeno current vs Zeno 1.0 (8+0.08, NULL, NULL, 8moves_v3.pgn):
+Elo: 161.30 +/- 9.38, nElo: 214.16 +/- 10.82
+LOS: 100.00 %, DrawRatio: 26.53 %, PairsRatio: 7.55
+Games: 3958, Wins: 2269, Losses: 553, Draws: 1136, Points: 2837.0 (71.68 %)
+Ptnml(0-2): [31, 139, 525, 651, 633], WL/DD Ratio: 2.03
+LLR: 2.95 (100.2%) (-2.94, 2.94) [138.00, 140.00]
+--------------------------------------------------
+SPRT ([138.00, 140.00]) completed - H1 was accepted
+Finished match
+Total Time: 01:09:17 (hours:minutes:seconds)
+```
+
+
 ## Null Move Pruning
 * Zeno current vs Zeno develop 
 ```

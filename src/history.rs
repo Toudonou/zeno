@@ -35,6 +35,11 @@ impl History {
   }
 
   #[inline(always)]
+  pub fn is_repetition(&self, position: &Position) -> bool {
+    self.get_position_occurrences_count(position) >= 3
+  }
+
+  #[inline(always)]
   pub fn clear(&mut self) {
     self.count = 0;
   }

@@ -41,6 +41,11 @@ impl Evaluation {
       Evaluation::Score(new_value)
     }
   }
+
+  #[inline(always)]
+  pub fn is_mate_score(self) -> bool {
+    matches!(self, Evaluation::MateIn(_))
+  }
 }
 
 impl Mul<i32> for Evaluation {

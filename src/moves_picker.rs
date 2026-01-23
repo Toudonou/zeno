@@ -131,7 +131,7 @@ impl MovePicker {
   #[inline(always)]
   fn see(position: &mut Position, destination: Square, victim: Piece) -> i32 {
     let mut value: i32 = 0;
-    let attacker_type_and_square = position.get_smallest_attacker(destination, victim.color.opposite());
+    let attacker_type_and_square = position.get_smallest_attacker_infos(destination, victim.color.opposite());
     let attacker = Piece { color: victim.color.opposite(), piece_type: attacker_type_and_square.0 };
 
     if attacker.piece_type != PieceType::None {

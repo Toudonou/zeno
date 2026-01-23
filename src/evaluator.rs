@@ -1,6 +1,6 @@
 use crate::piece::{PieceColor, PieceType};
 use crate::position::Position;
-use crate::psqt::{get_eg_piece_value, get_eg_psqt_value, get_mg_piece_value, get_mg_psqt_value, get_phase, TOTAL_PHASE};
+use crate::psqt::{TOTAL_PHASE, get_eg_piece_value, get_eg_psqt_value, get_mg_piece_value, get_mg_psqt_value, get_phase};
 use crate::square::{Square, SquareOps};
 use crate::zobrist_hash::BoardHash;
 use crate::{get_lsb, pop_lsb};
@@ -105,14 +105,14 @@ impl Evaluator {
 
     // King + Bishop vs King + Bishop on the same square color
     if total_minors == 2 && white_bishops_count == 1 && black_bishops_count == 1 {
-      let white_bishop_sq = position.get_by_side_and_type(PieceColor::White, PieceType::Bishop);
-      let black_bishop_sq = position.get_by_side_and_type(PieceColor::Black, PieceType::Bishop);
+      let white_bishop_square = position.get_by_side_and_type(PieceColor::White, PieceType::Bishop);
+      let black_bishop_square = position.get_by_side_and_type(PieceColor::Black, PieceType::Bishop);
 
       // If both bishops are on light squares or both are on dark squares, it's a draw.
       // They can either be one light squares (therefore not on the dark ones)
-      // or they can be on the dark ones (therefor not on the light ones)
-      let white_on_light = (white_bishop_sq & LIGHT_SQUARES) != 0;
-      let black_on_light = (black_bishop_sq & LIGHT_SQUARES) != 0;
+      // or they can be on the dark ones (therefore not on the light ones)
+      let white_on_light = (white_bishop_square & LIGHT_SQUARES) != 0;
+      let black_on_light = (black_bishop_square & LIGHT_SQUARES) != 0;
 
       if white_on_light == black_on_light {
         return true;

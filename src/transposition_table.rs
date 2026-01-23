@@ -37,7 +37,7 @@ impl TTFlag {
   }
 }
 
-/// The informations about the Entry will be stored in a 64-bits value (8 bytes); the TTEntry will be 16-bytes overall
+/// The information about the Entry will be stored in a 64-bits value (8 bytes); the TTEntry will be 16-bytes overall
 /// - 1 byte: for the flag
 /// - 1 byte for the depth
 /// - 2 bytes: for the move
@@ -45,18 +45,22 @@ impl TTFlag {
 #[derive(Clone, Copy)]
 pub struct TTEntry {
   hash: BoardHash,
-  others_informations: u64,
+  others_information: u64,
 }
 
 impl TTEntry {
   #[inline(always)]
-  pub fn new(hash: BoardHash, best_move: Option<Move>, depth: u32, flag: TTFlag, evaluation: Evaluation) -> TTEntry {
+  pub fn new(hash: BoardHash, best_move: Option<Move>, depth: u32, flag: TTFlag, evaluation: Evaluation, ply: u32) -> TTEntry {
     let best_move = if let Some(m) = best_move { m.to_u16() } else { 0 } as u64;
     let flag = flag.to_u32() as u64;
-    let evaluation = evaluation.to_u32() as u64;
     let depth = depth as u64;
 
-    TTEntry { hash, others_informations: (evaluation << (4 * 8)) | (best_move << (2 * 8)) | (depth << (1 * 8)) | (flag) }
+    let evaluation = match evaluation {
+      Evaluation::Score(_) => evaluation.to_u32() as u64,
+      Evaluation::MateIn(mate_in) => Evaluation::MateIn(mate_in.signum() * (mate_in.abs() - ply as i32)).to_u32() as u64,
+    };
+
+    TTEntry { hash, others_information: (evaluation << (4 * 8)) | (best_move << (2 * 8)) | (depth << (1 * 8)) | (flag) }
   }
 
   #[inline(always)]
@@ -65,28 +69,29 @@ impl TTEntry {
   }
 
   #[inline(always)]
-  pub fn get_evaluation(&self) -> Evaluation {
-    Evaluation::from_u32(((self.others_informations >> (4 * 8)) & 0xFFFFFFFF) as u32)
-  }
+  pub fn get_evaluation(&self, ply: u32) -> Evaluation {
+    let eval = Evaluation::from_u32(((self.others_information >> (4 * 8)) & 0xFFFFFFFF) as u32);
 
-  #[inline(always)]
-  pub fn get_best_move(&self) -> Option<Move> {
-    let move_code = ((self.others_informations >> (2 * 8)) & 0xFFFF) as u16;
-    if move_code != 0 {
-      Some(Move::from_u16(move_code))
-    } else {
-      None
+    match eval {
+      Evaluation::Score(_) => eval,
+      Evaluation::MateIn(mate_in) => Evaluation::MateIn(mate_in.signum() * (mate_in.abs() + ply as i32)),
     }
   }
 
   #[inline(always)]
+  pub fn get_best_move(&self) -> Option<Move> {
+    let move_code = ((self.others_information >> (2 * 8)) & 0xFFFF) as u16;
+    if move_code != 0 { Some(Move::from_u16(move_code)) } else { None }
+  }
+
+  #[inline(always)]
   pub fn get_depth(&self) -> u32 {
-    ((self.others_informations >> (1 * 8)) & 0xFF) as u32
+    ((self.others_information >> (1 * 8)) & 0xFF) as u32
   }
 
   #[inline(always)]
   pub fn get_flag(&self) -> TTFlag {
-    TTFlag::from_u32(((self.others_informations) & 0xFF) as u32)
+    TTFlag::from_u32(((self.others_information) & 0xFF) as u32)
   }
 }
 
@@ -100,7 +105,7 @@ impl TranspositionTable {
   #[inline(always)]
   pub fn new() -> TranspositionTable {
     let max_entries = ZENO_TRANSPOSITION_TABLE_SIZE / size_of::<TTEntry>();
-    TranspositionTable { table: vec![TTEntry::new(0, None, 0, TTFlag::None, Evaluation::Score(0)); max_entries], max_entries }
+    TranspositionTable { table: vec![TTEntry::new(0, None, 0, TTFlag::None, Evaluation::Score(0), 0); max_entries], max_entries }
   }
 
   #[inline(always)]
@@ -109,9 +114,8 @@ impl TranspositionTable {
   }
 
   #[inline(always)]
-  pub fn add_entry(&mut self, entry: TTEntry) {
-    let hash = entry.hash;
-    self.table[hash as usize & (self.max_entries - 1)] = entry; // max_entries is a power of 2, therefore (x % max_entries) == x & (max_entries)
+  pub fn save_entry(&mut self, entry: TTEntry) {
+    self.table[entry.get_hash() as usize & (self.max_entries - 1)] = entry; // max_entries is a power of 2, therefore (x % max_entries) == x & (max_entries)
   }
 
   pub fn print_transposition_stats(&self) {
@@ -121,6 +125,6 @@ impl TranspositionTable {
 
   #[inline(always)]
   pub fn clear(&mut self) {
-    self.table = vec![TTEntry::new(0, None, 0, TTFlag::None, Evaluation::Score(0)); self.max_entries]
+    self.table = vec![TTEntry::new(0, None, 0, TTFlag::None, Evaluation::Score(0), 0); self.max_entries]
   }
 }

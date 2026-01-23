@@ -44,9 +44,9 @@ mod evaluation_tests {
       }
       None => {}
     });
-    let mut searcher = Searcher::new();
     let mut transposition_table = TranspositionTable::new();
-    let search_result = searcher.search(&mut position, &mut transposition_table, &mut history, 5 * 1000);
+    let mut searcher = Searcher::new(&mut transposition_table);
+    let search_result = searcher.search(&mut position, &mut history, 5 * 1000);
     assert_eq!(search_result, None);
 
     // Game link: https://lichess.org/hTK2QMUTul1t
@@ -61,9 +61,9 @@ mod evaluation_tests {
       }
       None => {}
     });
-    let mut searcher = Searcher::new();
     let mut transposition_table = TranspositionTable::new();
-    let search_result = searcher.search(&mut position, &mut transposition_table, &mut history, 5 * 1000);
+    let mut searcher = Searcher::new(&mut transposition_table);
+    let search_result = searcher.search(&mut position, &mut history, 5 * 1000);
     assert_eq!(search_result, None);
   }
 
@@ -127,12 +127,12 @@ mod evaluation_tests {
     let see_value = MovePicker::see_capture(&position, attacker, victim, source, destination);
     assert_eq!(see_value, get_mg_piece_value(PieceType::Knight), "It's better for black to just give up the knight");
 
-      let position = Position::from_fen("1k1r3q/1ppn3p/p4b2/4p3/8/P2N2P1/1PP1R1BP/2K1Q3 w - - 0 1");
-      let attacker = Piece { color: PieceColor::White, piece_type: PieceType::Knight };
-      let victim = Piece { color: PieceColor::Black, piece_type: PieceType::Pawn };
-      let source = Square::from_algebric_notation("d3");
-      let destination = Square::from_algebric_notation("e5");
-      let see_value = MovePicker::see_capture(&position, attacker, victim, source, destination);
-      assert_eq!(see_value, get_mg_piece_value(PieceType::Pawn) - get_mg_piece_value(PieceType::Knight));
+    let position = Position::from_fen("1k1r3q/1ppn3p/p4b2/4p3/8/P2N2P1/1PP1R1BP/2K1Q3 w - - 0 1");
+    let attacker = Piece { color: PieceColor::White, piece_type: PieceType::Knight };
+    let victim = Piece { color: PieceColor::Black, piece_type: PieceType::Pawn };
+    let source = Square::from_algebric_notation("d3");
+    let destination = Square::from_algebric_notation("e5");
+    let see_value = MovePicker::see_capture(&position, attacker, victim, source, destination);
+    assert_eq!(see_value, get_mg_piece_value(PieceType::Pawn) - get_mg_piece_value(PieceType::Knight));
   }
 }

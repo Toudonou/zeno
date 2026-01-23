@@ -12,9 +12,9 @@ use crate::transposition_table::TranspositionTable;
 use crate::utils::START_POSITION;
 
 pub fn uci_loop() {
-  let mut searcher = Searcher::new();
   let mut transposition_table = TranspositionTable::new();
   let mut history = History::new();
+  let mut searcher = Searcher::new(&mut transposition_table);
 
   let mut position = Position::from_fen(START_POSITION);
   perft::perft(1, &mut position); // To init the lookup tables
@@ -34,9 +34,10 @@ pub fn uci_loop() {
         position = Position::from_fen(START_POSITION);
         history.clear();
         history.save_hash(position.get_zobrist_hash());
+        searcher.reset();
       }
       c if c.starts_with("position") => uci_position(command, &mut position, &mut history),
-      c if c.starts_with("go") => go(command, &mut position, &mut searcher, &mut transposition_table, &mut history),
+      c if c.starts_with("go") => go(command, &mut position, &mut searcher, &mut history),
       "stop" => {}
       "quit" => break,
       _ => println!("Command not found {}", command),
@@ -111,7 +112,7 @@ fn uci_position(command: &str, position: &mut Position, history: &mut History) {
   }
 }
 
-fn go(command: &str, position: &mut Position, searcher: &mut Searcher, transposition_table: &mut TranspositionTable, history: &mut History) {
+fn go(command: &str, position: &mut Position, searcher: &mut Searcher, history: &mut History) {
   if command.starts_with("go perft") {
     handle_perft(command, position);
     return;
@@ -160,7 +161,7 @@ fn go(command: &str, position: &mut Position, searcher: &mut Searcher, transposi
   }
 
   search_time = search_time.max(100);
-  match searcher.search(position, transposition_table, history, search_time) {
+  match searcher.search(position, history, search_time) {
     Some(best_move) => println!("bestmove {}", best_move),
     None => println!("bestmove 0000"),
   }
