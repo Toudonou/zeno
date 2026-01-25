@@ -131,24 +131,10 @@ impl<'a> Searcher<'a> {
       tt_move = tt_entry.get_best_move();
       if tt_entry.get_depth() >= depth {
         let tt_eval = tt_entry.get_evaluation(current_ply);
-        let will_return_early = tt_entry.get_flag() == TTFlag::Exact || (tt_entry.get_flag() == TTFlag::LowerBound && tt_eval.value() >= beta) || (tt_entry.get_flag() == TTFlag::UpperBound && tt_eval.value() <= alpha);
-
-        if will_return_early {
-          let can_return_safely: bool;
-          match tt_move {
-            Some(mov) => {
-              let mut temp_position = position.clone();
-              temp_position.make_move(mov);
-              history.save_hash(temp_position.get_zobrist_hash());
-              can_return_safely = !history.is_repetition(&temp_position);
-              history.pop_last_entry();
-            }
-            None => can_return_safely = true,
-          }
-          if can_return_safely {
-            triangular_pv[depth as usize] = vec![tt_move.unwrap_or_default()];
-            return tt_eval;
-          }
+        // In the case of TTFlag::Exact flag, it is best to avoid returning the evaluation as it can result in the drawing of a winning endgame.
+        if (tt_entry.get_flag() == TTFlag::LowerBound && tt_eval.value() >= beta) || (tt_entry.get_flag() == TTFlag::UpperBound && tt_eval.value() <= alpha) {
+          triangular_pv[depth as usize] = vec![tt_move.unwrap_or_default()];
+          return tt_eval;
         }
       }
     }

@@ -1,6 +1,22 @@
 # SPRT results per features
 
-## Search tables refactoring ![Elo Rating](https://img.shields.io/badge/Elo-2100-informational)
+## Change the conditions for returning an evaluation from the TT
+* Zeno current vs Zeno develop
+```
+Results of Zeno current vs Zeno develop (8+0.08, NULL, NULL, 8moves_v3.pgn):
+Elo: 12.05 +/- 7.02, nElo: 16.07 +/- 9.35
+LOS: 99.96 %, DrawRatio: 37.87 %, PairsRatio: 1.18
+Games: 5308, Wins: 1794, Losses: 1610, Draws: 1904, Points: 2746.0 (51.73 %)
+Ptnml(0-2): [200, 557, 1005, 643, 249], WL/DD Ratio: 1.86
+LLR: 2.97 (101.0%) (-2.94, 2.94) [0.00, 5.00]
+--------------------------------------------------
+SPRT ([0.00, 5.00]) completed - H1 was accepted
+Finished match
+Total Time: 01:43:17 (hours:minutes:seconds)
+```
+
+
+## Search tables refactoring
 * Zeno current vs Zeno develop
 ```
 Results of Zeno current vs Zeno develop (8+0.08, NULL, NULL, 8moves_v3.pgn):

@@ -1,11 +1,12 @@
-import chess
-import chess.pgn
 import io
 
-moves = "1. Nf3 d5 2. Nc3 e6 3. e4 { C00 French Defense: Two Knights Variation } d4 4. Nb5 Nc6 5. c3 dxc3 6. dxc3 e5 7. Qxd8+ Kxd8 8. Bc4 a6 9. Na3 f5 10. exf5 Bxf5 11. Nh4 Bd7 12. Bg5+ Be7 13. Nf3 e4 14. Bxe7+ Kxe7 15. Ng5 Nf6 16. Be2 h6 17. Nh3 Rhd8 18. Nf4 g5 19. Ng6+ Kf7 20. O-O Kxg6 21. Rad1 Be6 22. Rxd8 Rxd8 23. Bc4 Bf5 24. b4 Ne5 25. Bb3 Rd3 26. Nb1 Kg7 27. Bc2 Rd8 28. f4 gxf4 29. Rxf4 Be6 30. Rf1 Bxa2 31. Na3 Nd3 32. Ra1 Be6 33. Rd1 Nd5 34. Rd2 Nxc3 35. Nb1 Nb5 36. Re2 Bf5 37. Re3 Nxb4 38. Bb3 Nd4 39. Ba4 Nbc2 40. Rg3+ Kh7 41. Nc3 b5 42. Bxc2 Nxc2 43. h3 Rd2 44. Rg4 Bxg4 45. hxg4 e3 46. g5 b4 47. Ne2 Rxe2 48. Kh2 hxg5 49. Kg3 Rf2 50. Kg4 Rxg2+ 51. Kh3 Rd2 52. Kg4 Kg6 53. Kf3 b3 54. Kg4 e2 55. Kh3 e1=Q 56. Kg4 Rd8 57. Kh3 Rf8 58. Kh2 Ne3 59. Kh3 Ra8 60. Kh2 Rb8 61. Kh3 Ra8 "
+import chess
+import chess.pgn
+
+moves = "1. e4 e5 2. Nc3 Nf6 3. Nf3 Nc6 4. Bc4 Nxe4 5. Nxe4 d5 { C55 Italian Game: Two Knights Defense } 6. Bxd5 Qxd5 7. Nc3 Qa5 8. a3 Bf5 9. d3 Bd6 10. O-O O-O 11. Be3 Qa6 12. b4 Ne7 13. Re1 Qc6 14. Bd2 Bg4 15. b5 Qb6 16. a4 Rfe8 17. a5 Qc5 18. Re4 Bxf3 19. Qxf3 a6 20. b6 Qc6 21. Rc4 Qxf3 22. gxf3 c6 23. Ne4 Rad8 24. Nxd6 Rxd6 25. Re1 Re6 26. f4 exf4 27. Rxe6 fxe6 28. Rxf4 Nd5 29. Rh4 h6 30. Kg2 Nf6 31. Bc3 e5 32. f4 exf4 33. Bxf6 gxf6 34. Rxh6 Kg7 35. Rh5 Re2+ 36. Kf3 Rxc2 37. Kxf4 Ra2 38. d4 Ra4 39. Ke4 Kg6 40. Rc5 Ra2 41. h4 Rh2 42. h5+ Rxh5 43. Rxh5 Kxh5 44. Kf5 Kh4 45. Kxf6 Kg4 46. Ke5 Kf3 47. Kd6 Ke4 48. Kc7 Kxd4 49. Kxb7 Kc3 50. Kxc6 Kb2 51. b7 Kc1 52. b8=Q Kd2 53. Kd5 Kc3 54. Qe5+ Kc2 55. Kc4 Kd2 56. Qf4+ Ke2 57. Kd4 Kd1 58. Kc4 Ke2 59. Kd4 Kd1 60. Kc4 Ke2 { The game is a draw. } 1/2-1/2"
 pgn = io.StringIO(moves)
 game = chess.pgn.read_game(pgn)
 board = game.board()
 for move in game.mainline_moves():
     board.push(move)
-    print(move, end=' ')
+    print(move, end=" ")
