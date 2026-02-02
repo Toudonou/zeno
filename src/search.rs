@@ -13,6 +13,7 @@ use crate::utils::{MAX_PLY, ZENO_INFINITY};
 
 static NMP_DEPTH_LIMIT: u32 = 2;
 static NMP_DEPTH_REDUCTION: u32 = 2;
+static MAX_EXTENSION: u32 = 16;
 
 #[derive(Copy, Clone)]
 struct SearchStats {
@@ -63,7 +64,7 @@ impl<'a> Searcher<'a> {
       self.search_stats = SearchStats { number_of_nodes_visited: 0, search_time: 0, search_depth: 0 };
 
       let iterative_timer = Instant::now();
-      let mut triangular_pv: Vec<Vec<Move>> = vec![Vec::with_capacity(depth); depth + 1];
+      let mut temp_pv_line: Vec<Move> = vec![];
 
       // Aspiration Window
       let mut aspiration_window_delta = 30;
@@ -73,13 +74,13 @@ impl<'a> Searcher<'a> {
         }
 
         if depth == 1 {
-          score = self.pv_search(position, history, &mut triangular_pv, 1, depth as u32, -ZENO_INFINITY, ZENO_INFINITY, None);
+          score = self.pv_search(position, history, 1, depth as u32, -ZENO_INFINITY, ZENO_INFINITY, None, &mut temp_pv_line, 0);
           break;
         } else {
           let alpha = score.value() - aspiration_window_delta;
           let beta = score.value() + aspiration_window_delta;
 
-          score = self.pv_search(position, history, &mut triangular_pv, 1, depth as u32, alpha, beta, None);
+          score = self.pv_search(position, history, 1, depth as u32, alpha, beta, None, &mut temp_pv_line, 0);
           if !(alpha < score.value() && score.value() < beta) {
             aspiration_window_delta *= 2;
           } else {
@@ -91,7 +92,7 @@ impl<'a> Searcher<'a> {
       self.search_stats.search_depth = depth as u32;
       self.search_stats.search_time = iterative_timer.elapsed().as_millis().max(1);
       if !self.stop_search {
-        self.pv_line = triangular_pv.last().unwrap().clone();
+        self.pv_line = temp_pv_line;
         self.print_info(depth, self.search_stats, score);
 
         // Stop the search if a mate was found
@@ -109,19 +110,30 @@ impl<'a> Searcher<'a> {
     self.pv_line.first().copied()
   }
 
-  fn pv_search(&mut self, position: &mut Position, history: &mut History, triangular_pv: &mut Vec<Vec<Move>>, current_ply: u32, max_ply: u32, mut alpha: i32, beta: i32, previous_move: Option<Move>) -> Evaluation {
+  fn pv_search(
+    &mut self,
+    position: &mut Position,
+    history: &mut History,
+    current_ply: u32,
+    max_ply: u32,
+    mut alpha: i32,
+    beta: i32,
+    previous_move: Option<Move>,
+    pv_line: &mut Vec<Move>,
+    num_extensions: u32,
+  ) -> Evaluation {
     self.search_stats.number_of_nodes_visited += 1;
 
     let depth = max_ply - current_ply + 1;
 
     // Check for threefold repetition and fifty-move rule (partially)
     if history.is_repetition(position) || position.get_half_move_clock() >= 100 {
-      triangular_pv[depth as usize] = vec![];
+      pv_line.clear();
       return Evaluation::Score(0);
     }
 
     if depth <= 0 {
-      triangular_pv[0] = vec![];
+      pv_line.clear();
       return self.quiescence_search(position, alpha, beta);
     }
 
@@ -132,8 +144,10 @@ impl<'a> Searcher<'a> {
       if tt_entry.get_depth() >= depth {
         let tt_eval = tt_entry.get_evaluation(current_ply);
         // In the case of TTFlag::Exact flag, it is best to avoid returning the evaluation as it can result in the drawing of a winning endgame.
+        // https://talkchess.com/viewtopic.php?t=20080
         if (tt_entry.get_flag() == TTFlag::LowerBound && tt_eval.value() >= beta) || (tt_entry.get_flag() == TTFlag::UpperBound && tt_eval.value() <= alpha) {
-          triangular_pv[depth as usize] = vec![tt_move.unwrap_or_default()];
+          pv_line.clear();
+          pv_line.push(tt_move.unwrap_or_default());
           return tt_eval;
         }
       }
@@ -142,6 +156,7 @@ impl<'a> Searcher<'a> {
     let side = position.get_side();
     let is_pv = beta - alpha != 1;
     let is_in_check = position.is_check(side);
+    let mut child_pv_line: Vec<Move> = Vec::new();
 
     // Null move
     let can_do_null_move = !is_pv && !is_in_check && position.has_non_pawn_material();
@@ -150,7 +165,7 @@ impl<'a> Searcher<'a> {
       history.save_hash(position.get_zobrist_hash());
 
       let nmp_reduction = NMP_DEPTH_REDUCTION + (depth as f32 / 6f32) as u32;
-      let eval = self.pv_search(position, history, triangular_pv, current_ply + 1, max_ply - nmp_reduction, -beta, -alpha, None) * -1;
+      let eval = self.pv_search(position, history, current_ply + 1, max_ply - nmp_reduction, -beta, -alpha, None, &mut child_pv_line, num_extensions) * -1;
 
       position.unmake_null_move(ancient_en_passant_file);
       history.pop_last_entry();
@@ -170,7 +185,7 @@ impl<'a> Searcher<'a> {
       false,
     );
     if move_picker.get_moves_count() == 0 {
-      triangular_pv[depth as usize] = vec![];
+      pv_line.clear();
       if is_in_check {
         return Evaluation::MateIn(-(current_ply as i32));
       }
@@ -190,17 +205,23 @@ impl<'a> Searcher<'a> {
       temp_position.make_move(mov);
       history.save_hash(temp_position.get_zobrist_hash());
 
+      // Check extension
+      let enemy_is_in_check = temp_position.is_check(temp_position.get_side());
+      let extension = u32::from(num_extensions < MAX_EXTENSION && enemy_is_in_check);
+      let mut max_ply = max_ply + extension;
+      max_ply = max_ply.clamp(0, MAX_PLY);
+
       // Pv move or first move - Full Search
       match first_move {
         true => {
           first_move = false;
-          eval = self.pv_search(&mut temp_position, history, triangular_pv, current_ply + 1, max_ply, -beta, -alpha, Some(mov)) * -1;
+          eval = self.pv_search(&mut temp_position, history, current_ply + 1, max_ply, -beta, -alpha, Some(mov), &mut child_pv_line, num_extensions + extension) * -1;
         }
         false => {
-          eval = self.pv_search(&mut temp_position, history, triangular_pv, current_ply + 1, max_ply, -alpha - 1, -alpha, Some(mov)) * -1;
+          eval = self.pv_search(&mut temp_position, history, current_ply + 1, max_ply, -alpha - 1, -alpha, Some(mov), &mut child_pv_line, num_extensions + extension) * -1;
           // If all search that fail-high (score > alpha) do full research in the full windows and at the max depth
           if alpha < eval.value() && eval.value() < beta {
-            eval = self.pv_search(&mut temp_position, history, triangular_pv, current_ply + 1, max_ply, -beta, -alpha, Some(mov)) * -1;
+            eval = self.pv_search(&mut temp_position, history, current_ply + 1, max_ply, -beta, -alpha, Some(mov), &mut child_pv_line, num_extensions + extension) * -1;
           }
         }
       }
@@ -211,10 +232,9 @@ impl<'a> Searcher<'a> {
         best_eval = eval;
         best_move = Some(mov);
 
-        triangular_pv[depth as usize].clear();
-        triangular_pv[depth as usize].push(mov);
-        let temp = triangular_pv[(depth - 1) as usize].clone();
-        triangular_pv[depth as usize].extend(temp);
+        pv_line.clear();
+        pv_line.push(mov);
+        pv_line.extend(child_pv_line.clone());
       }
 
       alpha = alpha.max(best_eval.value());

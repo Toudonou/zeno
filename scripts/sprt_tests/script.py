@@ -23,16 +23,15 @@ execute_sprt_test_current_vs_develop = f"""
     -pgnout file="games.pgn" \
     -openings file=8moves_v3.pgn format=pgn order=random \
     -each tc=8+0.08 \
-    -rounds 5000 -repeat \
+    -rounds 10000 -repeat \
     -concurrency 14 \
     -recover \
-    -sprt elo0=0 elo1=5 alpha=0.05 beta=0.05
+    -sprt elo0=40 elo1=45 alpha=0.05 beta=0.05
 """
 os.system(f"{execute_sprt_test_current_vs_develop}")
 os.system("rm -rf zeno_develop/")
 os.system("./ordo -o ratings.txt -- games.pgn ")
 os.system("rm games.pgn")
-os.system("rm ratings.txt")
 
 execute_sprt_test_current_vs_release_1_0 = f"""
 ./fastchess \
@@ -51,4 +50,5 @@ execute_sprt_test_current_vs_release_1_0 = f"""
 # os.system("rm games_vs_releases.pgn")
 
 os.system("cat ratings.txt")
+os.system("rm ratings.txt")
 # os.system("cat ratings_vs_releases.txt")

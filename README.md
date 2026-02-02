@@ -46,6 +46,7 @@ including castling and en passant.
     - [x] [Principal Variation Search (PVS)](https://en.wikipedia.org/wiki/Principal_variation_search)
     - [x] Aspiration window
     - [x] [Null move pruning](https://web.archive.org/web/20040306081648/http://www.brucemo.com/compchess/programming/nullmove.htm)
+    - [x] [Check Extensions](https://www.chessprogramming.org/Check_Extensions)
 - [x] Time management (partially)
 
 
