@@ -2,6 +2,7 @@
 
 | Features                                                                                                                                              | Category      | Delta (Elo) | Total Elo |
 |:------------------------------------------------------------------------------------------------------------------------------------------------------|:--------------|:-----------:|:---------:|
+| [**Check Extensions**](https://github.com/Toudonou/zeno/commit/798b2dc2674e55e2e526ce7f1c392fa329fc6c28)                                              | Refactoring   |     +45     |   2155    |
 | [**Change the conditions for returning an evaluation from the TT**](https://github.com/Toudonou/zeno/commit/5e98e6ff38278265d44a32df2ade7c0700b1bc20) | Refactoring   |     +5      |   2110    |
 | [**Search tables refactoring**](https://github.com/Toudonou/zeno/commit/5f417f968c9b86d645832213f3f21f5d94ccfe10)                                     | Refactoring   |     +5      |   2106    |
 | [**Null Move Pruning**](https://github.com/Toudonou/zeno/commit/49fdb4051eca45da6ed1104eb71f515999221624)                                             | Search        |    +125     |   2101    |
