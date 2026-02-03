@@ -1,5 +1,21 @@
 # SPRT results per features
 
+## Check Extensions
+* Zeno current vs Zeno develop
+```
+Results of Zeno current vs Zeno develop (8+0.08, NULL, NULL, 8moves_v3.pgn):
+Elo: 51.92 +/- 9.55, nElo: 64.48 +/- 11.68
+LOS: 100.00 %, DrawRatio: 37.96 %, PairsRatio: 1.88
+Games: 3398, Wins: 1516, Losses: 1012, Draws: 870, Points: 1951.0 (57.42 %)
+Ptnml(0-2): [120, 246, 645, 386, 302], WL/DD Ratio: 4.42
+LLR: 2.95 (100.0%) (-2.94, 2.94) [40.00, 45.00]
+--------------------------------------------------
+SPRT ([40.00, 45.00]) completed - H1 was accepted
+Finished match
+Total Time: 01:09:05 (hours:minutes:seconds)
+```
+
+
 ## Change the conditions for returning an evaluation from the TT
 * Zeno current vs Zeno develop
 ```
