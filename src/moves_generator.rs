@@ -302,39 +302,26 @@ fn generate_pin_masks(position: &Position, side: PieceColor, obligation_board: B
 
 #[inline(always)]
 fn generate_obligation_board(position: &Position, side: PieceColor, king_square: Square) -> BitBoard {
-  let mut obligation_board = BITBOARD_FILL_WITH_ONE; // For the start I assume that there is no force move (it will be updated if there is some check)
-
   let checkers = position.get_checkers_for(side);
-  if checkers.1 < 2 {
-    if checkers.1 == 1 {
-      let checker = &checkers.0[0];
-      match checker.0 {
-        PieceType::Pawn | PieceType::Knight => {
-          // In case of knight or pawn as checker, the king should either move or the checker must be taken, therefore all legals moves should end up on the checker's square
-          obligation_board = 1u64 << checker.1
-        }
+  if checkers.1 == 0 {
+    BITBOARD_FILL_WITH_ONE
+  } else if checkers.1 == 1 {
+    let checker = &checkers.0[0];
+    match checker.0 {
+      // In case of knight or pawn as checker, the king should either move or the checker must be taken, therefore all legals moves should end up on the checker's square
+      PieceType::Pawn | PieceType::Knight => 1u64 << checker.1,
 
-        // In case of a sliding piece as checker,
-        // - the king should also either move
-        // - or the checker must be taken
-        // - or a friendly piece should be place between our king and the checker
-        PieceType::Bishop => {
-          obligation_board = get_bishop_square_to_square_ray(king_square, checker.1);
-        }
-        PieceType::Rook => {
-          obligation_board = get_rook_square_to_square_ray(king_square, checker.1);
-        }
-
-        _ => {}
-      }
-    } else {
-      obligation_board = BITBOARD_FILL_WITH_ONE
+      // In case of a sliding piece as checker,
+      // - the king should also either move
+      // - or the checker must be taken
+      // - or a friendly piece should be place between our king and the checker
+      PieceType::Bishop => get_bishop_square_to_square_ray(king_square, checker.1),
+      PieceType::Rook => get_rook_square_to_square_ray(king_square, checker.1),
+      _ => 0,
     }
   } else {
-    obligation_board = 0
+    0
   }
-
-  obligation_board
 }
 
 #[inline(always)]
