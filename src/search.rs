@@ -5,15 +5,15 @@ use crate::evaluator::Evaluator;
 use crate::history::History;
 use crate::moves::{Move, MoveType};
 use crate::moves_picker::MovePicker;
-use crate::piece::PieceType;
+use crate::piece::{PieceColor, PieceType};
 use crate::pos_eval::Evaluation;
 use crate::position::Position;
 use crate::transposition_table::{TTEntry, TTFlag, TranspositionTable};
 use crate::utils::{MAX_PLY, ZENO_INFINITY};
 
-static NMP_DEPTH_LIMIT: u32 = 2;
-static NMP_DEPTH_REDUCTION: u32 = 2;
-static MAX_EXTENSION: u32 = 16;
+static NMP_DEPTH_LIMIT: i32 = 2;
+static NMP_DEPTH_REDUCTION: i32 = 2;
+static MAX_EXTENSION: i32 = 16;
 
 #[derive(Copy, Clone)]
 struct SearchStats {
@@ -26,7 +26,7 @@ pub struct Searcher<'a> {
   transposition_table: &'a mut TranspositionTable,
   timer: Instant,
   thinking_time: u128,
-  max_depth: u32,
+  max_depth: i32,
   stop_search: bool,
   search_stats: SearchStats,
   killers: [(Move, Move); 1 + MAX_PLY as usize],
@@ -41,7 +41,7 @@ impl<'a> Searcher<'a> {
       transposition_table,
       timer: Instant::now(),
       thinking_time: 3000,
-      max_depth: MAX_PLY as u32,
+      max_depth: MAX_PLY,
       stop_search: false,
       search_stats: SearchStats { number_of_nodes_visited: 0, search_time: 0, search_depth: 0 },
       killers: [(Move::default(), Move::default()); 1 + MAX_PLY as usize],
@@ -60,7 +60,7 @@ impl<'a> Searcher<'a> {
     self.pv_line.clear();
 
     // Iterative deepening
-    for depth in 1..=self.max_depth as usize {
+    for depth in 1..=self.max_depth {
       self.search_stats = SearchStats { number_of_nodes_visited: 0, search_time: 0, search_depth: 0 };
 
       let iterative_timer = Instant::now();
@@ -74,13 +74,13 @@ impl<'a> Searcher<'a> {
         }
 
         if depth == 1 {
-          score = self.pv_search(position, history, 1, depth as u32, -ZENO_INFINITY, ZENO_INFINITY, None, &mut temp_pv_line, 0);
+          score = self.pv_search(position, history, 1, depth, -ZENO_INFINITY, ZENO_INFINITY, None, &mut temp_pv_line, 0);
           break;
         } else {
           let alpha = score.value() - aspiration_window_delta;
           let beta = score.value() + aspiration_window_delta;
 
-          score = self.pv_search(position, history, 1, depth as u32, alpha, beta, None, &mut temp_pv_line, 0);
+          score = self.pv_search(position, history, 1, depth, alpha, beta, None, &mut temp_pv_line, 0);
           if !(alpha < score.value() && score.value() < beta) {
             aspiration_window_delta *= 2;
           } else {
@@ -100,7 +100,9 @@ impl<'a> Searcher<'a> {
           break;
         }
 
-        let estimated_time_ms = self.estimate_time_for_the_next_search(self.search_stats, depth + 1);
+        // I try to predict the time need to search the next depth.
+        // If there is no enough time, the search is automatically canceled
+        let estimated_time_ms = self.estimate_time_for_the_next_search(self.search_stats);
         if estimated_time_ms > self.thinking_time - self.timer.elapsed().as_millis() {
           break;
         }
@@ -114,17 +116,25 @@ impl<'a> Searcher<'a> {
     &mut self,
     position: &mut Position,
     history: &mut History,
-    current_ply: u32,
-    max_ply: u32,
+    ply: i32,
+    depth: i32,
     mut alpha: i32,
     beta: i32,
     previous_move: Option<Move>,
     pv_line: &mut Vec<Move>,
-    num_extensions: u32,
+    num_extensions: i32,
   ) -> Evaluation {
     self.search_stats.number_of_nodes_visited += 1;
 
-    let depth = max_ply - current_ply + 1;
+    let side = position.get_side();
+    let is_pv = beta - alpha != 1;
+    let is_in_check = position.is_check(side);
+    let mut child_pv_line: Vec<Move> = Vec::new();
+
+    // Check extension
+    let extension = i32::from(num_extensions < MAX_EXTENSION && is_in_check);
+    let mut depth = depth + extension;
+    depth = depth.clamp(0, MAX_PLY);
 
     // Check for threefold repetition and fifty-move rule (partially)
     if history.is_repetition(position) || position.get_half_move_clock() >= 100 {
@@ -141,8 +151,8 @@ impl<'a> Searcher<'a> {
     let tt_entry = self.transposition_table.get_entry(position.get_zobrist_hash());
     if tt_entry.get_flag() != TTFlag::None && tt_entry.get_hash() == position.get_zobrist_hash() {
       tt_move = tt_entry.get_best_move();
-      if tt_entry.get_depth() >= depth {
-        let tt_eval = tt_entry.get_evaluation(current_ply);
+      if tt_entry.get_depth() as i32 >= depth {
+        let tt_eval = tt_entry.get_evaluation(ply as u32);
         // In the case of TTFlag::Exact flag, it is best to avoid returning the evaluation as it can result in the drawing of a winning endgame.
         // https://talkchess.com/viewtopic.php?t=20080
         if (tt_entry.get_flag() == TTFlag::LowerBound && tt_eval.value() >= beta) || (tt_entry.get_flag() == TTFlag::UpperBound && tt_eval.value() <= alpha) {
@@ -153,19 +163,14 @@ impl<'a> Searcher<'a> {
       }
     }
 
-    let side = position.get_side();
-    let is_pv = beta - alpha != 1;
-    let is_in_check = position.is_check(side);
-    let mut child_pv_line: Vec<Move> = Vec::new();
-
     // Null move
     let can_do_null_move = !is_pv && !is_in_check && position.has_non_pawn_material();
-    if can_do_null_move && depth > NMP_DEPTH_LIMIT {
+    if can_do_null_move && depth >= NMP_DEPTH_LIMIT {
       let ancient_en_passant_file = position.make_null_move();
       history.save_hash(position.get_zobrist_hash());
 
-      let nmp_reduction = NMP_DEPTH_REDUCTION + (depth as f32 / 6f32) as u32;
-      let eval = self.pv_search(position, history, current_ply + 1, max_ply - nmp_reduction, -beta, -alpha, None, &mut child_pv_line, num_extensions) * -1;
+      let nmp_reduction = NMP_DEPTH_REDUCTION + (depth as f32 / 6f32) as i32;
+      let eval = self.pv_search(position, history, ply + 1, depth - 1 - nmp_reduction, -beta, -alpha, None, &mut child_pv_line, num_extensions) * -1;
 
       position.unmake_null_move(ancient_en_passant_file);
       history.pop_last_entry();
@@ -179,7 +184,7 @@ impl<'a> Searcher<'a> {
     let mut move_picker: MovePicker = MovePicker::new(
       position,
       tt_move,
-      Some(self.killers[current_ply as usize]),
+      Some(self.killers[ply as usize]),
       Some(self.counters[side][previous_move.source() as usize][previous_move.destination() as usize]),
       Some(&self.history_moves[side]),
       false,
@@ -187,7 +192,7 @@ impl<'a> Searcher<'a> {
     if move_picker.get_moves_count() == 0 {
       pv_line.clear();
       if is_in_check {
-        return Evaluation::MateIn(-(current_ply as i32));
+        return Evaluation::MateIn(-ply);
       }
       return Evaluation::Score(0);
     }
@@ -205,23 +210,17 @@ impl<'a> Searcher<'a> {
       temp_position.make_move(mov);
       history.save_hash(temp_position.get_zobrist_hash());
 
-      // Check extension
-      let enemy_is_in_check = temp_position.is_check(temp_position.get_side());
-      let extension = u32::from(num_extensions < MAX_EXTENSION && enemy_is_in_check);
-      let mut max_ply = max_ply + extension;
-      max_ply = max_ply.clamp(0, MAX_PLY);
-
       // Pv move or first move - Full Search
       match first_move {
         true => {
           first_move = false;
-          eval = self.pv_search(&mut temp_position, history, current_ply + 1, max_ply, -beta, -alpha, Some(mov), &mut child_pv_line, num_extensions + extension) * -1;
+          eval = self.pv_search(&mut temp_position, history, ply + 1, depth - 1, -beta, -alpha, Some(mov), &mut child_pv_line, num_extensions + extension) * -1;
         }
         false => {
-          eval = self.pv_search(&mut temp_position, history, current_ply + 1, max_ply, -alpha - 1, -alpha, Some(mov), &mut child_pv_line, num_extensions + extension) * -1;
+          eval = self.pv_search(&mut temp_position, history, ply + 1, depth - 1, -alpha - 1, -alpha, Some(mov), &mut child_pv_line, num_extensions + extension) * -1;
           // If all search that fail-high (score > alpha) do full research in the full windows and at the max depth
           if alpha < eval.value() && eval.value() < beta {
-            eval = self.pv_search(&mut temp_position, history, current_ply + 1, max_ply, -beta, -alpha, Some(mov), &mut child_pv_line, num_extensions + extension) * -1;
+            eval = self.pv_search(&mut temp_position, history, ply + 1, depth - 1, -beta, -alpha, Some(mov), &mut child_pv_line, num_extensions + extension) * -1;
           }
         }
       }
@@ -241,19 +240,16 @@ impl<'a> Searcher<'a> {
 
       if alpha >= beta {
         if is_quiet {
-          if mov != self.killers[current_ply as usize].0 {
-            self.killers[current_ply as usize].1 = self.killers[current_ply as usize].0;
-            self.killers[current_ply as usize].0 = mov;
+          if mov != self.killers[ply as usize].0 {
+            self.killers[ply as usize].1 = self.killers[ply as usize].0;
+            self.killers[ply as usize].0 = mov;
           }
 
           if previous_move != Move::default() {
             self.counters[side][previous_move.source() as usize][previous_move.destination() as usize] = mov;
           }
 
-          let bonus = (depth * depth) as i32;
-          let clamped_bonus = bonus.clamp(-((MAX_PLY * MAX_PLY) as i32), (MAX_PLY * MAX_PLY) as i32);
-          self.history_moves[side][mov.source() as usize][mov.destination() as usize] +=
-            clamped_bonus - self.history_moves[side][mov.source() as usize][mov.destination() as usize] * clamped_bonus.abs() / ((MAX_PLY * MAX_PLY) as i32);
+          self.update_history_score(depth, side, mov);
         }
         break;
       }
@@ -265,11 +261,11 @@ impl<'a> Searcher<'a> {
     }
 
     if !self.stop_search {
-      let mut tt_entry = TTEntry::new(position.get_zobrist_hash(), best_move, depth, TTFlag::Exact, best_eval, current_ply);
+      let mut tt_entry = TTEntry::new(position.get_zobrist_hash(), best_move, depth as u32, TTFlag::Exact, best_eval, ply as u32);
       if best_eval.value() <= original_alpha {
-        tt_entry = TTEntry::new(position.get_zobrist_hash(), best_move, depth, TTFlag::UpperBound, best_eval, current_ply);
+        tt_entry = TTEntry::new(position.get_zobrist_hash(), best_move, depth as u32, TTFlag::UpperBound, best_eval, ply as u32);
       } else if best_eval.value() >= beta {
-        tt_entry = TTEntry::new(position.get_zobrist_hash(), best_move, depth, TTFlag::LowerBound, best_eval, current_ply);
+        tt_entry = TTEntry::new(position.get_zobrist_hash(), best_move, depth as u32, TTFlag::LowerBound, best_eval, ply as u32);
       }
       self.transposition_table.save_entry(tt_entry);
     }
@@ -277,6 +273,7 @@ impl<'a> Searcher<'a> {
     best_eval
   }
 
+  #[inline(always)]
   fn quiescence_search(&mut self, position: &mut Position, mut alpha: i32, beta: i32) -> Evaluation {
     let static_evaluation = Evaluation::Score(Evaluator::evaluate(position) * position.get_side().to_i32());
 
@@ -314,6 +311,15 @@ impl<'a> Searcher<'a> {
     best_eval
   }
 
+  #[inline(always)]
+  fn update_history_score(&mut self, depth: i32, side: PieceColor, mov: Move) {
+    let bonus = (depth * depth) as i32;
+    let clamped_bonus = bonus.clamp(-((MAX_PLY * MAX_PLY) as i32), (MAX_PLY * MAX_PLY) as i32);
+    self.history_moves[side][mov.source() as usize][mov.destination() as usize] +=
+      clamped_bonus - self.history_moves[side][mov.source() as usize][mov.destination() as usize] * clamped_bonus.abs() / ((MAX_PLY * MAX_PLY) as i32);
+  }
+
+  #[inline(always)]
   pub fn reset(&mut self) {
     self.transposition_table.clear();
     self.killers = [(Move::default(), Move::default()); 1 + MAX_PLY as usize];
@@ -321,7 +327,8 @@ impl<'a> Searcher<'a> {
     self.history_moves = ByColor::new([[0; 64]; 64], [[0; 64]; 64]);
   }
 
-  fn print_info(&self, depth: usize, stats: SearchStats, score: Evaluation) {
+  #[inline(always)]
+  fn print_info(&self, depth: i32, stats: SearchStats, score: Evaluation) {
     print!("info depth {depth} nodes {} time {} nps {} ", stats.number_of_nodes_visited, stats.search_time, (1000 * stats.number_of_nodes_visited as u128 / stats.search_time));
 
     match score {
@@ -336,12 +343,11 @@ impl<'a> Searcher<'a> {
     println!();
   }
 
-  fn estimate_time_for_the_next_search(&self, search_stats: SearchStats, future_depth: usize) -> u128 {
-    // I try to predict the time need to search the next depth.
-    // If there is no enough time, the search is automatically canceled
-
+  #[inline(always)]
+  fn estimate_time_for_the_next_search(&self, search_stats: SearchStats) -> u128 {
     let speed = 1000 * search_stats.number_of_nodes_visited as u128 / search_stats.search_time;
     let branching_factor = (search_stats.number_of_nodes_visited as f32).powf(1.0 / (search_stats.search_depth as f32));
+    let future_depth = search_stats.search_depth + 1;
 
     // Geometric series because of the iterative deepening
     let nodes_prediction = (branching_factor.powf((future_depth + 1) as f32) - 1.0) / ((branching_factor - 1.0).max(1.0));

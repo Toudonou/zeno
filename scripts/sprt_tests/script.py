@@ -21,13 +21,14 @@ execute_sprt_test_current_vs_develop = f"""
     -engine cmd={zeno_current} name="Zeno current" \
     -engine cmd={zeno_develop} name="Zeno develop" \
     -pgnout file="games.pgn" \
-    -openings file=8moves_v3.pgn format=pgn order=random \
+    -openings file=UHO_Lichess_4852_v1.epd format=epd order=random \
     -each tc=8+0.08 \
-    -rounds 10000 -repeat \
-    -concurrency 14 \
+    -rounds 6000 -repeat \
+    -concurrency 15 \
     -recover \
-    -sprt elo0=40 elo1=45 alpha=0.05 beta=0.05
+    -sprt elo0=55 elo1=60 alpha=0.01 beta=0.01
 """
+
 os.system(f"{execute_sprt_test_current_vs_develop}")
 os.system("rm -rf zeno_develop/")
 os.system("./ordo -o ratings.txt -- games.pgn ")
@@ -38,7 +39,7 @@ execute_sprt_test_current_vs_release_1_0 = f"""
     -engine cmd={zeno_current} name="Zeno current" \
     -engine cmd={zeno_1_0} name="Zeno 1.0" \
     -pgnout file="games_vs_releases.pgn" \
-    -openings file=8moves_v3.pgn format=pgn order=random \
+    -openings file=UHO_Lichess_4852_v1.epd format=epd order=random \
     -each tc=8+0.08 \
     -rounds 3000 -repeat \
     -concurrency 14 \

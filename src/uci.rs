@@ -124,8 +124,8 @@ fn go(command: &str, position: &mut Position, searcher: &mut Searcher, history: 
   } else if command.starts_with("go movetime") {
     search_time = command[("go movetime".len() + 1)..].parse().unwrap_or(search_time);
   } else if command.starts_with("go wtime") {
-    let mut w_time: u32 = 0;
-    let mut b_time: u32 = 0;
+    let mut w_time: u32 = 1;
+    let mut b_time: u32 = 1;
     let mut w_inc: u32 = 0;
     let mut b_inc: u32 = 0;
     let mut moves_to_go: u32 = 0;
@@ -135,10 +135,10 @@ fn go(command: &str, position: &mut Position, searcher: &mut Searcher, history: 
     while let Some(token) = parts.next() {
       match token {
         "wtime" => {
-          w_time = parts.next().unwrap_or("100").parse().unwrap_or(100);
+          w_time = parts.next().unwrap_or("1").parse().unwrap_or(1);
         }
         "btime" => {
-          b_time = parts.next().unwrap_or("100").parse().unwrap_or(100);
+          b_time = parts.next().unwrap_or("1").parse().unwrap_or(1);
         }
         "winc" => {
           w_inc = parts.next().unwrap_or("0").parse().unwrap_or(0);
@@ -160,7 +160,7 @@ fn go(command: &str, position: &mut Position, searcher: &mut Searcher, history: 
     }
   }
 
-  search_time = search_time.max(100);
+  search_time = search_time.max(1);
   match searcher.search(position, history, search_time) {
     Some(best_move) => println!("bestmove {}", best_move),
     None => println!("bestmove 0000"),
@@ -182,12 +182,12 @@ fn handle_perft(command: &str, position: &mut Position) {
 
 fn allocate_time(position: &Position, remaining_time: u32, increment: u32, move_to_go: u32) -> u128 {
   let estimated_move_to_go: u32 = move_to_go.max(20);
-  let mut allocated_time: u32 = (remaining_time - 2000) / estimated_move_to_go + increment;
+  let mut allocated_time: u32 = remaining_time / estimated_move_to_go + increment;
 
   // Still in the opening
   if position.get_number_of_move() < 7 {
     allocated_time = (50 * allocated_time) / 100;
   }
 
-  allocated_time.min((remaining_time * 20) / 100).max(100) as u128
+  allocated_time.min((remaining_time * 20) / 100).max(1) as u128
 }
