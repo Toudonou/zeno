@@ -76,6 +76,7 @@ including castling and en passant.
 
 - [Berserk](https://github.com/jhonnold/berserk)
 - [Blunder](https://github.com/deanmchris/blunder)
+- [Ethereal](https://github.com/AndyGrant/Ethereal)
 
 
 ## Useful Links
