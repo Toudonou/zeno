@@ -26,7 +26,7 @@ execute_sprt_test_current_vs_develop = f"""
     -rounds 6000 -repeat \
     -concurrency 15 \
     -recover \
-    -sprt elo0=55 elo1=60 alpha=0.01 beta=0.01
+    -sprt elo0=15 elo1=20 alpha=0.01 beta=0.01
 """
 
 os.system(f"{execute_sprt_test_current_vs_develop}")

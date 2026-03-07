@@ -70,7 +70,7 @@ impl Evaluator {
       eg_evaluation -= Evaluator::king_cornering(position.get_king_square(PieceColor::Black), position.get_king_square(PieceColor::White));
     }
 
-    ((mg_evaluation * (256 - phase)) + (eg_evaluation * phase)) >> 8
+    (((mg_evaluation * (256 - phase)) + (eg_evaluation * phase)) >> 8) * position.get_side().to_i32()
   }
 
   fn king_cornering(friendly_square: Square, opponent_square: Square) -> i32 {

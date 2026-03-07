@@ -39,19 +39,19 @@ impl MovePicker {
     let counter = counter.unwrap_or_default();
     let history_heuristic = history_heuristic.unwrap_or(&[[0; 64]; 64]);
 
-    let mut moves_list = MoveList::new();
+    let mut move_picker = MovePicker { moves_list: MoveList::new(), scores: [-ZENO_INFINITY; MOVE_LIST_MAX_SIZE], start_index: 0 };
+
     if is_quiescence_search {
-      generate_quiescences_moves(position, &mut moves_list);
+      generate_quiescences_moves(position, &mut move_picker.moves_list);
     } else {
-      generate_legal_moves(position, &mut moves_list);
+      generate_legal_moves(position, &mut move_picker.moves_list);
     }
 
-    let mut scores: [i32; MOVE_LIST_MAX_SIZE] = [-ZENO_INFINITY; MOVE_LIST_MAX_SIZE];
-    for i in 0..moves_list.count {
-      scores[i] = MovePicker::evaluate_move(moves_list.moves[i], position, tt_move, killers, counter, history_heuristic);
+    for i in 0..move_picker.moves_list.count {
+      move_picker.scores[i] = MovePicker::evaluate_move(move_picker.moves_list.moves[i], position, tt_move, killers, counter, history_heuristic);
     }
 
-    Self { moves_list, scores, start_index: 0 }
+    move_picker
   }
 
   #[inline(always)]

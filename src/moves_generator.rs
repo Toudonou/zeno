@@ -38,50 +38,20 @@ pub fn generate_legal_moves(position: &mut Position, move_list: &mut MoveList) {
   generate_en_passant_moves(position, king_square, move_list);
 
   // Knights
-  let mut knights_board = our_board & position.get_knights_board();
-  while knights_board != 0 {
-    let square = get_lsb!(knights_board);
-    let attacks = non_own_pieces & get_knight_attacks(square) & pin_masks[square as usize];
-    extract_move_from_mask(attacks, square, MoveType::Normal, move_list);
-    pop_lsb!(knights_board);
-  }
+  let knights_board = our_board & position.get_knights_board();
+  generate_non_pawns_moves(PieceType::Knight, knights_board, non_own_pieces, full_board, &pin_masks, move_list);
 
   // Bishops and Queen
   let queens_board = position.get_queens_board();
-  let mut bishops_board = our_board & (position.get_bishops_board() | queens_board);
-  while bishops_board != 0 {
-    let square = get_lsb!(bishops_board);
-    let mut attacks = non_own_pieces & get_bishop_attacks(full_board, square);
-    attacks &= pin_masks[square as usize];
-    extract_move_from_mask(attacks, square, MoveType::Normal, move_list);
-    pop_lsb!(bishops_board);
-  }
+  let bishops_board = our_board & (position.get_bishops_board() | queens_board);
+  generate_non_pawns_moves(PieceType::Bishop, bishops_board, non_own_pieces, full_board, &pin_masks, move_list);
 
   // Rooks and Queen
-  let mut rooks_board = our_board & (position.get_rooks_board() | queens_board);
-  while rooks_board != 0 {
-    let square = get_lsb!(rooks_board);
-    let mut attacks = non_own_pieces & get_rook_attacks(full_board, square);
-    attacks &= pin_masks[square as usize];
-    extract_move_from_mask(attacks, square, MoveType::Normal, move_list);
-    pop_lsb!(rooks_board);
-  }
+  let rooks_board = our_board & (position.get_rooks_board() | queens_board);
+  generate_non_pawns_moves(PieceType::Rook, rooks_board, non_own_pieces, full_board, &pin_masks, move_list);
 
   // King
-  if position.can_short_castle(side) {
-    move_list.push(Move::new(king_square, king_square + 2, MoveType::ShortCastle));
-  }
-  if position.can_long_castle(side) {
-    move_list.push(Move::new(king_square, king_square - 2, MoveType::LongCastle));
-  }
-  let mut attacks = non_own_pieces & get_king_attacks(king_square);
-  while attacks != 0 {
-    let destination = get_lsb!(attacks);
-    if position.check_king_move_safety(king_square, destination, side) {
-      move_list.push(Move::new(king_square, destination, MoveType::Normal));
-    }
-    pop_lsb!(attacks);
-  }
+  generate_king_moves(position, king_square, non_own_pieces, side, false, move_list);
 }
 
 #[inline(always)]
@@ -103,43 +73,20 @@ pub fn generate_quiescences_moves(position: &mut Position, move_list: &mut MoveL
   generate_en_passant_moves(position, king_square, move_list);
 
   // Knights
-  let mut knights_board = our_board & position.get_knights_board();
-  while knights_board != 0 {
-    let square = get_lsb!(knights_board);
-    let attacks = enemy_board & get_knight_attacks(square) & pin_masks[square as usize];
-    extract_move_from_mask(attacks, square, MoveType::Normal, move_list);
-    pop_lsb!(knights_board);
-  }
+  let knights_board = our_board & position.get_knights_board();
+  generate_non_pawns_moves(PieceType::Knight, knights_board, enemy_board, full_board, &pin_masks, move_list);
 
   // Bishops and Queen
   let queens_board = position.get_queens_board();
-  let mut bishops_board = our_board & (position.get_bishops_board() | queens_board);
-  while bishops_board != 0 {
-    let square = get_lsb!(bishops_board);
-    let mut attacks = enemy_board & get_bishop_attacks(full_board, square);
-    attacks &= pin_masks[square as usize];
-    extract_move_from_mask(attacks, square, MoveType::Normal, move_list);
-    pop_lsb!(bishops_board);
-  }
+  let bishops_board = our_board & (position.get_bishops_board() | queens_board);
+  generate_non_pawns_moves(PieceType::Bishop, bishops_board, enemy_board, full_board, &pin_masks, move_list);
 
   // Rooks and Queen
-  let mut rooks_board = our_board & (position.get_rooks_board() | queens_board);
-  while rooks_board != 0 {
-    let square = get_lsb!(rooks_board);
-    let mut attacks = enemy_board & get_rook_attacks(full_board, square);
-    attacks &= pin_masks[square as usize];
-    extract_move_from_mask(attacks, square, MoveType::Normal, move_list);
-    pop_lsb!(rooks_board);
-  }
+  let rooks_board = our_board & (position.get_rooks_board() | queens_board);
+  generate_non_pawns_moves(PieceType::Rook, rooks_board, enemy_board, full_board, &pin_masks, move_list);
 
-  let mut attacks = enemy_board & get_king_attacks(king_square);
-  while attacks != 0 {
-    let destination = get_lsb!(attacks);
-    if position.check_king_move_safety(king_square, destination, side) {
-      move_list.push(Move::new(king_square, destination, MoveType::Normal));
-    }
-    pop_lsb!(attacks);
-  }
+  // King
+  generate_king_moves(position, king_square, enemy_board, side, true, move_list);
 }
 
 #[inline(always)]
@@ -252,6 +199,41 @@ fn generate_en_passant_moves(position: &mut Position, king_square: Square, move_
         move_list.push(Move::new(source, en_passant, MoveType::EnPassant));
       }
     }
+  }
+}
+
+#[inline(always)]
+fn generate_non_pawns_moves(piece_type: PieceType, mut piece_board: BitBoard, target_board: BitBoard, full_board: BitBoard, pin_masks: &[BitBoard; 64], move_list: &mut MoveList) {
+  while piece_board != 0 {
+    let square = get_lsb!(piece_board);
+    let attacks = target_board
+        & pin_masks[square as usize]
+        & match piece_type {
+      PieceType::Knight => get_knight_attacks(square),
+      PieceType::Bishop => get_bishop_attacks(full_board, square),
+      PieceType::Rook => get_rook_attacks(full_board, square),
+      _ => 0,
+    };
+    extract_move_from_mask(attacks, square, MoveType::Normal, move_list);
+    pop_lsb!(piece_board);
+  }
+}
+
+#[inline(always)]
+fn generate_king_moves(position: &mut Position, king_square: Square, target_board: BitBoard, side: PieceColor, capture_only: bool, move_list: &mut MoveList) {
+  if !capture_only && position.can_short_castle(side) {
+    move_list.push(Move::new(king_square, king_square + 2, MoveType::ShortCastle));
+  }
+  if !capture_only && position.can_long_castle(side) {
+    move_list.push(Move::new(king_square, king_square - 2, MoveType::LongCastle));
+  }
+  let mut attacks = target_board & get_king_attacks(king_square);
+  while attacks != 0 {
+    let destination = get_lsb!(attacks);
+    if position.check_king_move_safety(king_square, destination, side) {
+      move_list.push(Move::new(king_square, destination, MoveType::Normal));
+    }
+    pop_lsb!(attacks);
   }
 }
 

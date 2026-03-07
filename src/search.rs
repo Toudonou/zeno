@@ -14,12 +14,22 @@ use crate::utils::{MAX_PLY, ZENO_INFINITY};
 static NMP_DEPTH_LIMIT: i32 = 2;
 static NMP_DEPTH_REDUCTION: i32 = 2;
 static MAX_EXTENSION: i32 = 16;
+static LMR_DEPTH_LIMIT: i32 = 6;
+static LMR_FULL_QUIET_MOVE_SEARCHED: i32 = 6;
+static LMR_DEPTH_REDUCTION: i32 = 2;
 
 #[derive(Copy, Clone)]
 struct SearchStats {
   pub number_of_nodes_visited: u32,
   pub search_time: u128,
   pub search_depth: u32,
+}
+
+#[derive(Copy, Clone)]
+struct SearchTables {
+  pub killers: [(Move, Move); 1 + MAX_PLY as usize],
+  pub counters: ByColor<[[Move; 64]; 64]>,
+  pub history_moves: ByColor<[[i32; 64]; 64]>,
 }
 
 pub struct Searcher<'a> {
@@ -29,9 +39,7 @@ pub struct Searcher<'a> {
   max_depth: i32,
   stop_search: bool,
   search_stats: SearchStats,
-  killers: [(Move, Move); 1 + MAX_PLY as usize],
-  counters: ByColor<[[Move; 64]; 64]>,
-  history_moves: ByColor<[[i32; 64]; 64]>,
+  search_tables: SearchTables,
   pv_line: Vec<Move>,
 }
 
@@ -44,9 +52,11 @@ impl<'a> Searcher<'a> {
       max_depth: MAX_PLY,
       stop_search: false,
       search_stats: SearchStats { number_of_nodes_visited: 0, search_time: 0, search_depth: 0 },
-      killers: [(Move::default(), Move::default()); 1 + MAX_PLY as usize],
-      counters: ByColor::new([[Move::default(); 64]; 64], [[Move::default(); 64]; 64]),
-      history_moves: ByColor::new([[0; 64]; 64], [[0; 64]; 64]),
+      search_tables: SearchTables {
+        killers: [(Move::default(), Move::default()); 1 + MAX_PLY as usize],
+        counters: ByColor::new([[Move::default(); 64]; 64], [[Move::default(); 64]; 64]),
+        history_moves: ByColor::new([[0; 64]; 64], [[0; 64]; 64]),
+      },
       pv_line: Vec::with_capacity(MAX_PLY as usize),
     }
   }
@@ -55,7 +65,6 @@ impl<'a> Searcher<'a> {
     let mut score = Evaluation::Score(0);
     self.timer = Instant::now();
     self.thinking_time = thinking_time;
-    self.search_stats.number_of_nodes_visited = 0;
     self.stop_search = false;
     self.pv_line.clear();
 
@@ -129,7 +138,7 @@ impl<'a> Searcher<'a> {
     let side = position.get_side();
     let is_pv = beta - alpha != 1;
     let is_in_check = position.is_check(side);
-    let mut child_pv_line: Vec<Move> = Vec::new();
+    let mut child_pv_line: Vec<Move> = Vec::with_capacity(depth.max(1) as usize);
 
     // Check extension
     let extension = i32::from(num_extensions < MAX_EXTENSION && is_in_check);
@@ -142,7 +151,7 @@ impl<'a> Searcher<'a> {
       return Evaluation::Score(0);
     }
 
-    if depth <= 0 {
+    if depth <= 0 || ply > MAX_PLY {
       pv_line.clear();
       return self.quiescence_search(position, alpha, beta);
     }
@@ -150,9 +159,9 @@ impl<'a> Searcher<'a> {
     let mut tt_move: Option<Move> = None;
     let tt_entry = self.transposition_table.get_entry(position.get_zobrist_hash());
     if tt_entry.get_flag() != TTFlag::None && tt_entry.get_hash() == position.get_zobrist_hash() {
+      let tt_eval = tt_entry.get_evaluation(ply as u32);
       tt_move = tt_entry.get_best_move();
-      if tt_entry.get_depth() as i32 >= depth {
-        let tt_eval = tt_entry.get_evaluation(ply as u32);
+      if ply > 1 && tt_entry.get_depth() as i32 >= depth {
         // In the case of TTFlag::Exact flag, it is best to avoid returning the evaluation as it can result in the drawing of a winning endgame.
         // https://talkchess.com/viewtopic.php?t=20080
         if (tt_entry.get_flag() == TTFlag::LowerBound && tt_eval.value() >= beta) || (tt_entry.get_flag() == TTFlag::UpperBound && tt_eval.value() <= alpha) {
@@ -170,7 +179,7 @@ impl<'a> Searcher<'a> {
       history.save_hash(position.get_zobrist_hash());
 
       let nmp_reduction = NMP_DEPTH_REDUCTION + (depth as f32 / 6f32) as i32;
-      let eval = self.pv_search(position, history, ply + 1, depth - 1 - nmp_reduction, -beta, -alpha, None, &mut child_pv_line, num_extensions) * -1;
+      let eval = -1 * self.pv_search(position, history, ply + 1, depth - 1 - nmp_reduction, -beta, -alpha, None, &mut child_pv_line, num_extensions);
 
       position.unmake_null_move(ancient_en_passant_file);
       history.pop_last_entry();
@@ -184,9 +193,9 @@ impl<'a> Searcher<'a> {
     let mut move_picker: MovePicker = MovePicker::new(
       position,
       tt_move,
-      Some(self.killers[ply as usize]),
-      Some(self.counters[side][previous_move.source() as usize][previous_move.destination() as usize]),
-      Some(&self.history_moves[side]),
+      Some(self.search_tables.killers[ply as usize]),
+      Some(self.search_tables.counters[side][previous_move.source() as usize][previous_move.destination() as usize]),
+      Some(&self.search_tables.history_moves[side]),
       false,
     );
     if move_picker.get_moves_count() == 0 {
@@ -201,6 +210,7 @@ impl<'a> Searcher<'a> {
     let mut best_eval = Evaluation::Score(-ZENO_INFINITY);
     let mut best_move = None;
     let mut first_move = true;
+    let mut quiets_moves: Vec<Move> = Vec::with_capacity(move_picker.get_moves_count());
     while let Some(mov) = move_picker.pick_best_move() {
       let mut eval: Evaluation;
       let is_capture = position.get_piece_on_square(mov.destination()).piece_type != PieceType::None || mov.move_type() == MoveType::EnPassant;
@@ -211,16 +221,22 @@ impl<'a> Searcher<'a> {
       history.save_hash(temp_position.get_zobrist_hash());
 
       // Pv move or first move - Full Search
-      match first_move {
-        true => {
-          first_move = false;
-          eval = self.pv_search(&mut temp_position, history, ply + 1, depth - 1, -beta, -alpha, Some(mov), &mut child_pv_line, num_extensions + extension) * -1;
-        }
-        false => {
-          eval = self.pv_search(&mut temp_position, history, ply + 1, depth - 1, -alpha - 1, -alpha, Some(mov), &mut child_pv_line, num_extensions + extension) * -1;
-          // If all search that fail-high (score > alpha) do full research in the full windows and at the max depth
+      if first_move == true {
+        first_move = false;
+        eval = -1 * self.pv_search(&mut temp_position, history, ply + 1, depth - 1, -beta, -alpha, Some(mov), &mut child_pv_line, num_extensions + extension);
+      } else {
+        let can_lmr = ply > 1 && !is_in_check && is_quiet && !is_pv && depth >= LMR_DEPTH_LIMIT && quiets_moves.len() as i32 >= LMR_FULL_QUIET_MOVE_SEARCHED;
+        eval = if can_lmr {
+          let lmr_r = (LMR_DEPTH_REDUCTION + depth / (2 * LMR_DEPTH_LIMIT)).clamp(1, depth - 2);
+          -1 * self.pv_search(&mut temp_position, history, ply + 1, depth - 1 - lmr_r, -alpha - 1, -alpha, Some(mov), &mut child_pv_line, num_extensions + extension)
+        } else {
+          Evaluation::Score(alpha + 1)
+        };
+
+        if eval.value() > alpha {
+          eval = -1 * self.pv_search(&mut temp_position, history, ply + 1, depth - 1, -alpha - 1, -alpha, Some(mov), &mut child_pv_line, num_extensions + extension);
           if alpha < eval.value() && eval.value() < beta {
-            eval = self.pv_search(&mut temp_position, history, ply + 1, depth - 1, -beta, -alpha, Some(mov), &mut child_pv_line, num_extensions + extension) * -1;
+            eval = -1 * self.pv_search(&mut temp_position, history, ply + 1, depth - 1, -beta, -alpha, Some(mov), &mut child_pv_line, num_extensions + extension);
           }
         }
       }
@@ -233,25 +249,33 @@ impl<'a> Searcher<'a> {
 
         pv_line.clear();
         pv_line.push(mov);
-        pv_line.extend(child_pv_line.clone());
+        pv_line.extend_from_slice(&child_pv_line);
       }
 
       alpha = alpha.max(best_eval.value());
 
       if alpha >= beta {
         if is_quiet {
-          if mov != self.killers[ply as usize].0 {
-            self.killers[ply as usize].1 = self.killers[ply as usize].0;
-            self.killers[ply as usize].0 = mov;
+          if mov != self.search_tables.killers[ply as usize].0 {
+            self.search_tables.killers[ply as usize].1 = self.search_tables.killers[ply as usize].0;
+            self.search_tables.killers[ply as usize].0 = mov;
           }
 
           if previous_move != Move::default() {
-            self.counters[side][previous_move.source() as usize][previous_move.destination() as usize] = mov;
+            self.search_tables.counters[side][previous_move.source() as usize][previous_move.destination() as usize] = mov;
           }
 
-          self.update_history_score(depth, side, mov);
+          let bonus = depth * depth;
+          self.update_history_score(bonus, side, mov);
+          quiets_moves.iter().for_each(|&quiet_move| {
+            self.update_history_score(-bonus, side, quiet_move);
+          })
         }
         break;
+      }
+
+      if is_quiet {
+        quiets_moves.push(mov);
       }
 
       if self.timer.elapsed().as_millis() > self.thinking_time {
@@ -275,7 +299,7 @@ impl<'a> Searcher<'a> {
 
   #[inline(always)]
   fn quiescence_search(&mut self, position: &mut Position, mut alpha: i32, beta: i32) -> Evaluation {
-    let static_evaluation = Evaluation::Score(Evaluator::evaluate(position) * position.get_side().to_i32());
+    let static_evaluation = Evaluation::Score(Evaluator::evaluate(position));
 
     let mut best_eval = static_evaluation;
     if best_eval.value() >= beta {
@@ -312,19 +336,19 @@ impl<'a> Searcher<'a> {
   }
 
   #[inline(always)]
-  fn update_history_score(&mut self, depth: i32, side: PieceColor, mov: Move) {
-    let bonus = (depth * depth) as i32;
-    let clamped_bonus = bonus.clamp(-((MAX_PLY * MAX_PLY) as i32), (MAX_PLY * MAX_PLY) as i32);
-    self.history_moves[side][mov.source() as usize][mov.destination() as usize] +=
-      clamped_bonus - self.history_moves[side][mov.source() as usize][mov.destination() as usize] * clamped_bonus.abs() / ((MAX_PLY * MAX_PLY) as i32);
+  fn update_history_score(&mut self, bonus: i32, side: PieceColor, mov: Move) {
+    static MAX_HISTORY_BONUS: i32 = MAX_PLY * MAX_PLY;
+    let clamped_bonus = bonus.clamp(-MAX_HISTORY_BONUS, MAX_HISTORY_BONUS);
+    self.search_tables.history_moves[side][mov.source() as usize][mov.destination() as usize] +=
+      clamped_bonus - self.search_tables.history_moves[side][mov.source() as usize][mov.destination() as usize] * clamped_bonus.abs() / MAX_HISTORY_BONUS;
   }
 
   #[inline(always)]
   pub fn reset(&mut self) {
     self.transposition_table.clear();
-    self.killers = [(Move::default(), Move::default()); 1 + MAX_PLY as usize];
-    self.counters = ByColor::new([[Move::default(); 64]; 64], [[Move::default(); 64]; 64]);
-    self.history_moves = ByColor::new([[0; 64]; 64], [[0; 64]; 64]);
+    self.search_tables.killers = [(Move::default(), Move::default()); 1 + MAX_PLY as usize];
+    self.search_tables.counters = ByColor::new([[Move::default(); 64]; 64], [[Move::default(); 64]; 64]);
+    self.search_tables.history_moves = ByColor::new([[0; 64]; 64], [[0; 64]; 64]);
   }
 
   #[inline(always)]

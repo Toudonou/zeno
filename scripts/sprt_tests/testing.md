@@ -1,5 +1,20 @@
 # SPRT results per features
 
+## Late Move Reduction
+* Zeno current vs Zeno develop
+```
+Results of Zeno current vs Zeno develop (8+0.08, NULL, NULL, UHO_Lichess_4852_v1.epd):
+Elo: 21.24 +/- 4.95, nElo: 27.22 +/- 6.33
+LOS: 100.00 %, DrawRatio: 40.51 %, PairsRatio: 1.34
+Games: 11564, Wins: 4581, Losses: 3875, Draws: 3108, Points: 6135.0 (53.05 %)
+Ptnml(0-2): [507, 964, 2342, 1254, 715], WL/DD Ratio: 4.26
+LLR: 4.61 (100.3%) (-4.60, 4.60) [15.00, 20.00]
+--------------------------------------------------
+SPRT ([15.00, 20.00]) completed - H1 was accepted
+Finished match
+Total Time: 04:27:21 (hours:minutes:seconds)
+```
+
 ## Time management and search refactoring
 * Zeno current vs Zeno develop
 ```

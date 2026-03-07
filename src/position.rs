@@ -424,19 +424,19 @@ impl Position {
   }
 
   #[inline(always)]
-  pub fn make_see_capture(&mut self, attacker: Piece, victim: Piece, source: Square, destination: Square) {
+  pub fn make_see_capture(&mut self, attacker: Piece, target: Piece, source: Square, destination: Square) {
     let source_mask = 1u64 << source;
     let destination_mask = 1u64 << destination;
 
-    self.pieces_occupancies[victim.piece_type] &= !destination_mask;
+    self.pieces_occupancies[target.piece_type] &= !destination_mask;
     self.pieces_occupancies[attacker.piece_type] ^= source_mask | destination_mask;
 
     self.side_occupancies[attacker.color] ^= source_mask | destination_mask;
-    self.side_occupancies[victim.color] &= !destination_mask;
+    self.side_occupancies[target.color] &= !destination_mask;
   }
 
   #[inline(always)]
-  pub fn get_smallest_attacker_infos(&self, victim_square: Square, enemy_side: PieceColor) -> (PieceType, Square) {
+  pub fn get_smallest_attacker_infos(&self, target_square: Square, enemy_side: PieceColor) -> (PieceType, Square) {
     let full_board = self.get_full_board();
 
     let enemy_board;
@@ -444,26 +444,25 @@ impl Position {
     let mut result;
 
     enemy_board = self.side_occupancies[enemy_side];
-    superior_mask = get_pawns_attacks(enemy_side.opposite(), victim_square);
-
+    superior_mask = get_pawns_attacks(enemy_side.opposite(), target_square);
     result = superior_mask & self.pieces_occupancies[PieceType::Pawn] & enemy_board;
     if result != 0 {
       return (PieceType::Pawn, get_lsb!(result));
     }
 
-    superior_mask = get_knight_attacks(victim_square);
+    superior_mask = get_knight_attacks(target_square);
     result = superior_mask & self.pieces_occupancies[PieceType::Knight] & enemy_board;
     if result != 0 {
       return (PieceType::Knight, get_lsb!(result));
     }
 
-    let bishop_mask = get_bishop_attacks(full_board, victim_square);
+    let bishop_mask = get_bishop_attacks(full_board, target_square);
     result = bishop_mask & self.pieces_occupancies[PieceType::Bishop] & enemy_board;
     if result != 0 {
       return (PieceType::Bishop, get_lsb!(result));
     }
 
-    let rook_mask = get_rook_attacks(full_board, victim_square);
+    let rook_mask = get_rook_attacks(full_board, target_square);
     result = rook_mask & self.pieces_occupancies[PieceType::Rook] & enemy_board;
     if result != 0 {
       return (PieceType::Rook, get_lsb!(result));
@@ -474,7 +473,7 @@ impl Position {
       return (PieceType::Queen, get_lsb!(result));
     }
 
-    superior_mask = get_king_attacks(victim_square);
+    superior_mask = get_king_attacks(target_square);
     result = superior_mask & self.pieces_occupancies[PieceType::King] & enemy_board;
     if result != 0 {
       return (PieceType::King, get_lsb!(result));
