@@ -1,6 +1,5 @@
-use rand::Rng;
 use std::fmt::Display;
-
+use rand::RngExt;
 use crate::{bitboard::BitBoard, containers::ByColor};
 
 pub static START_POSITION: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";

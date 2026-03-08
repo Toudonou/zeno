@@ -11,6 +11,9 @@ use crate::search::Searcher;
 use crate::transposition_table::TranspositionTable;
 use crate::utils::START_POSITION;
 
+pub static NAME: &str = "Zeno 2.0";
+pub static AUTHOR_NAME: &str = "Toudonou";
+
 pub fn uci_loop() {
   let mut transposition_table = TranspositionTable::new();
   let mut history = History::new();
@@ -19,8 +22,8 @@ pub fn uci_loop() {
   let mut position = Position::from_fen(START_POSITION);
   perft::perft(1, &mut position); // To init the lookup tables
 
-  println!("id name {}", "Zeno 1.0-dev");
-  println!("id author {}\n", "Toudonou");
+  println!("id name {}", NAME);
+  println!("id author {}\n", AUTHOR_NAME);
 
   loop {
     let mut command = String::new();
@@ -46,8 +49,8 @@ pub fn uci_loop() {
 }
 
 fn uci_commands() {
-  println!("\nid name {}", "Zeno 1.0-dev");
-  println!("id author {}\n", "Toudonou");
+  println!("\nid name {}", NAME);
+  println!("id author {}\n", AUTHOR_NAME);
 
   println!("Available UCI commands:");
   println!("\t * uci");
