@@ -11,7 +11,7 @@ use crate::search::Searcher;
 use crate::transposition_table::TranspositionTable;
 use crate::utils::START_POSITION;
 
-pub static NAME: &str = "Zeno 2.0";
+pub static NAME: &str = "Zeno 2.0-dev";
 pub static AUTHOR_NAME: &str = "Toudonou";
 
 pub fn uci_loop() {
@@ -188,7 +188,7 @@ fn allocate_time(position: &Position, remaining_time: u32, increment: u32, move_
   let mut allocated_time: u32 = remaining_time / estimated_move_to_go + increment;
 
   // Still in the opening
-  if position.get_number_of_move() < 7 {
+  if position.get_number_of_moves() < 7 {
     allocated_time = (50 * allocated_time) / 100;
   }
 

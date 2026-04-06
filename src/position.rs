@@ -4,7 +4,7 @@ use crate::lookup_tables::{get_bishop_attacks, get_king_attacks, get_knight_atta
 use crate::moves::{Move, MoveType};
 use crate::piece::{Piece, PieceColor, PieceType};
 use crate::square::Square;
-use crate::utils::PAWNS_OCCUPANCY_OBLIGATION_FOR_EN_PASSANT;
+use crate::utils::{PAWNS_OCCUPANCY_OBLIGATION_FOR_EN_PASSANT, TOTAL_PHASE, get_phase};
 use crate::zobrist_hash::{BoardHash, ZobristHash};
 use crate::{get_lsb, pop_lsb};
 
@@ -68,8 +68,9 @@ pub struct Position {
   en_passant_file: u8,
 
   side: PieceColor,
-  number_of_move: u8,
+  number_of_moves: u8,
   half_move_clock: u8,
+  phase: i8,
 
   zobrist_hash: BoardHash,
 }
@@ -194,11 +195,14 @@ impl Position {
     let mut zobrish_hash: u64 = 0;
     zobrish_hash ^= ZobristHash::get_castling_key(castling_rights);
     zobrish_hash ^= u64::from(side == PieceColor::White) * ZobristHash::get_side_key();
+    let mut phase = TOTAL_PHASE;
 
     let boards: ByPieceType<BitBoard> = ByPieceType::new(pawns_board, knights_board, bishops_board, rooks_board, queens_board, kings_board);
     for piece_type in [PieceType::Pawn, PieceType::Knight, PieceType::Bishop, PieceType::Rook, PieceType::Queen, PieceType::King] {
       let mut board = boards[piece_type] & white_board;
       while board != 0 {
+        phase -= get_phase(piece_type);
+
         let square = get_lsb!(board);
         zobrish_hash ^= ZobristHash::get_piece_key(Piece { color: PieceColor::White, piece_type }, square);
         pop_lsb!(board);
@@ -206,6 +210,8 @@ impl Position {
 
       board = boards[piece_type] & black_board;
       while board != 0 {
+        phase -= get_phase(piece_type);
+
         let square = get_lsb!(board);
         zobrish_hash ^= ZobristHash::get_piece_key(Piece { color: PieceColor::Black, piece_type }, square);
         pop_lsb!(board);
@@ -242,8 +248,9 @@ impl Position {
       castling_rights,
       en_passant_file,
       side,
-      number_of_move: number_of_moves_move_part.parse().unwrap_or(0),
+      number_of_moves: number_of_moves_move_part.parse().unwrap_or(1),
       half_move_clock: half_move_part.parse().unwrap_or(0),
+      phase,
       zobrist_hash: zobrish_hash,
     }
   }
@@ -266,17 +273,13 @@ impl Position {
     if destination_piece.piece_type != PieceType::None {
       self.pieces_occupancies[destination_piece.piece_type] &= !destination_mask;
       self.zobrist_hash ^= ZobristHash::get_piece_key(destination_piece, destination);
-
+      self.phase += get_phase(destination_piece.piece_type);
       // If the destination is not empty, the half move clock will be reset
       self.half_move_clock = 0;
     } else {
       // Half move clock update
       // Pawn's moves are irreversible,
-      if source_piece.piece_type == PieceType::Pawn {
-        self.half_move_clock = 0;
-      } else {
-        self.half_move_clock += 1;
-      }
+      self.half_move_clock = if source_piece.piece_type == PieceType::Pawn { 0 } else { self.half_move_clock + 1 }
     }
 
     // Update castling rights
@@ -324,6 +327,8 @@ impl Position {
         self.pieces_occupancies[PieceType::Pawn] &= !(1u64 << enemy_pawn_square);
         self.side_occupancies[enemy_side] &= !(1u64 << enemy_pawn_square);
         self.zobrist_hash ^= ZobristHash::get_key_after_en_passant_has_been_taken_by(our_side, enemy_pawn_square);
+
+        self.phase += get_phase(PieceType::Pawn);
       }
       _ => {
         // MoveType::PawnToKnight | MoveType::PawnToBishop | MoveType::PawnToRook | MoveType::PawnToQueen
@@ -338,6 +343,9 @@ impl Position {
 
         self.zobrist_hash ^= ZobristHash::get_piece_key(Piece { color: our_side, piece_type: PieceType::Pawn }, destination);
         self.zobrist_hash ^= ZobristHash::get_piece_key(Piece { color: our_side, piece_type: promotion_piece_type }, destination);
+
+        self.phase += get_phase(PieceType::Pawn);
+        self.phase -= get_phase(promotion_piece_type);
       }
     }
 
@@ -356,7 +364,7 @@ impl Position {
     }
 
     self.zobrist_hash ^= ZobristHash::get_side_key();
-    self.number_of_move += u8::from(self.side == PieceColor::Black);
+    self.number_of_moves += u8::from(self.side == PieceColor::Black);
     self.side = enemy_side;
   }
 
@@ -633,8 +641,8 @@ impl Position {
   }
 
   #[inline(always)]
-  pub fn get_number_of_move(&self) -> u8 {
-    self.number_of_move
+  pub fn get_number_of_moves(&self) -> u8 {
+    self.number_of_moves
   }
 
   #[inline(always)]
@@ -645,6 +653,12 @@ impl Position {
   #[inline(always)]
   pub fn get_zobrist_hash(&self) -> BoardHash {
     self.zobrist_hash
+  }
+
+  #[inline(always)]
+  pub fn get_phase(&self) -> i32 {
+    // max(0): if we have a custom setup with more pieces than a normal chess board start position
+    (self.phase.max(0) as i32 * 256 + (TOTAL_PHASE as i32 / 2)) / TOTAL_PHASE as i32 // phase from [0, 24] to [0, 256]
   }
 
   #[inline(always)]
@@ -691,7 +705,10 @@ impl Position {
 
   #[inline(always)]
   pub fn has_non_pawn_material(&self) -> bool {
-    self.pieces_occupancies[PieceType::Knight] != 0 || self.pieces_occupancies[PieceType::Bishop] != 0 || self.pieces_occupancies[PieceType::Rook] != 0 || self.pieces_occupancies[PieceType::Queen] != 0
+    self.pieces_occupancies[PieceType::Knight] != 0
+      || self.pieces_occupancies[PieceType::Bishop] != 0
+      || self.pieces_occupancies[PieceType::Rook] != 0
+      || self.pieces_occupancies[PieceType::Queen] != 0
   }
 
   pub fn print_board(&self) {

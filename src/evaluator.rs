@@ -1,6 +1,6 @@
+use crate::eval_params::EvalParams;
 use crate::piece::{PieceColor, PieceType};
 use crate::position::Position;
-use crate::psqt::{TOTAL_PHASE, get_eg_piece_value, get_eg_psqt_value, get_mg_piece_value, get_mg_psqt_value, get_phase};
 use crate::square::{Square, SquareOps};
 use crate::zobrist_hash::BoardHash;
 use crate::{get_lsb, pop_lsb};
@@ -23,13 +23,12 @@ pub struct Evaluator {}
 
 impl Evaluator {
   #[inline(always)]
-  pub fn evaluate(position: &Position) -> i32 {
-    Evaluator::tapered_evaluation(position)
+  pub fn evaluate(position: &Position, eval_params: &EvalParams) -> i32 {
+    Evaluator::tapered_evaluation(position, eval_params)
   }
 
   #[inline(always)]
-  fn tapered_evaluation(position: &Position) -> i32 {
-    let mut phase = TOTAL_PHASE;
+  fn tapered_evaluation(position: &Position, eval_params: &EvalParams) -> i32 {
     let mut mg_evaluation: i32 = 0;
     let mut eg_evaluation: i32 = 0;
 
@@ -37,29 +36,21 @@ impl Evaluator {
       let mut board = position.get_by_side_and_type(PieceColor::White, piece_type);
       while board != 0 {
         let square = get_lsb!(board);
-
-        phase -= get_phase(piece_type);
-        mg_evaluation += get_mg_piece_value(piece_type) + get_mg_psqt_value(piece_type, PieceColor::White, square);
-        eg_evaluation += get_eg_piece_value(piece_type) + get_eg_psqt_value(piece_type, PieceColor::White, square);
-
+        mg_evaluation += eval_params.get_mg_piece_value(piece_type) + eval_params.get_mg_psqt_value(piece_type, PieceColor::White, square);
+        eg_evaluation += eval_params.get_eg_piece_value(piece_type) + eval_params.get_eg_psqt_value(piece_type, PieceColor::White, square);
         pop_lsb!(board);
       }
 
       let mut board = position.get_by_side_and_type(PieceColor::Black, piece_type);
       while board != 0 {
         let square = get_lsb!(board);
-
-        phase -= get_phase(piece_type);
-        mg_evaluation -= get_mg_piece_value(piece_type) + get_mg_psqt_value(piece_type, PieceColor::Black, square);
-        eg_evaluation -= get_eg_piece_value(piece_type) + get_eg_psqt_value(piece_type, PieceColor::Black, square);
-
+        mg_evaluation -= eval_params.get_mg_piece_value(piece_type) + eval_params.get_mg_psqt_value(piece_type, PieceColor::Black, square);
+        eg_evaluation -= eval_params.get_eg_piece_value(piece_type) + eval_params.get_eg_psqt_value(piece_type, PieceColor::Black, square);
         pop_lsb!(board);
       }
     }
 
-    phase = phase.max(0); // If we have a custom setup with more pieces than a normal chess board start position
-    phase = (phase * 256 + (TOTAL_PHASE / 2)) / TOTAL_PHASE; // phase from [0, 24] to [0, 256]
-
+    let phase = position.get_phase();
     // The game is about 80% the phase
     if phase > 200 {
       // A draw by insufficient material can only occur during endgames
@@ -75,7 +66,7 @@ impl Evaluator {
 
   fn king_cornering(friendly_square: Square, opponent_square: Square) -> i32 {
     let mut evaluation: i32 = 0;
-    let distance_between_kings: i32 = ((friendly_square.get_file()).abs_diff(opponent_square.get_file()) + (friendly_square.get_rank()).abs_diff(opponent_square.get_rank())) as i32;
+    let distance_between_kings: i32 = (friendly_square.get_file().abs_diff(opponent_square.get_file()) + friendly_square.get_rank().abs_diff(opponent_square.get_rank())) as i32;
 
     evaluation += 6 * ARR_CENTER_MANHATTAN_DISTANCE[opponent_square as usize];
     evaluation += 2 * (14 - distance_between_kings);

@@ -1,12 +1,13 @@
 #[cfg(test)]
 mod position_tests {
   use zeno::moves::Move;
-  use zeno::piece::PieceColor;
+  use zeno::piece::{PieceColor, PieceType};
   use zeno::position::Position;
-  use zeno::utils::START_POSITION;
+  use zeno::utils::{get_phase, START_POSITION, TOTAL_PHASE};
+  use zeno::pop_lsb;
 
   #[test]
-  fn correct_half_move_clock_and_number_of_move() {
+  fn correct_half_move_clock_and_number_of_move_and_phase() {
     let mut position = Position::from_fen(START_POSITION);
 
     // Game link: https://lichess.org/L84X4njg/black
@@ -15,20 +16,41 @@ mod position_tests {
       Some(mov) => position.make_move(mov),
       None => {}
     });
+    let mut phase: i8 = TOTAL_PHASE;
+    for piece_type in [PieceType::Pawn, PieceType::Knight, PieceType::Bishop, PieceType::Rook, PieceType::Queen, PieceType::King] {
+      let mut board = position.get_by_type(piece_type);
+      while board != 0 {
+        phase -= get_phase(piece_type);
+        pop_lsb!(board);
+      }
+    }
 
+    let phase = (phase.max(0) as i32 * 256 + (TOTAL_PHASE as i32 / 2)) / TOTAL_PHASE as i32;
+    assert_eq!(position.get_phase(), phase);
     assert_eq!(position.get_half_move_clock(), 3);
-    assert_eq!(position.get_number_of_move(), 63);
+    assert_eq!(position.get_number_of_moves(), 63);
 
     // Game link: https://lichess.org/qHgExmpR/black
     let mut position = Position::from_fen(START_POSITION);
-    let moves = "b1c3 d7d5 g1f3 d5d4 c3e4 f7f5 e4c5 e7e5 c5d3 e5e4 b2b4 e4d3 c2c3 d4c3 d2c3 d8f6 d1d3 f8b4 d3b5 b8c6 a2a4 f6c3 f3d2 c3a1 e1d1 g8f6 d2b3 a1a2 b3d4 f6e4 c1e3 a2b1 e3c1 e4f2".split_whitespace();
+    let moves =
+      "b1c3 d7d5 g1f3 d5d4 c3e4 f7f5 e4c5 e7e5 c5d3 e5e4 b2b4 e4d3 c2c3 d4c3 d2c3 d8f6 d1d3 f8b4 d3b5 b8c6 a2a4 f6c3 f3d2 c3a1 e1d1 g8f6 d2b3 a1a2 b3d4 f6e4 c1e3 a2b1 e3c1 e4f2".split_whitespace();
     moves.for_each(|move_string| match Move::from_uci_notation(move_string, &position) {
       Some(mov) => position.make_move(mov),
       None => {}
     });
+    let mut phase: i8 = TOTAL_PHASE;
+    for piece_type in [PieceType::Pawn, PieceType::Knight, PieceType::Bishop, PieceType::Rook, PieceType::Queen, PieceType::King] {
+      let mut board = position.get_by_type(piece_type);
+      while board != 0 {
+        phase -= get_phase(piece_type);
+        pop_lsb!(board);
+      }
+    }
 
+    let phase = (phase.max(0) as i32 * 256 + (TOTAL_PHASE as i32 / 2)) / TOTAL_PHASE as i32;
+    assert_eq!(position.get_phase(), phase);
     assert_eq!(position.get_half_move_clock(), 0);
-    assert_eq!(position.get_number_of_move(), 18);
+    assert_eq!(position.get_number_of_moves(), 18);
 
     // Game link: https://lichess.org/aZVJVPLI/white
     let mut position = Position::from_fen(START_POSITION);
@@ -37,9 +59,19 @@ mod position_tests {
       Some(mov) => position.make_move(mov),
       None => {}
     });
+    let mut phase: i8 = TOTAL_PHASE;
+    for piece_type in [PieceType::Pawn, PieceType::Knight, PieceType::Bishop, PieceType::Rook, PieceType::Queen, PieceType::King] {
+      let mut board = position.get_by_type(piece_type);
+      while board != 0 {
+        phase -= get_phase(piece_type);
+        pop_lsb!(board);
+      }
+    }
 
+    let phase = (phase.max(0) as i32 * 256 + (TOTAL_PHASE as i32 / 2)) / TOTAL_PHASE as i32;
+    assert_eq!(position.get_phase(), phase);
     assert_eq!(position.get_half_move_clock(), 4);
-    assert_eq!(position.get_number_of_move(), 49);
+    assert_eq!(position.get_number_of_moves(), 49);
 
     // Game link: https://lichess.org/7WQb1tNl
     let mut position = Position::from_fen(START_POSITION);
@@ -48,9 +80,19 @@ mod position_tests {
       Some(mov) => position.make_move(mov),
       None => {}
     });
+    let mut phase: i8 = TOTAL_PHASE;
+    for piece_type in [PieceType::Pawn, PieceType::Knight, PieceType::Bishop, PieceType::Rook, PieceType::Queen, PieceType::King] {
+      let mut board = position.get_by_type(piece_type);
+      while board != 0 {
+        phase -= get_phase(piece_type);
+        pop_lsb!(board);
+      }
+    }
 
+    let phase = (phase.max(0) as i32 * 256 + (TOTAL_PHASE as i32 / 2)) / TOTAL_PHASE as i32;
+    assert_eq!(position.get_phase(), phase);
     assert_eq!(position.get_half_move_clock(), 25);
-    assert_eq!(position.get_number_of_move(), 33);
+    assert_eq!(position.get_number_of_moves(), 33);
   }
 
   #[test]

@@ -1,6 +1,22 @@
 # SPRT results per features
 
-## Late Move Reduction
+## Eval parameters tuning
+* Zeno current vs Zeno 1.0
+```
+--------------------------------------------------
+Results of Zeno Current vs Zeno 2.0 (8+0.08, NULL, NULL, UHO_Lichess_4852_v1.epd):
+Elo: 28.83 +/- 5.96, nElo: 35.51 +/- 7.31
+LOS: 100.00 %, DrawRatio: 37.29 %, PairsRatio: 1.43
+Games: 8684, Wins: 3513, Losses: 2794, Draws: 2377, Points: 4701.5 (54.14 %)
+Ptnml(0-2): [398, 722, 1619, 969, 634], WL/DD Ratio: 3.72
+LLR: 4.60 (100.1%) (-4.60, 4.60) [20.00, 25.00]
+--------------------------------------------------
+SPRT ([20.00, 25.00]) completed - H1 was accepted
+Finished match
+Total Time: 03:36:23 (hours:minutes:seconds)
+```
+
+## Zeno 2.0 vs Zeno 1.0
 * Zeno 2.0 vs Zeno 1.0
 ```
 --------------------------------------------------

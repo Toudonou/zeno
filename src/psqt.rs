@@ -1,5 +1,5 @@
 use crate::containers::ByPieceType;
-use crate::piece::{PieceColor, PieceType};
+
 
 // Values from https://github.com/jhonnold/berserk (Initial Release)
 static MG_PAWN_VALUE: i32 = 100;
@@ -15,17 +15,6 @@ static EG_ROOK_VALUE: i32 = 765;
 static EG_QUEEN_VALUE: i32 = 1451;
 
 static KING_VALUE: i32 = 10_000;
-
-static MG_PIECES_VALUES: ByPieceType<i32> = ByPieceType::new(MG_PAWN_VALUE, MG_KNIGHT_VALUE, MG_BISHOP_VALUE, MG_ROOK_VALUE, MG_QUEEN_VALUE, KING_VALUE);
-static EG_PIECES_VALUES: ByPieceType<i32> = ByPieceType::new(EG_PAWN_VALUE, EG_KNIGHT_VALUE, EG_BISHOP_VALUE, EG_ROOK_VALUE, EG_QUEEN_VALUE, KING_VALUE);
-
-static PAWN_PHASE: i32 = 0;
-static KNIGHT_PHASE: i32 = 1;
-static BISHOP_PHASE: i32 = 1;
-static ROOK_PHASE: i32 = 2;
-static QUEEN_PHASE: i32 = 4;
-static PHASE_TABLE: ByPieceType<i32> = ByPieceType::new(PAWN_PHASE, KNIGHT_PHASE, BISHOP_PHASE, ROOK_PHASE, QUEEN_PHASE, 0);
-pub static TOTAL_PHASE: i32 = PAWN_PHASE * 16 + KNIGHT_PHASE * 4 + BISHOP_PHASE * 4 + ROOK_PHASE * 4 + QUEEN_PHASE * 2;
 
 #[rustfmt::skip]
  static MG_PAWN_TABLE: [i32; 64] = [
@@ -171,38 +160,8 @@ pub static TOTAL_PHASE: i32 = PAWN_PHASE * 16 + KNIGHT_PHASE * 4 + BISHOP_PHASE 
     -95, -61, -17, -34, -34, -17, -61, -95,
 ];
 
-static MG_PIECES_SQUARES_TABLES: ByPieceType<[i32; 64]> = ByPieceType::new(MG_PAWN_TABLE, MG_KNIGHT_TABLE, MG_BISHOP_TABLE, MG_ROOK_TABLE, MG_QUEEN_TABLE, MG_KING_TABLE);
-static EG_PIECES_SQUARES_TABLES: ByPieceType<[i32; 64]> = ByPieceType::new(EG_PAWN_TABLE, EG_KNIGHT_TABLE, EG_BISHOP_TABLE, EG_ROOK_TABLE, EG_QUEEN_TABLE, EG_KING_TABLE);
+pub static MG_PIECES_VALUES: ByPieceType<i32> = ByPieceType::new(MG_PAWN_VALUE, MG_KNIGHT_VALUE, MG_BISHOP_VALUE, MG_ROOK_VALUE, MG_QUEEN_VALUE, KING_VALUE);
+pub static EG_PIECES_VALUES: ByPieceType<i32> = ByPieceType::new(EG_PAWN_VALUE, EG_KNIGHT_VALUE, EG_BISHOP_VALUE, EG_ROOK_VALUE, EG_QUEEN_VALUE, KING_VALUE);
+pub static MG_PIECES_SQUARES_TABLES: ByPieceType<[i32; 64]> = ByPieceType::new(MG_PAWN_TABLE, MG_KNIGHT_TABLE, MG_BISHOP_TABLE, MG_ROOK_TABLE, MG_QUEEN_TABLE, MG_KING_TABLE);
+pub static EG_PIECES_SQUARES_TABLES: ByPieceType<[i32; 64]> = ByPieceType::new(EG_PAWN_TABLE, EG_KNIGHT_TABLE, EG_BISHOP_TABLE, EG_ROOK_TABLE, EG_QUEEN_TABLE, EG_KING_TABLE);
 
-#[inline(always)]
-pub fn to_psqt_index(side: PieceColor, square: u8) -> usize {
-  match side {
-    PieceColor::White => (square ^ 56) as usize,
-    _ => square as usize,
-  }
-}
-
-#[inline(always)]
-pub fn get_phase(piece_type: PieceType) -> i32 {
-  PHASE_TABLE[piece_type]
-}
-
-#[inline(always)]
-pub fn get_mg_piece_value(piece_type: PieceType) -> i32 {
-  MG_PIECES_VALUES[piece_type]
-}
-
-#[inline(always)]
-pub fn get_eg_piece_value(piece_type: PieceType) -> i32 {
-  EG_PIECES_VALUES[piece_type]
-}
-
-#[inline(always)]
-pub fn get_mg_psqt_value(piece_type: PieceType, side: PieceColor, square: u8) -> i32 {
-  MG_PIECES_SQUARES_TABLES[piece_type][to_psqt_index(side, square)]
-}
-
-#[inline(always)]
-pub fn get_eg_psqt_value(piece_type: PieceType, side: PieceColor, square: u8) -> i32 {
-  EG_PIECES_SQUARES_TABLES[piece_type][to_psqt_index(side, square)]
-}

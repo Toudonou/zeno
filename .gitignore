@@ -22,3 +22,6 @@ Cargo.lock
 .idea/
 /scripts/sprt_tests/config.json
 /scripts/pgn_to_uci/venv
+.venv/
+/.fuse_hidden0000265800000256
+/scripts/sprt_tests/games-for-tuner-100000-2026-03-15-21-13-29.pgn

@@ -1,4 +1,3 @@
-use regex::Regex;
 use std::fmt::{Display, Formatter};
 
 use crate::piece::{Piece, PieceColor};
@@ -60,11 +59,11 @@ impl Move {
 
   #[inline(always)]
   pub fn from_uci_notation(move_string: &str, position: &Position) -> Option<Move> {
-    let reg = Regex::new(r"^[a-h][1-8][a-h][1-8][nbrq]?$").unwrap();
-    if !reg.is_match(move_string) {
-      println!("Incorrect uci move notation: {}", move_string);
-      return None;
-    }
+    // let reg = Regex::new(r"^[a-h][1-8][a-h][1-8][nbrq]?$").unwrap();
+    // if !reg.is_match(move_string) {
+    //   println!("Incorrect uci move notation: {}", move_string);
+    //   return None;
+    // }
 
     let part: Vec<char> = move_string.chars().collect();
     let source_rank = part[1].to_digit(10).unwrap() - 1;
@@ -73,13 +72,13 @@ impl Move {
     let destination_file = part[2];
     let mut move_type = MoveType::Normal;
 
-    if move_string == "e1g1" && (position.get_piece_on_square(Square::from_algebric_notation("e1")) == Piece { color: PieceColor::White, piece_type: PieceType::King }) {
+    if move_string == "e1g1" && (position.get_piece_on_square(Square::from_algebraic_notation("e1")) == Piece { color: PieceColor::White, piece_type: PieceType::King }) {
       move_type = MoveType::ShortCastle;
-    } else if move_string == "e1c1" && (position.get_piece_on_square(Square::from_algebric_notation("e1")) == Piece { color: PieceColor::White, piece_type: PieceType::King }) {
+    } else if move_string == "e1c1" && (position.get_piece_on_square(Square::from_algebraic_notation("e1")) == Piece { color: PieceColor::White, piece_type: PieceType::King }) {
       move_type = MoveType::LongCastle;
-    } else if move_string == "e8g8" && (position.get_piece_on_square(Square::from_algebric_notation("e8")) == Piece { color: PieceColor::Black, piece_type: PieceType::King }) {
+    } else if move_string == "e8g8" && (position.get_piece_on_square(Square::from_algebraic_notation("e8")) == Piece { color: PieceColor::Black, piece_type: PieceType::King }) {
       move_type = MoveType::ShortCastle;
-    } else if move_string == "e8c8" && (position.get_piece_on_square(Square::from_algebric_notation("e8")) == Piece { color: PieceColor::Black, piece_type: PieceType::King }) {
+    } else if move_string == "e8c8" && (position.get_piece_on_square(Square::from_algebraic_notation("e8")) == Piece { color: PieceColor::Black, piece_type: PieceType::King }) {
       move_type = MoveType::LongCastle;
     } else if part.len() == 5 {
       match part[4] {

@@ -1,6 +1,7 @@
 use std::time::Instant;
 
 use crate::containers::ByColor;
+use crate::eval_params::{EvalParams, EVAL_PARAMS_DEFAULT};
 use crate::evaluator::Evaluator;
 use crate::history::History;
 use crate::moves::{Move, MoveType};
@@ -153,7 +154,7 @@ impl<'a> Searcher<'a> {
 
     if depth <= 0 || ply > MAX_PLY {
       pv_line.clear();
-      return self.quiescence_search(position, alpha, beta);
+      return self.quiescence_search(position, alpha, beta, &EVAL_PARAMS_DEFAULT);
     }
 
     let mut tt_move: Option<Move> = None;
@@ -179,7 +180,7 @@ impl<'a> Searcher<'a> {
       history.save_hash(position.get_zobrist_hash());
 
       let nmp_reduction = NMP_DEPTH_REDUCTION + (depth as f32 / 6f32) as i32;
-      let eval = -1 * self.pv_search(position, history, ply + 1, depth - 1 - nmp_reduction, -beta, -alpha, None, &mut child_pv_line, num_extensions);
+      let eval = self.pv_search(position, history, ply + 1, depth - 1 - nmp_reduction, -beta, -alpha, None, &mut child_pv_line, num_extensions) * -1;
 
       position.unmake_null_move(ancient_en_passant_file);
       history.pop_last_entry();
@@ -223,20 +224,20 @@ impl<'a> Searcher<'a> {
       // Pv move or first move - Full Search
       if first_move == true {
         first_move = false;
-        eval = -1 * self.pv_search(&mut temp_position, history, ply + 1, depth - 1, -beta, -alpha, Some(mov), &mut child_pv_line, num_extensions + extension);
+        eval = self.pv_search(&mut temp_position, history, ply + 1, depth - 1, -beta, -alpha, Some(mov), &mut child_pv_line, num_extensions + extension) * -1;
       } else {
         let can_lmr = ply > 1 && !is_in_check && is_quiet && !is_pv && depth >= LMR_DEPTH_LIMIT && quiets_moves.len() as i32 >= LMR_FULL_QUIET_MOVE_SEARCHED;
         eval = if can_lmr {
           let lmr_r = (LMR_DEPTH_REDUCTION + depth / (2 * LMR_DEPTH_LIMIT)).clamp(1, depth - 2);
-          -1 * self.pv_search(&mut temp_position, history, ply + 1, depth - 1 - lmr_r, -alpha - 1, -alpha, Some(mov), &mut child_pv_line, num_extensions + extension)
+          self.pv_search(&mut temp_position, history, ply + 1, depth - 1 - lmr_r, -alpha - 1, -alpha, Some(mov), &mut child_pv_line, num_extensions + extension) * -1
         } else {
           Evaluation::Score(alpha + 1)
         };
 
         if eval.value() > alpha {
-          eval = -1 * self.pv_search(&mut temp_position, history, ply + 1, depth - 1, -alpha - 1, -alpha, Some(mov), &mut child_pv_line, num_extensions + extension);
+          eval = self.pv_search(&mut temp_position, history, ply + 1, depth - 1, -alpha - 1, -alpha, Some(mov), &mut child_pv_line, num_extensions + extension) * -1;
           if alpha < eval.value() && eval.value() < beta {
-            eval = -1 * self.pv_search(&mut temp_position, history, ply + 1, depth - 1, -beta, -alpha, Some(mov), &mut child_pv_line, num_extensions + extension);
+            eval = self.pv_search(&mut temp_position, history, ply + 1, depth - 1, -beta, -alpha, Some(mov), &mut child_pv_line, num_extensions + extension) * -1;
           }
         }
       }
@@ -298,8 +299,8 @@ impl<'a> Searcher<'a> {
   }
 
   #[inline(always)]
-  fn quiescence_search(&mut self, position: &mut Position, mut alpha: i32, beta: i32) -> Evaluation {
-    let static_evaluation = Evaluation::Score(Evaluator::evaluate(position));
+  pub fn quiescence_search(&mut self, position: &mut Position, mut alpha: i32, beta: i32, eval_params: &EvalParams) -> Evaluation {
+    let static_evaluation = Evaluation::Score(Evaluator::evaluate(position, eval_params));
 
     let mut best_eval = static_evaluation;
     if best_eval.value() >= beta {
@@ -314,7 +315,7 @@ impl<'a> Searcher<'a> {
       let mut temp_position = position.clone();
       temp_position.make_move(mov);
 
-      let eval = self.quiescence_search(&mut temp_position, -beta, -alpha) * -1;
+      let eval = self.quiescence_search(&mut temp_position, -beta, -alpha, eval_params) * -1;
 
       if eval.value() >= beta {
         return eval;

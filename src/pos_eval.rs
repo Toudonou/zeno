@@ -59,14 +59,6 @@ impl Mul<i32> for Evaluation {
   }
 }
 
-impl Mul<Evaluation> for i32 {
-  type Output = Evaluation;
-
-  fn mul(self, rhs: Evaluation) -> Self::Output {
-    rhs * self
-  }
-}
-
 impl MulAssign<i32> for Evaluation {
   fn mul_assign(&mut self, rhs: i32) {
     match self {

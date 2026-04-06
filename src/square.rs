@@ -1,13 +1,16 @@
 pub type Square = u8;
 
 pub trait SquareOps {
+  const INVALID_SQUARE: Square;
   fn get_rank(self) -> u8;
   fn get_file(self) -> u8;
-  fn from_algebric_notation(str: &str) -> Square;
+  fn from_algebraic_notation(str: &str) -> Square;
   fn to_algebraic_notation(self) -> String;
 }
 
 impl SquareOps for Square {
+  const INVALID_SQUARE: Square = 64;
+
   #[inline(always)]
   fn get_rank(self) -> u8 {
     self as u8 >> 3
@@ -19,7 +22,7 @@ impl SquareOps for Square {
   }
 
   #[rustfmt::skip]
-  fn from_algebric_notation(str: &str) -> Square {
+  fn from_algebraic_notation(str: &str) -> Square {
     match str {
       "a1" => 0,  "b1" => 1,  "c1" => 2,  "d1" => 3,  "e1" => 4,  "f1" => 5,  "g1" => 6,  "h1" => 7,
       "a2" => 8,  "b2" => 9,  "c2" => 10, "d2" => 11, "e2" => 12, "f2" => 13, "g2" => 14, "h2" => 15,
@@ -29,7 +32,7 @@ impl SquareOps for Square {
       "a6" => 40, "b6" => 41, "c6" => 42, "d6" => 43, "e6" => 44, "f6" => 45, "g6" => 46, "h6" => 47,
       "a7" => 48, "b7" => 49, "c7" => 50, "d7" => 51, "e7" => 52, "f7" => 53, "g7" => 54, "h7" => 55,
       "a8" => 56, "b8" => 57, "c8" => 58, "d8" => 59, "e8" => 60, "f8" => 61, "g8" => 62, "h8" => 63,
-      _ => 64,
+      _ => Self::INVALID_SQUARE,
     }
   }
 
