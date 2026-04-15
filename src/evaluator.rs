@@ -5,6 +5,9 @@ use crate::square::{Square, SquareOps};
 use crate::zobrist_hash::BoardHash;
 use crate::{get_lsb, pop_lsb};
 
+pub static DRAW_VALUE: i32 = 0;
+static LIGHT_SQUARES: BoardHash = 0x55AA55AA55AA55AAu64;
+
 #[rustfmt::skip]
 static ARR_CENTER_MANHATTAN_DISTANCE: [i32; 64] = [
   6, 5, 4, 3, 3, 4, 5, 6,
@@ -16,8 +19,6 @@ static ARR_CENTER_MANHATTAN_DISTANCE: [i32; 64] = [
   5, 4, 3, 2, 2, 3, 4, 5,
   6, 5, 4, 3, 3, 4, 5, 6
 ];
-
-static LIGHT_SQUARES: BoardHash = 0x55AA55AA55AA55AAu64;
 
 pub struct Evaluator {}
 
@@ -31,6 +32,17 @@ impl Evaluator {
   fn tapered_evaluation(position: &Position, eval_params: &EvalParams) -> i32 {
     let mut mg_evaluation: i32 = 0;
     let mut eg_evaluation: i32 = 0;
+
+    let phase = position.get_phase();
+    // The game is about 80% the phase
+    if phase > 200 {
+      // A draw by insufficient material can only occur during endgames
+      if Evaluator::is_draw_by_insufficient_material(position) {
+        return 0;
+      }
+      eg_evaluation += Evaluator::king_cornering(position.get_king_square(PieceColor::White), position.get_king_square(PieceColor::Black));
+      eg_evaluation -= Evaluator::king_cornering(position.get_king_square(PieceColor::Black), position.get_king_square(PieceColor::White));
+    }
 
     for piece_type in [PieceType::Pawn, PieceType::Knight, PieceType::Bishop, PieceType::Rook, PieceType::Queen, PieceType::King] {
       let mut board = position.get_by_side_and_type(PieceColor::White, piece_type);
@@ -50,20 +62,10 @@ impl Evaluator {
       }
     }
 
-    let phase = position.get_phase();
-    // The game is about 80% the phase
-    if phase > 200 {
-      // A draw by insufficient material can only occur during endgames
-      if Evaluator::is_draw_by_insufficient_material(position) {
-        return 0;
-      }
-      eg_evaluation += Evaluator::king_cornering(position.get_king_square(PieceColor::White), position.get_king_square(PieceColor::Black));
-      eg_evaluation -= Evaluator::king_cornering(position.get_king_square(PieceColor::Black), position.get_king_square(PieceColor::White));
-    }
-
     (((mg_evaluation * (256 - phase)) + (eg_evaluation * phase)) >> 8) * position.get_side().to_i32()
   }
 
+  #[inline(always)]
   fn king_cornering(friendly_square: Square, opponent_square: Square) -> i32 {
     let mut evaluation: i32 = 0;
     let distance_between_kings: i32 = (friendly_square.get_file().abs_diff(opponent_square.get_file()) + friendly_square.get_rank().abs_diff(opponent_square.get_rank())) as i32;
@@ -74,6 +76,7 @@ impl Evaluator {
     evaluation
   }
 
+  #[inline(always)]
   pub fn is_draw_by_insufficient_material(position: &Position) -> bool {
     if position.get_by_type(PieceType::Pawn).count_ones() != 0 || position.get_by_type(PieceType::Rook).count_ones() != 0 || position.get_by_type(PieceType::Queen).count_ones() != 0 {
       return false;

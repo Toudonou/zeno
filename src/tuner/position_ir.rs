@@ -1,6 +1,6 @@
-use crate::tuner::features::{Features, FEATURES_ALL, MAX_FEATURES};
 use crate::piece::PieceColor;
 use crate::position::Position;
+use crate::tuner::features::{Features, FEATURES_ALL, MAX_FEATURES};
 
 /// Position Intermediary Representation
 #[derive(Clone, Debug)]

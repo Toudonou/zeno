@@ -1,7 +1,8 @@
-use std::fmt::Display;
 use rand::RngExt;
+use std::fmt::Display;
 
-use crate::{bitboard::BitBoard, containers::ByColor};
+use crate::bitboard::BitBoard;
+use crate::containers::ByColor;
 use crate::containers::ByPieceType;
 use crate::piece::{PieceColor, PieceType};
 
@@ -48,7 +49,6 @@ pub fn random_u64() -> u64 {
   u1 | (u2 << 16) | (u3 << 32) | (u4 << 48)
 }
 
-
 pub fn random_u64_few_bits() -> u64 {
   random_u64() & random_u64() & random_u64()
 }
@@ -75,7 +75,6 @@ pub fn sigmoid(k: f32, x: f32) -> f32 {
 pub fn mse(a: f32, b: f32) -> f32 {
   (a - b) * (a - b)
 }
-
 
 pub fn print_array_as_board<T: Display>(array: [T; 64]) {
   for rank in 0..=7 {

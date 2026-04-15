@@ -4,8 +4,6 @@ use crate::moves::Move;
 use crate::pos_eval::Evaluation;
 use crate::zobrist_hash::BoardHash;
 
-pub static ZENO_TRANSPOSITION_TABLE_SIZE: usize = 16 * 1024 * 1024; // 16MB
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TTFlag {
   None,
@@ -102,9 +100,20 @@ pub struct TranspositionTable {
 }
 
 impl TranspositionTable {
+  /// Default size: 16MB
   #[inline(always)]
-  pub fn new() -> TranspositionTable {
-    let max_entries = ZENO_TRANSPOSITION_TABLE_SIZE / size_of::<TTEntry>();
+  pub fn default() -> TranspositionTable {
+    Self::with_capacity(16)
+  }
+
+  /// TT size between 16MB and 1024MB
+  #[inline(always)]
+  pub fn with_capacity(tt_size_mb: u32) -> TranspositionTable {
+    let tt_size_mb = tt_size_mb.clamp(16, 1024);
+
+    let max_entries = ((tt_size_mb * 1024 * 1024) as usize / size_of::<TTEntry>()) as f32;
+    let max_entries = 2usize.pow(max_entries.log2().ceil() as u32);
+
     TranspositionTable { table: vec![TTEntry::new(0, None, 0, TTFlag::None, Evaluation::Score(0), 0); max_entries], max_entries }
   }
 

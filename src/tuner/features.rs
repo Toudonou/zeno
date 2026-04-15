@@ -14,16 +14,16 @@ pub static SQUARES: [Square; Square::INVALID_SQUARE as usize] = {
 
 static MAX_MATERIALS_FEATURES: usize = PIECE_TYPES.len();
 static MAX_PSQT_FEATURES: usize = PIECE_TYPES.len() * SQUARES.len();
-pub static MAX_FEATURES: usize = MAX_MATERIALS_FEATURES + MAX_PSQT_FEATURES;
+pub static MAX_FEATURES: usize = MAX_MATERIALS_FEATURES + MAX_PSQT_FEATURES + 1 /*(Isolated pawn penatly)*/;
 
 pub static FEATURES_ALL: [Features; MAX_FEATURES] = {
   let mut features = [Features::Material(PieceType::Pawn); MAX_FEATURES];
-  let mut i = 0;
+  let mut index = 0;
   let mut p = 0;
 
   while p < PIECE_TYPES.len() {
-    features[i] = Features::Material(PIECE_TYPES[p]);
-    i += 1;
+    features[index] = Features::Material(PIECE_TYPES[p]);
+    index += 1;
     p += 1;
   }
 
@@ -31,8 +31,8 @@ pub static FEATURES_ALL: [Features; MAX_FEATURES] = {
   while p < PIECE_TYPES.len() {
     let mut s = 0;
     while s < SQUARES.len() {
-      features[i] = Features::Psqt(PIECE_TYPES[p], SQUARES[s]);
-      i += 1;
+      features[index] = Features::Psqt(PIECE_TYPES[p], SQUARES[s]);
+      index += 1;
       s += 1;
     }
     p += 1;

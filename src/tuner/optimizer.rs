@@ -133,7 +133,7 @@ pub fn optimize_features(dataset_path: &str, max_number_of_samples: usize, max_i
 }
 
 pub fn optimize_k(file_path: &str, max_number_of_samples: usize) -> Result<f32, io::Error> {
-  let mut tt = TranspositionTable::new();
+  let mut tt = TranspositionTable::default();
   let mut searcher = Searcher::new(&mut tt);
   let mut number_of_samples = 0;
 

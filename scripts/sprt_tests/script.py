@@ -4,56 +4,59 @@ from datetime import datetime, timezone
 zeno_2_0 = "./zeno-2.0"
 zeno_current = "../../target/release/zeno"
 develop = "https://github.com/toudonou/zeno"
-zeno_1_0 = "./zeno-1.0"
 
 # Compile the current version
 os.system("cargo build -p zeno --release")
-#
-# # Download the version currently on github
-# os.system("mkdir zeno_develop/")
-# os.system(f"git clone {develop} zeno_develop")
-# os.system(
-#     "cd zeno_develop/ && cargo build --release && mv ./target/release/zeno ./target/release/zeno_develop"
-# )
-#
-# zeno_develop = "./zeno_develop/target/release/zeno_develop"
-#
-# execute_sprt_test_current_vs_develop = f"""
-# ./fastchess \
-#     -engine cmd={zeno_current} name="Zeno current" \
-#     -engine cmd={zeno_develop} name="Zeno develop" \
-#     -pgnout file="games.pgn" \
-#     -openings file=UHO_Lichess_4852_v1.epd format=epd order=random \
-#     -each tc=8+0.08 \
-#     -rounds 6000 -repeat \
-#     -concurrency 15 \
-#     -recover \
-#     -sprt elo0=15 elo1=20 alpha=0.01 beta=0.01
-# """
-#
-# os.system(f"{execute_sprt_test_current_vs_develop}")
-# os.system("rm -rf zeno_develop/")
-# os.system("./ordo -o ratings.txt -- games.pgn ")
 
-execute_sprt_current_vs_release_2_0 = f"""
+# # Download the version currently on GitHub
+os.system("mkdir zeno_develop/")
+os.system(f"git clone {develop} zeno_develop")
+os.system(
+    "cd zeno_develop/ && cargo build --release && mv ./target/release/zeno ./target/release/zeno_develop && rm ./target/release/zeno"
+)
+
+zeno_develop = "./zeno_develop/target/release/zeno_develop"
+
+execute_sprt_test_current_vs_develop = f"""
 ./fastchess \
-    -engine cmd={zeno_current} name="Zeno Current" \
-    -engine cmd={zeno_2_0} name="Zeno 2.0" \
-    -pgnout file="games_vs_releases.pgn" \
+    -engine cmd={zeno_current} name="Zeno current" \
+    -engine cmd={zeno_develop} name="Zeno Develop" \
+    -pgnout file="games.pgn" \
     -openings file=UHO_Lichess_4852_v1.epd format=epd order=random \
     -each tc=8+0.08 \
     -rounds 10000 -repeat \
-    -concurrency 14 \
+    -concurrency 15 \
     -recover \
-    -sprt elo0=20 elo1=25 alpha=0.01 beta=0.01
+    -sprt elo0=10 elo1=15 alpha=0.01 beta=0.01
 """
 
+os.system(f"{execute_sprt_test_current_vs_develop}")
+# os.system("rm -rf zeno_develop/")
+os.system("./ordo -o ratings.txt -- games.pgn ")
+os.system("cat ratings.txt")
+os.system("./ordo -o ratings.txt -- games.pgn ")
+os.system("rm ratings.txt")
+os.system("rm games.pgn")
 
-os.system(f"{execute_sprt_current_vs_release_2_0}")
-os.system("./ordo -o ratings_vs_releases.txt -- games_vs_releases.pgn ")
-os.system("cat ratings_vs_releases.txt")
-os.system("rm games_vs_releases.pgn")
-os.system("rm ratings_vs_releases.txt")
+# execute_sprt_current_vs_release_2_0 = f"""
+# ./fastchess \
+#     -engine cmd={zeno_current} name="Zeno Current" \
+#     -engine cmd={zeno_2_0} name="Zeno 2.0" \
+#     -pgnout file="games_vs_releases.pgn" \
+#     -openings file=UHO_Lichess_4852_v1.epd format=epd order=random \
+#     -each tc=8+0.08 \
+#     -rounds 10000 -repeat \
+#     -concurrency 14 \
+#     -recover \
+#     -sprt elo0=20 elo1=25 alpha=0.01 beta=0.01
+# """
+#
+#
+# os.system(f"{execute_sprt_current_vs_release_2_0}")
+# os.system("./ordo -o ratings_vs_releases.txt -- games_vs_releases.pgn ")
+# os.system("cat ratings_vs_releases.txt")
+# os.system("rm games_vs_releases.pgn")
+# os.system("rm ratings_vs_releases.txt")
 
 
 def play_games_for_tuning(number_of_games):

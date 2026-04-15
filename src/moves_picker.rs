@@ -1,7 +1,7 @@
 use std::cmp;
 
 use crate::eval_params::EVAL_PARAMS_DEFAULT;
-use crate::moves::{Move, MoveList, MoveType, MOVE_LIST_MAX_SIZE};
+use crate::moves::{MOVE_LIST_MAX_SIZE, Move, MoveList, MoveType};
 use crate::moves_generator::{generate_legal_moves, generate_quiescences_moves};
 use crate::piece::{Piece, PieceType};
 use crate::position::Position;
@@ -94,8 +94,7 @@ impl MovePicker {
     if mov == tt_move {
       TT_MOVE_SCORE
     } else if destination_piece.piece_type != PieceType::None {
-      let source_piece = position.get_piece_on_square(mov.source());
-      let see_value = Self::see_capture(position, source_piece, destination_piece, mov.source(), mov.destination());
+      let see_value = Self::see_capture(position, mov);
       return if see_value >= 0 {
         GOOD_CAPTURE_MOVE_SCORE + see_value + if mov.is_promotion() { 9000 } else { 0 }
       } else {
@@ -121,11 +120,18 @@ impl MovePicker {
 
   // https://www.chessprogramming.org/Static_Exchange_Evaluation#Implementation
   #[inline(always)]
-  pub fn see_capture(position: &Position, attacker: Piece, victim: Piece, source: Square, destination: Square) -> i32 {
-    let mut temp_position = position.clone();
-    temp_position.make_see_capture(attacker, victim, source, destination);
+  pub fn see_capture(position: &Position, mov: Move) -> i32 {
+    let attacker = position.get_piece_on_square(mov.source());
+    let victim = position.get_piece_on_square(mov.destination());
 
-    EVAL_PARAMS_DEFAULT.get_mg_piece_value(victim.piece_type) - MovePicker::see(&mut temp_position, destination, attacker)
+    let mut temp_position = position.clone();
+
+    (if victim.piece_type != PieceType::None {
+      temp_position.make_see_capture(attacker, victim, mov.source(), mov.destination());
+      EVAL_PARAMS_DEFAULT.get_mg_piece_value(victim.piece_type)
+    } else {
+      0
+    }) - MovePicker::see(&mut temp_position, mov.destination(), attacker)
   }
 
   #[inline(always)]

@@ -1,8 +1,8 @@
 use std::time::Instant;
 
 use crate::containers::ByColor;
-use crate::eval_params::{EvalParams, EVAL_PARAMS_DEFAULT};
-use crate::evaluator::Evaluator;
+use crate::eval_params::{EVAL_PARAMS_DEFAULT, EvalParams};
+use crate::evaluator::{DRAW_VALUE, Evaluator};
 use crate::history::History;
 use crate::moves::{Move, MoveType};
 use crate::moves_picker::MovePicker;
@@ -18,6 +18,7 @@ static MAX_EXTENSION: i32 = 16;
 static LMR_DEPTH_LIMIT: i32 = 6;
 static LMR_FULL_QUIET_MOVE_SEARCHED: i32 = 6;
 static LMR_DEPTH_REDUCTION: i32 = 2;
+static MAX_HISTORY_BONUS: i32 = MAX_PLY * MAX_PLY;
 
 #[derive(Copy, Clone)]
 struct SearchStats {
@@ -149,7 +150,7 @@ impl<'a> Searcher<'a> {
     // Check for threefold repetition and fifty-move rule (partially)
     if history.is_repetition(position) || position.get_half_move_clock() >= 100 {
       pv_line.clear();
-      return Evaluation::Score(0);
+      return Evaluation::Score(DRAW_VALUE);
     }
 
     if depth <= 0 || ply > MAX_PLY {
@@ -204,7 +205,7 @@ impl<'a> Searcher<'a> {
       if is_in_check {
         return Evaluation::MateIn(-ply);
       }
-      return Evaluation::Score(0);
+      return Evaluation::Score(DRAW_VALUE);
     }
 
     let original_alpha = alpha;
@@ -269,7 +270,7 @@ impl<'a> Searcher<'a> {
           let bonus = depth * depth;
           self.update_history_score(bonus, side, mov);
           quiets_moves.iter().for_each(|&quiet_move| {
-            self.update_history_score(-bonus, side, quiet_move);
+            self.update_history_score(-depth, side, quiet_move);
           })
         }
         break;
@@ -312,6 +313,10 @@ impl<'a> Searcher<'a> {
 
     let mut move_picker: MovePicker = MovePicker::new(position, None, None, None, None, true);
     while let Some(mov) = move_picker.pick_best_move() {
+      if MovePicker::see_capture(position, mov) < 0 {
+        continue;
+      }
+
       let mut temp_position = position.clone();
       temp_position.make_move(mov);
 
@@ -338,7 +343,6 @@ impl<'a> Searcher<'a> {
 
   #[inline(always)]
   fn update_history_score(&mut self, bonus: i32, side: PieceColor, mov: Move) {
-    static MAX_HISTORY_BONUS: i32 = MAX_PLY * MAX_PLY;
     let clamped_bonus = bonus.clamp(-MAX_HISTORY_BONUS, MAX_HISTORY_BONUS);
     self.search_tables.history_moves[side][mov.source() as usize][mov.destination() as usize] +=
       clamped_bonus - self.search_tables.history_moves[side][mov.source() as usize][mov.destination() as usize] * clamped_bonus.abs() / MAX_HISTORY_BONUS;

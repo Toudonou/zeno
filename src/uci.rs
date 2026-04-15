@@ -15,7 +15,7 @@ pub static NAME: &str = "Zeno 2.0-dev";
 pub static AUTHOR_NAME: &str = "Toudonou";
 
 pub fn uci_loop() {
-  let mut transposition_table = TranspositionTable::new();
+  let mut transposition_table = TranspositionTable::default();
   let mut history = History::new();
   let mut searcher = Searcher::new(&mut transposition_table);
 

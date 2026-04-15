@@ -1,7 +1,23 @@
 # SPRT results per features
 
+## SEE Pruning in the quiescence search.
+* Zeno current vs Zeno develop
+```
+--------------------------------------------------
+Results of Zeno current vs Zeno Develop (8+0.08, NULL, NULL, UHO_Lichess_4852_v1.epd):
+Elo: 20.63 +/- 5.96, nElo: 25.65 +/- 7.39
+LOS: 100.00 %, DrawRatio: 37.95 %, PairsRatio: 1.25
+Games: 8496, Wins: 3328, Losses: 2824, Draws: 2344, Points: 4500.0 (52.97 %)
+Ptnml(0-2): [382, 787, 1612, 879, 588], WL/DD Ratio: 3.76
+LLR: 4.61 (100.2%) (-4.60, 4.60) [10.00, 15.00]
+--------------------------------------------------
+SPRT ([10.00, 15.00]) completed - H1 was accepted
+Finished match
+Total Time: 03:16:28 (hours:minutes:seconds)
+```
+
 ## Eval parameters tuning
-* Zeno current vs Zeno 1.0
+* Zeno current vs Zeno 2.0
 ```
 --------------------------------------------------
 Results of Zeno Current vs Zeno 2.0 (8+0.08, NULL, NULL, UHO_Lichess_4852_v1.epd):
