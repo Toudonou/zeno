@@ -49,6 +49,7 @@ including castling and en passant.
     - [x] [Check Extensions](https://www.chessprogramming.org/Check_Extensions)
     - [x] [Late move reductions](https://web.archive.org/web/20070820072632/http://www.glaurungchess.com/lmr.html)
     - [x] [Eval parameters tuning](https://www.chessprogramming.org/Texel%27s_Tuning_Method)
+    - [x] SEE Pruning in the quiescence search
 - [x] Time management (partially)
 
 

@@ -1,6 +1,6 @@
 # SPRT results per features
 
-## SEE Pruning in the quiescence search.
+## SEE Pruning in the quiescence search
 * Zeno current vs Zeno develop
 ```
 --------------------------------------------------

@@ -2,7 +2,9 @@
 
 | Features                                                                                                                                              | Category      | Delta (Elo) | Total Elo |
 |:------------------------------------------------------------------------------------------------------------------------------------------------------|:--------------|:-----------:|:---------:|
-| [**Eval parameters tuning**](https://github.com/Toudonou/zeno/commit/0f226f608c79861c94180463e7b80575ee853126)                                        | Eavaluation   |     +25     |   2260    |
+| [**SEE Pruning in the quiescence search**](https://github.com/Toudonou/zeno/commit/b8c7447780670c4a29e1373753def0d6bef16520)                          | Search        |     +15     |   2275    |
+| [**Eval parameters tuning**](https://github.com/Toudonou/zeno/commit/0f226f608c79861c94180463e7b80575ee853126)                                        | Evaluation    |     +25     |   2260    |
+| [**Zeno-2.0**](https://github.com/Toudonou/zeno/releases/tag/2.0)                                                                                     | Core 2.0      |      0      |   2235    |
 | [**Late Move Reduction**](https://github.com/Toudonou/zeno/commit/d3b5ac14dd1faab9760818c88ce831f101601b3a)                                           | Search        |     +20     |   2235    |
 | [**Refactoring**](https://github.com/Toudonou/zeno/commit/8e5c8606f8f01dedf5d98cf5cf18b8b4aae93e8b)                                                   | Refactoring   |     +60     |   2215    |
 | [**Check Extensions**](https://github.com/Toudonou/zeno/commit/798b2dc2674e55e2e526ce7f1c392fa329fc6c28)                                              | Search        |     +45     |   2155    |
