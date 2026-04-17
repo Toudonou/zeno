@@ -9,8 +9,8 @@ develop = "https://github.com/toudonou/zeno"
 os.system("cargo build -p zeno --release")
 
 # # Download the version currently on GitHub
-os.system("mkdir zeno_develop/")
-os.system(f"git clone {develop} zeno_develop")
+# os.system("mkdir ze⋅∕no_develop/")
+# os.system(f"git clone {develop} zeno_develop")
 os.system(
     "cd zeno_develop/ && cargo build --release && mv ./target/release/zeno ./target/release/zeno_develop && rm ./target/release/zeno"
 )
@@ -27,11 +27,11 @@ execute_sprt_test_current_vs_develop = f"""
     -rounds 10000 -repeat \
     -concurrency 15 \
     -recover \
-    -sprt elo0=10 elo1=15 alpha=0.01 beta=0.01
+    -sprt elo0=70 elo1=75 alpha=0.01 beta=0.01
 """
 
 os.system(f"{execute_sprt_test_current_vs_develop}")
-# os.system("rm -rf zeno_develop/")
+os.system("rm zeno_develop/target/release/zeno_develop")
 os.system("./ordo -o ratings.txt -- games.pgn ")
 os.system("cat ratings.txt")
 os.system("./ordo -o ratings.txt -- games.pgn ")

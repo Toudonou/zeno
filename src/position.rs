@@ -613,34 +613,6 @@ impl Position {
   }
 
   #[inline(always)]
-  pub fn get_pawns_board(&self) -> BitBoard {
-    self.pieces_occupancies[PieceType::Pawn]
-  }
-
-  #[inline(always)]
-  pub fn get_knights_board(&self) -> BitBoard {
-    self.pieces_occupancies[PieceType::Knight]
-  }
-
-  #[inline(always)]
-  pub fn get_bishops_board(&self) -> BitBoard {
-    self.pieces_occupancies[PieceType::Bishop]
-  }
-
-  #[inline(always)]
-  pub fn get_rooks_board(&self) -> BitBoard {
-    self.pieces_occupancies[PieceType::Rook]
-  }
-  #[inline(always)]
-  pub fn get_queens_board(&self) -> BitBoard {
-    self.pieces_occupancies[PieceType::Queen]
-  }
-  #[inline(always)]
-  pub fn get_kings_board(&self) -> u64 {
-    self.pieces_occupancies[PieceType::King]
-  }
-
-  #[inline(always)]
   pub fn get_number_of_moves(&self) -> u8 {
     self.number_of_moves
   }
@@ -659,6 +631,12 @@ impl Position {
   pub fn get_phase(&self) -> i32 {
     // max(0): if we have a custom setup with more pieces than a normal chess board start position
     (self.phase.max(0) as i32 * 256 + (TOTAL_PHASE as i32 / 2)) / TOTAL_PHASE as i32 // phase from [0, 24] to [0, 256]
+  }
+
+  /// The game is about 80% the total phase
+  #[inline(always)]
+  pub fn is_endgame(&self) -> bool {
+    self.get_phase() >= 200
   }
 
   #[inline(always)]

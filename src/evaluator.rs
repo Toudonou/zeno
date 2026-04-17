@@ -33,9 +33,7 @@ impl Evaluator {
     let mut mg_evaluation: i32 = 0;
     let mut eg_evaluation: i32 = 0;
 
-    let phase = position.get_phase();
-    // The game is about 80% the phase
-    if phase > 200 {
+    if position.is_endgame() {
       // A draw by insufficient material can only occur during endgames
       if Evaluator::is_draw_by_insufficient_material(position) {
         return 0;
@@ -62,6 +60,7 @@ impl Evaluator {
       }
     }
 
+    let phase = position.get_phase();
     (((mg_evaluation * (256 - phase)) + (eg_evaluation * phase)) >> 8) * position.get_side().to_i32()
   }
 

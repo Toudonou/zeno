@@ -1,13 +1,13 @@
 use std::time::Instant;
 
 use crate::containers::ByColor;
-use crate::eval_params::{EVAL_PARAMS_DEFAULT, EvalParams};
-use crate::evaluator::{DRAW_VALUE, Evaluator};
+use crate::eval_params::{EvalParams, EVAL_PARAMS_DEFAULT};
+use crate::evaluator::{Evaluator, DRAW_VALUE};
 use crate::history::History;
 use crate::moves::{Move, MoveType};
 use crate::moves_picker::MovePicker;
 use crate::piece::{PieceColor, PieceType};
-use crate::pos_eval::Evaluation;
+use crate::pos_eval::{Evaluation, MATE_SCORE};
 use crate::position::Position;
 use crate::transposition_table::{TTEntry, TTFlag, TranspositionTable};
 use crate::utils::{MAX_PLY, ZENO_INFINITY};
@@ -18,6 +18,7 @@ static MAX_EXTENSION: i32 = 16;
 static LMR_DEPTH_LIMIT: i32 = 6;
 static LMR_FULL_QUIET_MOVE_SEARCHED: i32 = 6;
 static LMR_DEPTH_REDUCTION: i32 = 2;
+static STATIC_NMP_MARGIN: i32 = 120;
 static MAX_HISTORY_BONUS: i32 = MAX_PLY * MAX_PLY;
 
 #[derive(Copy, Clone)]
@@ -174,6 +175,15 @@ impl<'a> Searcher<'a> {
       }
     }
 
+    // Static null move pruning
+    if depth <= 3 && !is_in_check && !is_pv && beta < MATE_SCORE {
+      let static_score = Evaluator::evaluate(&position, &EVAL_PARAMS_DEFAULT);
+      let score_margin = STATIC_NMP_MARGIN * depth;
+      if static_score - score_margin >= beta {
+        return self.quiescence_search(position, alpha, beta, &EVAL_PARAMS_DEFAULT);
+      }
+    }
+
     // Null move
     let can_do_null_move = !is_pv && !is_in_check && position.has_non_pawn_material();
     if can_do_null_move && depth >= NMP_DEPTH_LIMIT {
@@ -267,8 +277,7 @@ impl<'a> Searcher<'a> {
             self.search_tables.counters[side][previous_move.source() as usize][previous_move.destination() as usize] = mov;
           }
 
-          let bonus = depth * depth;
-          self.update_history_score(bonus, side, mov);
+          self.update_history_score(depth * depth, side, mov);
           quiets_moves.iter().for_each(|&quiet_move| {
             self.update_history_score(-depth, side, quiet_move);
           })

@@ -5,7 +5,7 @@ mod evaluation_tests {
   use zeno::history::History;
   use zeno::moves::{Move, MoveType};
   use zeno::moves_picker::MovePicker;
-  use zeno::piece::{Piece, PieceColor, PieceType};
+  use zeno::piece::PieceType;
   use zeno::pos_eval::{Evaluation, MATE_SCORE};
   use zeno::position::Position;
   use zeno::search::Searcher;

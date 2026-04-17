@@ -22,15 +22,14 @@ pub fn generate_legal_moves(position: &mut Position, move_list: &mut MoveList) {
   let side = position.get_side();
   let king_square = position.get_king_square(side);
 
-  let our_board = position.get_by_side(side);
-  let non_own_pieces: BitBoard = !our_board;
+  let non_own_pieces: BitBoard = !position.get_by_side(side);
   let full_board = position.get_full_board();
 
   let obligation_board: BitBoard = generate_obligation_board(position, side, king_square);
   let pin_masks = generate_pin_masks(position, side, obligation_board);
 
   // Pawns
-  let our_pawns = our_board & position.get_pawns_board();
+  let our_pawns = position.get_by_side_and_type(side, PieceType::Pawn);
   let enemy_board = full_board & non_own_pieces;
   generate_quiets_moves_for_pawns(side, our_pawns, !full_board, &pin_masks, move_list);
   generate_captures_moves_for_pawns(side, our_pawns, enemy_board, &pin_masks, move_list);
@@ -38,16 +37,16 @@ pub fn generate_legal_moves(position: &mut Position, move_list: &mut MoveList) {
   generate_en_passant_moves(position, king_square, move_list);
 
   // Knights
-  let knights_board = our_board & position.get_knights_board();
+  let knights_board = position.get_by_side_and_type(side, PieceType::Knight);
   generate_non_pawns_moves(PieceType::Knight, knights_board, non_own_pieces, full_board, &pin_masks, move_list);
 
   // Bishops and Queen
-  let queens_board = position.get_queens_board();
-  let bishops_board = our_board & (position.get_bishops_board() | queens_board);
+  let queens_board = position.get_by_side_and_type(side, PieceType::Queen);
+  let bishops_board = position.get_by_side_and_type(side, PieceType::Bishop) | queens_board;
   generate_non_pawns_moves(PieceType::Bishop, bishops_board, non_own_pieces, full_board, &pin_masks, move_list);
 
   // Rooks and Queen
-  let rooks_board = our_board & (position.get_rooks_board() | queens_board);
+  let rooks_board = position.get_by_side_and_type(side, PieceType::Rook) | queens_board;
   generate_non_pawns_moves(PieceType::Rook, rooks_board, non_own_pieces, full_board, &pin_masks, move_list);
 
   // King
@@ -59,30 +58,29 @@ pub fn generate_quiescences_moves(position: &mut Position, move_list: &mut MoveL
   let side = position.get_side();
   let king_square = position.get_king_square(side);
 
-  let our_board = position.get_by_side(side);
   let full_board = position.get_full_board();
-  let enemy_board = full_board & !our_board;
+  let enemy_board = position.get_by_side(side.opposite());
 
   let obligation_board: BitBoard = generate_obligation_board(position, side, king_square);
   let pin_masks = generate_pin_masks(position, side, obligation_board);
 
   // Pawns
-  let our_pawns = our_board & position.get_pawns_board();
+  let our_pawns = position.get_by_side_and_type(side, PieceType::Pawn);
   generate_captures_moves_for_pawns(side, our_pawns, enemy_board, &pin_masks, move_list);
   generate_promotions_moves_for_pawns(side, our_pawns, enemy_board, !full_board, &pin_masks, move_list);
   generate_en_passant_moves(position, king_square, move_list);
 
   // Knights
-  let knights_board = our_board & position.get_knights_board();
+  let knights_board = position.get_by_side_and_type(side, PieceType::Knight);
   generate_non_pawns_moves(PieceType::Knight, knights_board, enemy_board, full_board, &pin_masks, move_list);
 
   // Bishops and Queen
-  let queens_board = position.get_queens_board();
-  let bishops_board = our_board & (position.get_bishops_board() | queens_board);
+  let queens_board = position.get_by_side_and_type(side, PieceType::Queen);
+  let bishops_board = position.get_by_side_and_type(side, PieceType::Bishop) | queens_board;
   generate_non_pawns_moves(PieceType::Bishop, bishops_board, enemy_board, full_board, &pin_masks, move_list);
 
   // Rooks and Queen
-  let rooks_board = our_board & (position.get_rooks_board() | queens_board);
+  let rooks_board = position.get_by_side_and_type(side, PieceType::Rook) | queens_board;
   generate_non_pawns_moves(PieceType::Rook, rooks_board, enemy_board, full_board, &pin_masks, move_list);
 
   // King
@@ -181,10 +179,10 @@ fn generate_en_passant_moves(position: &mut Position, king_square: Square, move_
   if en_passant < 64 {
     let side = position.get_side();
     let en_passant_mask = 1u64 << en_passant;
-    let white_pawns = position.get_pawns_board() & position.get_by_side(side);
+    let our_pawns = position.get_by_side_and_type(side, PieceType::Pawn);
     let en_passant_obligation_mask = EN_PASSANT_RANK_OBLIGATION[side];
 
-    let en_passant_left_push = shift!((white_pawns & en_passant_obligation_mask), LEFT_OFFSET[side]) & NOT_FILE_H & en_passant_mask;
+    let en_passant_left_push = shift!((our_pawns & en_passant_obligation_mask), LEFT_OFFSET[side]) & NOT_FILE_H & en_passant_mask;
     if en_passant_left_push != 0 {
       let source = (en_passant as i8 - LEFT_OFFSET[side]) as Square;
       if position.check_en_passant_move_for_king_safety(king_square, source, en_passant, side) {
@@ -192,7 +190,7 @@ fn generate_en_passant_moves(position: &mut Position, king_square: Square, move_
       }
     }
 
-    let en_passant_right_push = shift!((white_pawns & en_passant_obligation_mask), RIGHT_OFFSET[side]) & NOT_FILE_A & en_passant_mask;
+    let en_passant_right_push = shift!((our_pawns & en_passant_obligation_mask), RIGHT_OFFSET[side]) & NOT_FILE_A & en_passant_mask;
     if en_passant_right_push != 0 {
       let source = (en_passant as i8 - RIGHT_OFFSET[side]) as Square;
       if position.check_en_passant_move_for_king_safety(king_square, source, en_passant, side) {
@@ -207,13 +205,13 @@ fn generate_non_pawns_moves(piece_type: PieceType, mut piece_board: BitBoard, ta
   while piece_board != 0 {
     let square = get_lsb!(piece_board);
     let attacks = target_board
-        & pin_masks[square as usize]
-        & match piece_type {
-      PieceType::Knight => get_knight_attacks(square),
-      PieceType::Bishop => get_bishop_attacks(full_board, square),
-      PieceType::Rook => get_rook_attacks(full_board, square),
-      _ => 0,
-    };
+      & pin_masks[square as usize]
+      & match piece_type {
+        PieceType::Knight => get_knight_attacks(square),
+        PieceType::Bishop => get_bishop_attacks(full_board, square),
+        PieceType::Rook => get_rook_attacks(full_board, square),
+        _ => 0,
+      };
     extract_move_from_mask(attacks, square, MoveType::Normal, move_list);
     pop_lsb!(piece_board);
   }
