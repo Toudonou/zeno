@@ -2,6 +2,7 @@
 
 | Features                                                                                                                                              | Category      | Delta (Elo) | Total Elo |
 |:------------------------------------------------------------------------------------------------------------------------------------------------------|:--------------|:-----------:|:---------:|
+| [**Razoring**](https://github.com/Toudonou/zeno/commit/714a22958ae486c3e6b3a989902a80ec95e3a5c9)                                                      | Search        |     +20     |   2370    |
 | [**Static null move pruning**](https://github.com/Toudonou/zeno/commit/3fd2d62090a5d754987189219a5a6c4d141974fa)                                      | Search        |     +75     |   2350    |
 | [**SEE Pruning in the quiescence search**](https://github.com/Toudonou/zeno/commit/b8c7447780670c4a29e1373753def0d6bef16520)                          | Search        |     +15     |   2275    |
 | [**Eval parameters tuning**](https://github.com/Toudonou/zeno/commit/0f226f608c79861c94180463e7b80575ee853126)                                        | Evaluation    |     +25     |   2260    |
