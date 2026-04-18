@@ -14,11 +14,16 @@ use crate::utils::{MAX_PLY, ZENO_INFINITY};
 
 static NMP_DEPTH_LIMIT: i32 = 2;
 static NMP_DEPTH_REDUCTION: i32 = 2;
+
 static MAX_EXTENSION: i32 = 16;
 static LMR_DEPTH_LIMIT: i32 = 6;
 static LMR_FULL_QUIET_MOVE_SEARCHED: i32 = 6;
 static LMR_DEPTH_REDUCTION: i32 = 2;
-static STATIC_NMP_MARGIN: i32 = 120;
+
+static STATIC_NMP_MARGIN: i32 = 85;
+static RAZORING_BASE: i32 = 300;
+static RAZORING_MARGIN: i32 = 60;
+
 static MAX_HISTORY_BONUS: i32 = MAX_PLY * MAX_PLY;
 
 #[derive(Copy, Clone)]
@@ -179,8 +184,20 @@ impl<'a> Searcher<'a> {
     if depth <= 3 && !is_in_check && !is_pv && beta < MATE_SCORE {
       let static_score = Evaluator::evaluate(&position, &EVAL_PARAMS_DEFAULT);
       let score_margin = STATIC_NMP_MARGIN * depth;
-      if static_score - score_margin >= beta {
+      if static_score >= beta + score_margin {
         return self.quiescence_search(position, alpha, beta, &EVAL_PARAMS_DEFAULT);
+      }
+    }
+
+    // Razoring
+    if depth <= 3 && !is_in_check && !is_pv && alpha < MATE_SCORE {
+      let static_score = Evaluator::evaluate(&position, &EVAL_PARAMS_DEFAULT);
+      let razoring_margin = RAZORING_BASE + RAZORING_MARGIN * depth;
+      if static_score < alpha - razoring_margin {
+        let quiescence_eval = self.quiescence_search(position, alpha, beta, &EVAL_PARAMS_DEFAULT);
+        if quiescence_eval.value() < alpha {
+          return Evaluation::Score(alpha);
+        }
       }
     }
 

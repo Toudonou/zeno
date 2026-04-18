@@ -51,6 +51,7 @@ including castling and en passant.
     - [x] [Eval parameters tuning](https://www.chessprogramming.org/Texel%27s_Tuning_Method)
     - [x] SEE Pruning in the quiescence search
     - [x] Static null move pruning
+    - [x] [Razoring](https://www.chessprogramming.org/Razoring)
 - [x] Time management (partially)
 
 
