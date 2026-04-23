@@ -52,6 +52,7 @@ including castling and en passant.
     - [x] SEE Pruning in the quiescence search
     - [x] Static null move pruning
     - [x] [Razoring](https://www.chessprogramming.org/Razoring)
+    - [x] Late Move Pruning
 - [x] Time management (partially)
 
 
