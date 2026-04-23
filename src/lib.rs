@@ -13,7 +13,6 @@ pub mod perft;
 pub mod piece;
 pub mod pos_eval;
 pub mod position;
-pub mod psqt;
 pub mod search;
 pub mod square;
 pub mod transposition_table;
