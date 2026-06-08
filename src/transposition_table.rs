@@ -1,3 +1,4 @@
+use std::sync::atomic::{AtomicU64, Ordering};
 use thousands::Separable;
 
 use crate::moves::Move;
@@ -40,25 +41,14 @@ impl TTFlag {
 /// - 1 byte for the depth
 /// - 2 bytes: for the move
 /// - 4 bytes for the evaluation
-#[derive(Clone, Copy)]
 pub struct TTEntry {
   hash: BoardHash,
   others_information: u64,
 }
-
 impl TTEntry {
   #[inline(always)]
-  pub fn new(hash: BoardHash, best_move: Option<Move>, depth: u32, flag: TTFlag, evaluation: Evaluation, ply: u32) -> TTEntry {
-    let best_move = if let Some(m) = best_move { m.to_u16() } else { 0 } as u64;
-    let flag = flag.to_u32() as u64;
-    let depth = depth as u64;
-
-    let evaluation = match evaluation {
-      Evaluation::Score(_) => evaluation.to_u32() as u64,
-      Evaluation::MateIn(mate_in) => Evaluation::MateIn(mate_in.signum() * (mate_in.abs() - ply as i32)).to_u32() as u64,
-    };
-
-    TTEntry { hash, others_information: (evaluation << (4 * 8)) | (best_move << (2 * 8)) | (depth << (1 * 8)) | (flag) }
+  pub fn new(hash: BoardHash, others_information: u64) -> TTEntry {
+    TTEntry { hash, others_information }
   }
 
   #[inline(always)]
@@ -93,47 +83,86 @@ impl TTEntry {
   }
 }
 
-#[derive(Clone)]
+pub struct AtomicTTEntry {
+  hash: AtomicU64,
+  others_information: AtomicU64,
+}
+
+impl AtomicTTEntry {
+  #[inline(always)]
+  pub fn new(hash: BoardHash, best_move: Option<Move>, depth: u32, flag: TTFlag, evaluation: Evaluation, ply: u32) -> AtomicTTEntry {
+    AtomicTTEntry { hash: hash.into(), others_information: AtomicTTEntry::generate_others_information(best_move, depth, flag, evaluation, ply).into() }
+  }
+
+  #[inline(always)]
+  pub fn get_tt_entry(&self) -> TTEntry {
+    TTEntry { hash: self.hash.load(Ordering::Relaxed), others_information: self.others_information.load(Ordering::Relaxed) }
+  }
+
+  #[inline(always)]
+  pub fn generate_others_information(best_move: Option<Move>, depth: u32, flag: TTFlag, evaluation: Evaluation, ply: u32) -> u64 {
+    let best_move = if let Some(m) = best_move { m.to_u16() } else { 0 } as u64;
+    let flag = flag.to_u32() as u64;
+    let depth = depth as u64;
+    let evaluation = match evaluation {
+      Evaluation::Score(_) => evaluation.to_u32() as u64,
+      Evaluation::MateIn(mate_in) => Evaluation::MateIn(mate_in.signum() * (mate_in.abs() - ply as i32)).to_u32() as u64,
+    };
+
+    (evaluation << (4 * 8)) | (best_move << (2 * 8)) | (depth << (1 * 8)) | (flag)
+  }
+}
+
 pub struct TranspositionTable {
-  table: Vec<TTEntry>,
+  table: Vec<AtomicTTEntry>,
   max_entries: usize,
 }
 
 impl TranspositionTable {
-  /// Default size: 16MB
+  /// Default size: 64MB
   #[inline(always)]
   pub fn default() -> TranspositionTable {
-    Self::with_capacity(16)
+    Self::with_capacity(64)
   }
 
-  /// TT size between 16MB and 1024MB
+  /// TT size between 64MB and 1024MB
   #[inline(always)]
   pub fn with_capacity(tt_size_mb: u32) -> TranspositionTable {
-    let tt_size_mb = tt_size_mb.clamp(16, 1024);
+    let tt_size_mb = tt_size_mb.clamp(64, 1024);
+    let max_entries = ((tt_size_mb * 1024 * 1024) as usize / size_of::<AtomicTTEntry>()).next_power_of_two();
 
-    let max_entries = ((tt_size_mb * 1024 * 1024) as usize / size_of::<TTEntry>()) as f32;
-    let max_entries = 2usize.pow(max_entries.log2().ceil() as u32);
+    let mut table = Vec::with_capacity(max_entries);
+    table.resize_with(max_entries, || AtomicTTEntry::new(0, None, 0, TTFlag::None, Evaluation::Score(0), 0));
 
-    TranspositionTable { table: vec![TTEntry::new(0, None, 0, TTFlag::None, Evaluation::Score(0), 0); max_entries], max_entries }
+    TranspositionTable { table, max_entries }
+  }
+
+  pub fn index(&self, hash: BoardHash) -> usize {
+    hash as usize & (self.max_entries - 1)
   }
 
   #[inline(always)]
   pub fn get_entry(&self, hash: BoardHash) -> TTEntry {
-    self.table[hash as usize & (self.max_entries - 1)] // max_entries is a power of 2, therefore (x % max_entries) == x & (max_entries)
+    self.table[self.index(hash)].get_tt_entry() // max_entries is a power of 2, therefore (x % max_entries) == x & (max_entries)
   }
 
   #[inline(always)]
-  pub fn save_entry(&mut self, entry: TTEntry) {
-    self.table[entry.get_hash() as usize & (self.max_entries - 1)] = entry; // max_entries is a power of 2, therefore (x % max_entries) == x & (max_entries)
+  pub fn save_entry(&self, hash: BoardHash, best_move: Option<Move>, depth: u32, flag: TTFlag, evaluation: Evaluation, ply: u32) {
+    let entry = &self.table[self.index(hash)]; // max_entries is a power of 2, therefore (x % max_entries) == x & (max_entries)
+    entry.hash.store(hash, Ordering::Relaxed);
+    entry.others_information.store(AtomicTTEntry::generate_others_information(best_move, depth, flag, evaluation, ply).into(), Ordering::Relaxed);
   }
 
   pub fn print_transposition_stats(&self) {
-    let count = self.table.iter().filter(|x| x.get_flag() != TTFlag::None).count();
+    let count = self.table.iter().filter(|x| x.get_tt_entry().get_flag() != TTFlag::None).count();
     println!("Transposition utilization: {}/{} = {:.3}%", count.separate_with_commas(), self.max_entries.separate_with_commas(), 100f64 * count as f64 / self.max_entries as f64);
   }
 
   #[inline(always)]
-  pub fn clear(&mut self) {
-    self.table = vec![TTEntry::new(0, None, 0, TTFlag::None, Evaluation::Score(0), 0); self.max_entries]
+  pub fn clear(&self) {
+    for entry in &self.table {
+      entry.hash.store(0, Ordering::Relaxed);
+      entry.others_information.store(0, Ordering::Relaxed);
+    }
   }
 }

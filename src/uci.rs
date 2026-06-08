@@ -1,4 +1,5 @@
 use std::io;
+use std::sync::Arc;
 use std::time::Instant;
 use thousands::Separable;
 
@@ -7,7 +8,8 @@ use crate::moves::Move;
 use crate::perft;
 use crate::piece::PieceColor;
 use crate::position::Position;
-use crate::search::Searcher;
+use crate::search_constants::{SearchLimits, DEFAULT_NUMBERS_OF_THREADS};
+use crate::search_pool::SearchPool;
 use crate::transposition_table::TranspositionTable;
 use crate::utils::START_POSITION;
 
@@ -15,9 +17,9 @@ pub static NAME: &str = "Zeno 2.0-dev";
 pub static AUTHOR_NAME: &str = "Toudonou";
 
 pub fn uci_loop() {
-  let mut transposition_table = TranspositionTable::default();
+  let transposition_table = Arc::new(TranspositionTable::default());
   let mut history = History::new();
-  let mut searcher = Searcher::new(&mut transposition_table);
+  let search_pool = SearchPool::new(transposition_table, DEFAULT_NUMBERS_OF_THREADS);
 
   let mut position = Position::from_fen(START_POSITION);
   perft::perft(1, &mut position); // To init the lookup tables
@@ -37,10 +39,9 @@ pub fn uci_loop() {
         position = Position::from_fen(START_POSITION);
         history.clear();
         history.save_hash(position.get_zobrist_hash());
-        searcher.reset();
       }
       c if c.starts_with("position") => uci_position(command, &mut position, &mut history),
-      c if c.starts_with("go") => go(command, &mut position, &mut searcher, &mut history),
+      c if c.starts_with("go") => go(command, &mut position, &search_pool, &mut history),
       "stop" => {}
       "quit" => break,
       _ => println!("Command not found {}", command),
@@ -115,7 +116,7 @@ fn uci_position(command: &str, position: &mut Position, history: &mut History) {
   }
 }
 
-fn go(command: &str, position: &mut Position, searcher: &mut Searcher, history: &mut History) {
+fn go(command: &str, position: &mut Position, searcher_pool: &SearchPool, history: &mut History) {
   if command.starts_with("go perft") {
     handle_perft(command, position);
     return;
@@ -164,7 +165,9 @@ fn go(command: &str, position: &mut Position, searcher: &mut Searcher, history: 
   }
 
   search_time = search_time.max(1);
-  match searcher.search(position, history, search_time) {
+  let mov = searcher_pool.search(position, history, SearchLimits::ThinkingTime(search_time));
+
+  match mov {
     Some(best_move) => println!("bestmove {}", best_move),
     None => println!("bestmove 0000"),
   }

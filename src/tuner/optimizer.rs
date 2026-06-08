@@ -4,13 +4,15 @@ use rayon::prelude::*;
 use std::fs::File;
 use std::io;
 use std::io::{BufRead, BufReader};
+use std::sync::Arc;
+use std::sync::atomic::AtomicU32;
 use std::time::Instant;
 use textplots::{Chart, Plot, Shape};
 use thousands::Separable;
 
 use crate::eval_params::EVAL_PARAMS_DEFAULT;
 use crate::position::Position;
-use crate::search::Searcher;
+use crate::search_unit::SearcherUnit;
 use crate::transposition_table::TranspositionTable;
 use crate::tuner::features::MAX_FEATURES;
 use crate::tuner::position_ir::PositionIR;
@@ -133,8 +135,8 @@ pub fn optimize_features(dataset_path: &str, max_number_of_samples: usize, max_i
 }
 
 pub fn optimize_k(file_path: &str, max_number_of_samples: usize) -> Result<f32, io::Error> {
-  let mut tt = TranspositionTable::default();
-  let mut searcher = Searcher::new(&mut tt);
+  let tt = Arc::new(TranspositionTable::default());
+  let mut searcher = SearcherUnit::new(0, tt, None,Arc::new(AtomicU32::new(0)));
   let mut number_of_samples = 0;
 
   // Vector of (qScore, (result))
