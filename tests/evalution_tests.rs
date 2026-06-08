@@ -1,5 +1,7 @@
 #[cfg(test)]
 mod evaluation_tests {
+  use std::sync::Arc;
+  use std::sync::atomic::AtomicU32;
   use zeno::eval_params::EVAL_PARAMS_DEFAULT;
   use zeno::evaluator::Evaluator;
   use zeno::history::History;
@@ -8,7 +10,8 @@ mod evaluation_tests {
   use zeno::piece::PieceType;
   use zeno::pos_eval::{Evaluation, MATE_SCORE};
   use zeno::position::Position;
-  use zeno::search::Searcher;
+  use zeno::search_constants::SearchLimits;
+  use zeno::search_unit::SearcherUnit;
   use zeno::square::{Square, SquareOps};
   use zeno::transposition_table::TranspositionTable;
   use zeno::utils::{MAX_PLY, START_POSITION};
@@ -44,10 +47,10 @@ mod evaluation_tests {
       }
       None => {}
     });
-    let mut transposition_table = TranspositionTable::default();
-    let mut searcher = Searcher::new(&mut transposition_table);
-    let search_result = searcher.search(&mut position, &mut history, 5 * 1000);
-    assert_eq!(search_result, None);
+    let transposition_table = Arc::new(TranspositionTable::default());
+    let mut searcher = SearcherUnit::new(0, transposition_table, None, Arc::new(AtomicU32::new(0)));
+    let search_result = searcher.search(&mut position, &mut history, SearchLimits::ThinkingTime(5 * 1000));
+    assert_eq!(search_result.mov, None);
 
     // Game link: https://lichess.org/hTK2QMUTul1t
     let mut history = History::new();
@@ -61,10 +64,10 @@ mod evaluation_tests {
       }
       None => {}
     });
-    let mut transposition_table = TranspositionTable::default();
-    let mut searcher = Searcher::new(&mut transposition_table);
-    let search_result = searcher.search(&mut position, &mut history, 5 * 1000);
-    assert_eq!(search_result, None);
+    let transposition_table = Arc::new(TranspositionTable::default());
+    let mut searcher = SearcherUnit::new(0, transposition_table, None, Arc::new(AtomicU32::new(0)));
+    let search_result = searcher.search(&mut position, &mut history, SearchLimits::ThinkingTime(5 * 1000));
+    assert_eq!(search_result.mov, None);
   }
 
   #[test]

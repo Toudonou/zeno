@@ -55,7 +55,7 @@ impl MovePicker {
   }
 
   #[inline(always)]
-  pub fn pick_best_move(&mut self) -> Option<Move> {
+  pub fn pick_best_move(&mut self) -> Option<(Move, i32)> {
     if self.start_index >= self.moves_list.count {
       return None;
     }
@@ -79,7 +79,7 @@ impl MovePicker {
     // Move the starting index to ignore the picked move in the future
     self.start_index += 1;
 
-    Some(best_move)
+    Some((best_move, (self.start_index - 1) as i32))
   }
 
   #[inline(always)]

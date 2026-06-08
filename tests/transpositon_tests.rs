@@ -3,7 +3,7 @@ mod transposition_tests {
   use zeno::moves::{Move, MoveType};
   use zeno::pos_eval::Evaluation;
   use zeno::position::Position;
-  use zeno::transposition_table::{TTEntry, TTFlag};
+  use zeno::transposition_table::{AtomicTTEntry, TTFlag};
   use zeno::utils::START_POSITION;
 
   #[test]
@@ -14,7 +14,7 @@ mod transposition_tests {
     let flag = TTFlag::LowerBound;
     let evaluation = Evaluation::Score(25);
     let ply = 0;
-    let tt_entry = TTEntry::new(position.get_zobrist_hash(), best_move, depth, flag, evaluation, ply);
+    let tt_entry = AtomicTTEntry::new(position.get_zobrist_hash(), best_move, depth, flag, evaluation, ply).get_tt_entry();
     assert_eq!(tt_entry.get_hash(), position.get_zobrist_hash());
     assert_eq!(tt_entry.get_best_move(), best_move);
     assert_eq!(tt_entry.get_depth(), depth);
@@ -27,7 +27,7 @@ mod transposition_tests {
     let flag = TTFlag::LowerBound;
     let evaluation = Evaluation::MateIn(8);
     let ply = 5;
-    let tt_entry = TTEntry::new(position.get_zobrist_hash(), best_move, depth, flag, evaluation, ply);
+    let tt_entry = AtomicTTEntry::new(position.get_zobrist_hash(), best_move, depth, flag, evaluation, ply).get_tt_entry();
     assert_eq!(tt_entry.get_hash(), position.get_zobrist_hash());
     assert_eq!(tt_entry.get_best_move(), best_move);
     assert_eq!(tt_entry.get_depth(), depth);
@@ -41,7 +41,7 @@ mod transposition_tests {
     let flag = TTFlag::LowerBound;
     let evaluation = Evaluation::MateIn(-6);
     let ply = 5;
-    let tt_entry = TTEntry::new(position.get_zobrist_hash(), best_move, depth, flag, evaluation, ply);
+    let tt_entry = AtomicTTEntry::new(position.get_zobrist_hash(), best_move, depth, flag, evaluation, ply).get_tt_entry();
     assert_eq!(tt_entry.get_hash(), position.get_zobrist_hash());
     assert_eq!(tt_entry.get_best_move(), best_move);
     assert_eq!(tt_entry.get_depth(), depth);
@@ -55,7 +55,7 @@ mod transposition_tests {
     let flag = TTFlag::LowerBound;
     let evaluation = Evaluation::Score(-6);
     let ply = 5;
-    let tt_entry = TTEntry::new(position.get_zobrist_hash(), best_move, depth, flag, evaluation, ply);
+    let tt_entry = AtomicTTEntry::new(position.get_zobrist_hash(), best_move, depth, flag, evaluation, ply).get_tt_entry();
     assert_eq!(tt_entry.get_hash(), position.get_zobrist_hash());
     assert_eq!(tt_entry.get_best_move(), best_move);
     assert_eq!(tt_entry.get_depth(), depth);

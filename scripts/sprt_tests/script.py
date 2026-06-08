@@ -6,13 +6,13 @@ zeno_current = "../../target/release/zeno"
 develop = "https://github.com/toudonou/zeno"
 
 # Compile the current version
-os.system("cargo build -p zeno --release")
+os.system("cargo build --release")
 
 # # Download the version currently on GitHub
 # os.system("mkdir zeno_develop/")
 # os.system(f"git clone {develop} zeno_develop")
 os.system(
-    "cd zeno_develop/ && cargo build --release && mv ./target/release/zeno ./target/release/zeno_develop && rm ./target/release/zeno"
+    "cd zeno_develop/ && cargo build --release && mv ./target/release/zeno ./target/release/zeno_develop"
 )
 
 zeno_develop = "./zeno_develop/target/release/zeno_develop"
@@ -24,10 +24,10 @@ execute_sprt_test_current_vs_develop = f"""
     -pgnout file="games.pgn" \
     -openings file=UHO_Lichess_4852_v1.epd format=epd order=random \
     -each tc=8+0.08 \
-    -rounds 10000 -repeat \
-    -concurrency 15 \
+    -rounds 1000 -repeat \
+    -concurrency 5 \
     -recover \
-    -sprt elo0=50 elo1=55 alpha=0.01 beta=0.01
+    -sprt elo0=150 elo1=180 alpha=0.01 beta=0.01
 """
 
 os.system(f"{execute_sprt_test_current_vs_develop}")

@@ -1,3 +1,5 @@
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::time::Instant;
 
 use crate::containers::ByColor;
@@ -9,101 +11,80 @@ use crate::moves_picker::MovePicker;
 use crate::piece::{PieceColor, PieceType};
 use crate::pos_eval::{Evaluation, MATE_SCORE};
 use crate::position::Position;
-use crate::transposition_table::{TTEntry, TTFlag, TranspositionTable};
+use crate::search_constants::{
+  BASE_ASPIRATION_WINDOW_DELTA, LMP_DEPTH_HORIZON, LMP_MARGINS, LMR_DEPTH_LIMIT, LMR_MOVE_SEARCHED, LMR_REDUCTION, MAX_EXTENSION, MAX_HISTORY_BONUS, NMP_DEPTH_LIMIT, NMP_DEPTH_REDUCTION,
+  NODES_BETWEEN_TIME_CHECKS, RAZORING_BASE, RAZORING_DEPTH_HORIZON, RAZORING_MARGIN, STATIC_NMP_DEPTH_HORIZON, STATIC_NMP_MARGIN, SearchLimits, SearchResult, SearchTables,
+};
+use crate::transposition_table::{TTFlag, TranspositionTable};
 use crate::utils::{MAX_PLY, ZENO_INFINITY};
 
-static LMP_DEPTH_HOZIRON: i32 = 5;
-static LMP_MARGINS: [i32; 1 + LMP_DEPTH_HOZIRON as usize] = [1, 9, 13, 17, 21, 25];
-
-static LMR_DEPTH_LIMIT: i32 = 6;
-static LMR_MOVE_SEARCHED: i32 = 6;
-static LMR_REDUCTION: i32 = 2;
-
-static MAX_EXTENSION: i32 = 16;
-static MAX_HISTORY_BONUS: i32 = MAX_PLY * MAX_PLY;
-
-static NMP_DEPTH_LIMIT: i32 = 2;
-static NMP_DEPTH_REDUCTION: i32 = 2;
-
-static RAZORING_BASE: i32 = 300;
-static RAZORING_DEPTH_HOZIRON: i32 = 3;
-static RAZORING_MARGIN: i32 = 60;
-
-static STATIC_NMP_DEPTH_HOZIRON: i32 = 3;
-static STATIC_NMP_MARGIN: i32 = 120;
-
-#[derive(Copy, Clone)]
-struct SearchStats {
-  pub number_of_nodes_visited: u32,
-  pub search_time: u128,
-  pub search_depth: u32,
-}
-
-#[derive(Copy, Clone)]
-struct SearchTables {
-  pub killers: [(Move, Move); 1 + MAX_PLY as usize],
-  pub counters: ByColor<[[Move; 64]; 64]>,
-  pub history_moves: ByColor<[[i32; 64]; 64]>,
-}
-
-pub struct Searcher<'a> {
-  transposition_table: &'a mut TranspositionTable,
+pub struct SearcherUnit {
+  thread_id: i32,
   timer: Instant,
-  thinking_time: u128,
-  max_depth: i32,
   stop_search: bool,
-  search_stats: SearchStats,
+  nodes_visited: u32,
+  search_limits: SearchLimits,
   search_tables: SearchTables,
-  pv_line: Vec<Move>,
+  total_threads_nodes: Arc<AtomicU32>,
+  external_stop: Option<Arc<AtomicBool>>,
+  transposition_table: Arc<TranspositionTable>,
 }
 
-impl<'a> Searcher<'a> {
-  pub fn new(transposition_table: &'a mut TranspositionTable) -> Searcher<'a> {
-    Searcher {
+impl SearcherUnit {
+  pub fn new(thread_id: i32, transposition_table: Arc<TranspositionTable>, external_stop: Option<Arc<AtomicBool>>, total_threads_nodes: Arc<AtomicU32>) -> SearcherUnit {
+    SearcherUnit {
+      thread_id,
+      external_stop,
+      nodes_visited: 0,
+      stop_search: false,
+      total_threads_nodes,
       transposition_table,
       timer: Instant::now(),
-      thinking_time: 3000,
-      max_depth: MAX_PLY,
-      stop_search: false,
-      search_stats: SearchStats { number_of_nodes_visited: 0, search_time: 0, search_depth: 0 },
+      search_limits: SearchLimits::ThinkingTime(3000),
       search_tables: SearchTables {
         killers: [(Move::default(), Move::default()); 1 + MAX_PLY as usize],
         counters: ByColor::new([[Move::default(); 64]; 64], [[Move::default(); 64]; 64]),
         history_moves: ByColor::new([[0; 64]; 64], [[0; 64]; 64]),
       },
-      pv_line: Vec::with_capacity(MAX_PLY as usize),
     }
   }
 
-  pub fn search(&mut self, position: &mut Position, history: &mut History, thinking_time: u128) -> Option<Move> {
-    let mut score = Evaluation::Score(0);
-    self.timer = Instant::now();
-    self.thinking_time = thinking_time;
+  pub fn search(&mut self, position: &Position, history: &History, search_limits: SearchLimits) -> SearchResult {
+    let mut position = position.clone();
+    let mut history = history.clone();
+    let mut score = Evaluation::Score(-ZENO_INFINITY);
+
     self.stop_search = false;
-    self.pv_line.clear();
+    self.timer = Instant::now();
+    self.search_limits = search_limits;
+
+    let mut search_result = SearchResult { mov: None, depth: -1, score, nodes: 0, search_time: 1, pv: vec![] };
 
     // Iterative deepening
-    for depth in 1..=self.max_depth {
-      self.search_stats = SearchStats { number_of_nodes_visited: 0, search_time: 0, search_depth: 0 };
+    for depth in 1..=MAX_PLY {
+      self.nodes_visited = 0;
+      if self.thread_id == 0 {
+        self.total_threads_nodes.store(0, Ordering::Relaxed);
+      }
 
-      let iterative_timer = Instant::now();
+      let search_time = Instant::now();
       let mut temp_pv_line: Vec<Move> = vec![];
 
       // Aspiration Window
-      let mut aspiration_window_delta = 30;
+      let mut aspiration_window_delta = BASE_ASPIRATION_WINDOW_DELTA;
       loop {
-        if self.timer.elapsed().as_millis() > self.thinking_time {
+        if self.update_and_check_stop(depth) {
           break;
         }
 
         if depth == 1 {
-          score = self.pv_search(position, history, 1, depth, -ZENO_INFINITY, ZENO_INFINITY, None, &mut temp_pv_line, 0);
+          score = self.pv_search(&mut position, &mut history, 1, depth, -ZENO_INFINITY, ZENO_INFINITY, None, &mut temp_pv_line, 0);
           break;
         } else {
           let alpha = score.value() - aspiration_window_delta;
           let beta = score.value() + aspiration_window_delta;
 
-          score = self.pv_search(position, history, 1, depth, alpha, beta, None, &mut temp_pv_line, 0);
+          score = self.pv_search(&mut position, &mut history, 1, depth, alpha, beta, None, &mut temp_pv_line, 0);
           if !(alpha < score.value() && score.value() < beta) {
             aspiration_window_delta *= 2;
           } else {
@@ -112,27 +93,40 @@ impl<'a> Searcher<'a> {
         }
       }
 
-      self.search_stats.search_depth = depth as u32;
-      self.search_stats.search_time = iterative_timer.elapsed().as_millis().max(1);
+      self.total_threads_nodes.fetch_add(self.nodes_visited, Ordering::Relaxed);
+
       if !self.stop_search {
-        self.pv_line = temp_pv_line;
-        self.print_info(depth, self.search_stats, score);
+        search_result.mov = temp_pv_line.first().copied();
+        search_result.depth = depth;
+        search_result.score = score;
+        search_result.nodes = self.total_threads_nodes.load(Ordering::Relaxed);
+        search_result.search_time = search_time.elapsed().as_millis().max(1);
+        search_result.pv = temp_pv_line.clone();
 
-        // Stop the search if a mate was found
-        if score.is_mate_score() {
-          break;
-        }
+        if self.thread_id == 0 {
+          search_result.print_info();
 
-        // I try to predict the time need to search the next depth.
-        // If there is no enough time, the search is automatically canceled
-        let estimated_time_ms = self.estimate_time_for_the_next_search(self.search_stats);
-        if estimated_time_ms > self.thinking_time - self.timer.elapsed().as_millis() {
-          break;
+          // Stop the search if a mate was found
+          if score.is_mate_score() {
+            break;
+          }
+
+          // I try to predict the time needed to search the next depth.
+          // If there is no enough time, the search is automatically canceled
+          match self.search_limits {
+            SearchLimits::ThinkingTime(thinking_time) => {
+              let estimated_time_ms = Self::estimate_time_for_the_next_search(depth, self.nodes_visited, search_result.search_time);
+              if estimated_time_ms > thinking_time - self.timer.elapsed().as_millis() {
+                break;
+              }
+            }
+            SearchLimits::MaxDepth(_) => {}
+          }
         }
       }
     }
 
-    self.pv_line.first().copied()
+    search_result
   }
 
   fn pv_search(
@@ -147,7 +141,11 @@ impl<'a> Searcher<'a> {
     pv_line: &mut Vec<Move>,
     num_extensions: i32,
   ) -> Evaluation {
-    self.search_stats.number_of_nodes_visited += 1;
+    if self.update_and_check_stop(depth) {
+      return Evaluation::Score(-ZENO_INFINITY);
+    }
+
+    self.nodes_visited += 1;
 
     let side = position.get_side();
     let is_pv = beta - alpha != 1;
@@ -187,7 +185,7 @@ impl<'a> Searcher<'a> {
     }
 
     // Static null move pruning
-    if depth <= STATIC_NMP_DEPTH_HOZIRON && !is_in_check && !is_pv && beta < MATE_SCORE {
+    if depth <= STATIC_NMP_DEPTH_HORIZON && !is_in_check && !is_pv && beta < MATE_SCORE {
       let static_score = Evaluator::evaluate(&position, &EVAL_PARAMS_DEFAULT);
       let score_margin = STATIC_NMP_MARGIN * depth;
       if static_score >= beta + score_margin {
@@ -196,7 +194,7 @@ impl<'a> Searcher<'a> {
     }
 
     // Razoring
-    if depth <= RAZORING_DEPTH_HOZIRON && !is_in_check && !is_pv && alpha < MATE_SCORE {
+    if depth <= RAZORING_DEPTH_HORIZON && !is_in_check && !is_pv && alpha < MATE_SCORE {
       let static_score = Evaluator::evaluate(&position, &EVAL_PARAMS_DEFAULT);
       let razoring_margin = RAZORING_BASE + RAZORING_MARGIN * depth;
       if static_score < alpha - razoring_margin {
@@ -210,13 +208,13 @@ impl<'a> Searcher<'a> {
     // Null move
     let can_do_null_move = !is_pv && !is_in_check && position.has_non_pawn_material();
     if can_do_null_move && depth >= NMP_DEPTH_LIMIT {
-      let ancient_en_passant_file = position.make_null_move();
+      let previous_en_passant_file = position.make_null_move();
       history.save_hash(position.get_zobrist_hash());
 
-      let nmp_reduction = NMP_DEPTH_REDUCTION + (depth as f32 / 6f32) as i32;
+      let nmp_reduction = NMP_DEPTH_REDUCTION + depth / 6;
       let eval = self.pv_search(position, history, ply + 1, depth - 1 - nmp_reduction, -beta, -alpha, None, &mut child_pv_line, num_extensions) * -1;
 
-      position.unmake_null_move(ancient_en_passant_file);
+      position.unmake_null_move(previous_en_passant_file);
       history.pop_last_entry();
 
       if !eval.is_mate_score() && eval.value() >= beta {
@@ -244,9 +242,8 @@ impl<'a> Searcher<'a> {
     let original_alpha = alpha;
     let mut best_eval = Evaluation::Score(-ZENO_INFINITY);
     let mut best_move = None;
-    let mut move_count = 0;
     let mut quiets_moves: Vec<Move> = Vec::with_capacity(move_picker.get_moves_count());
-    while let Some(mov) = move_picker.pick_best_move() {
+    while let Some((mov, move_index)) = move_picker.pick_best_move() {
       let mut eval: Evaluation;
       let is_capture = position.get_piece_on_square(mov.destination()).piece_type != PieceType::None || mov.move_type() == MoveType::EnPassant;
       let is_quiet = !is_capture && !mov.is_promotion();
@@ -256,7 +253,7 @@ impl<'a> Searcher<'a> {
       history.save_hash(temp_position.get_zobrist_hash());
 
       // Late move pruning
-      if depth <= LMP_DEPTH_HOZIRON && is_quiet && !is_pv && !is_in_check && move_count >= LMP_MARGINS[depth as usize] {
+      if depth <= LMP_DEPTH_HORIZON && is_quiet && !is_pv && !is_in_check && move_index >= LMP_MARGINS[depth as usize] {
         let give_check = temp_position.is_check(side.opposite());
         if !give_check {
           history.pop_last_entry();
@@ -265,7 +262,7 @@ impl<'a> Searcher<'a> {
       }
 
       // Pv move or first move - Full Search
-      if move_count == 0 {
+      if move_index == 0 {
         eval = self.pv_search(&mut temp_position, history, ply + 1, depth - 1, -beta, -alpha, Some(mov), &mut child_pv_line, num_extensions + extension) * -1;
       } else {
         // Late move reduction
@@ -283,7 +280,6 @@ impl<'a> Searcher<'a> {
         }
       }
 
-      move_count += 1;
       history.pop_last_entry();
 
       if eval.value() > best_eval.value() {
@@ -319,21 +315,17 @@ impl<'a> Searcher<'a> {
       if is_quiet {
         quiets_moves.push(mov);
       }
-
-      if self.timer.elapsed().as_millis() > self.thinking_time {
-        self.stop_search = true;
-        break;
-      }
     }
 
     if !self.stop_search {
-      let mut tt_entry = TTEntry::new(position.get_zobrist_hash(), best_move, depth as u32, TTFlag::Exact, best_eval, ply as u32);
-      if best_eval.value() <= original_alpha {
-        tt_entry = TTEntry::new(position.get_zobrist_hash(), best_move, depth as u32, TTFlag::UpperBound, best_eval, ply as u32);
+      let tt_flag = if best_eval.value() <= original_alpha {
+        TTFlag::UpperBound
       } else if best_eval.value() >= beta {
-        tt_entry = TTEntry::new(position.get_zobrist_hash(), best_move, depth as u32, TTFlag::LowerBound, best_eval, ply as u32);
-      }
-      self.transposition_table.save_entry(tt_entry);
+        TTFlag::LowerBound
+      } else {
+        TTFlag::Exact
+      };
+      self.transposition_table.save_entry(position.get_zobrist_hash(), best_move, depth as u32, tt_flag, best_eval, ply as u32);
     }
 
     best_eval
@@ -341,6 +333,7 @@ impl<'a> Searcher<'a> {
 
   #[inline(always)]
   pub fn quiescence_search(&mut self, position: &mut Position, mut alpha: i32, beta: i32, eval_params: &EvalParams) -> Evaluation {
+    self.nodes_visited += 1;
     let static_evaluation = Evaluation::Score(Evaluator::evaluate(position, eval_params));
 
     let mut best_eval = static_evaluation;
@@ -352,7 +345,7 @@ impl<'a> Searcher<'a> {
     }
 
     let mut move_picker: MovePicker = MovePicker::new(position, None, None, None, None, true);
-    while let Some(mov) = move_picker.pick_best_move() {
+    while let Some((mov, _)) = move_picker.pick_best_move() {
       if MovePicker::see_capture(position, mov) < 0 {
         continue;
       }
@@ -372,8 +365,7 @@ impl<'a> Searcher<'a> {
         best_eval = eval;
       }
 
-      if self.timer.elapsed().as_millis() > self.thinking_time {
-        self.stop_search = true;
+      if self.update_and_check_stop(0) {
         break;
       }
     }
@@ -389,37 +381,31 @@ impl<'a> Searcher<'a> {
   }
 
   #[inline(always)]
-  pub fn reset(&mut self) {
-    self.transposition_table.clear();
-    self.search_tables.killers = [(Move::default(), Move::default()); 1 + MAX_PLY as usize];
-    self.search_tables.counters = ByColor::new([[Move::default(); 64]; 64], [[Move::default(); 64]; 64]);
-    self.search_tables.history_moves = ByColor::new([[0; 64]; 64], [[0; 64]; 64]);
+  fn update_and_check_stop(&mut self, depth: i32) -> bool {
+    self.stop_search |= self.nodes_visited & (NODES_BETWEEN_TIME_CHECKS - 1) == 0
+      && if self.thread_id == 0 {
+        match self.search_limits {
+          SearchLimits::ThinkingTime(max_thinking_time) => self.timer.elapsed().as_millis() >= max_thinking_time,
+          SearchLimits::MaxDepth(max_searching_depth) => depth > max_searching_depth,
+        }
+      } else {
+        match &self.external_stop {
+          None => false,
+          Some(external_stop) => external_stop.load(Ordering::Relaxed),
+        }
+      };
+
+    self.stop_search
   }
 
   #[inline(always)]
-  fn print_info(&self, depth: i32, stats: SearchStats, score: Evaluation) {
-    print!("info depth {depth} nodes {} time {} nps {} ", stats.number_of_nodes_visited, stats.search_time, (1000 * stats.number_of_nodes_visited as u128 / stats.search_time));
-
-    match score {
-      Evaluation::Score(score) => print!("score cp {} ", score),
-      Evaluation::MateIn(mate_in) => print!("score mate {} ", mate_in / 2),
-    }
-
-    print!("pv ");
-    for mov in self.pv_line.clone() {
-      print!("{} ", mov)
-    }
-    println!();
-  }
-
-  #[inline(always)]
-  fn estimate_time_for_the_next_search(&self, search_stats: SearchStats) -> u128 {
-    let speed = 1000 * search_stats.number_of_nodes_visited as u128 / search_stats.search_time;
-    let branching_factor = (search_stats.number_of_nodes_visited as f32).powf(1.0 / (search_stats.search_depth as f32));
-    let future_depth = search_stats.search_depth + 1;
+  fn estimate_time_for_the_next_search(depth: i32, nodes_visited: u32, search_time: u128) -> u128 {
+    let future_depth = depth + 1;
+    let speed = 1000 * nodes_visited as u128 / search_time;
+    let branching_factor = (nodes_visited as f32).powf(1.0 / (depth as f32));
 
     // Geometric series because of the iterative deepening
-    let nodes_prediction = (branching_factor.powf((future_depth + 1) as f32) - 1.0) / ((branching_factor - 1.0).max(1.0));
+    let nodes_prediction = (branching_factor.powf((future_depth + 1) as f32) - 1.0) / ((branching_factor - 1.0).max(f32::EPSILON));
     // I only take 80% of the time because the prediction is not that accurate
     (0.8 * (nodes_prediction / speed as f32) * 1000.0) as u128
   }

@@ -413,14 +413,14 @@ impl Position {
 
   #[inline(always)]
   pub fn make_null_move(&mut self) -> u8 {
-    let ancient_en_passant_file = self.en_passant_file;
+    let previous_en_passant_file = self.en_passant_file;
 
-    self.zobrist_hash ^= ZobristHash::get_en_passant_file_key(ancient_en_passant_file);
+    self.zobrist_hash ^= ZobristHash::get_en_passant_file_key(previous_en_passant_file);
     self.zobrist_hash ^= ZobristHash::get_side_key();
     self.en_passant_file = 8;
     self.side = self.side.opposite();
 
-    ancient_en_passant_file
+    previous_en_passant_file
   }
 
   #[inline(always)]
