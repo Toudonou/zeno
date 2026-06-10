@@ -3,6 +3,7 @@ pub mod cmd;
 pub mod containers;
 pub mod eval_params;
 pub mod evaluator;
+pub mod game_state;
 pub mod history;
 pub mod lookup_tables;
 pub mod moves;

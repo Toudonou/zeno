@@ -1,10 +1,11 @@
 use crate::bitboard::BitBoard;
 use crate::containers::{ByColor, ByPieceType};
+use crate::history::HISTORY_MAX_SIZE;
 use crate::lookup_tables::{get_bishop_attacks, get_king_attacks, get_knight_attacks, get_pawns_attacks, get_rook_attacks};
-use crate::moves::{Move, MoveType};
+use crate::moves::{Move, MoveType, UndoMoveInfos};
 use crate::piece::{Piece, PieceColor, PieceType};
 use crate::square::Square;
-use crate::utils::{PAWNS_OCCUPANCY_OBLIGATION_FOR_EN_PASSANT, TOTAL_PHASE, get_phase};
+use crate::utils::PAWNS_OCCUPANCY_OBLIGATION_FOR_EN_PASSANT;
 use crate::zobrist_hash::{BoardHash, ZobristHash};
 use crate::{get_lsb, pop_lsb};
 
@@ -64,15 +65,17 @@ pub struct Position {
   side_occupancies: ByColor<BitBoard>,
   pieces_occupancies: ByPieceType<BitBoard>,
 
-  castling_rights: u8, // 0 0 0 0 0(q) 0(k) 0(Q) 0(K)
+  // 0 0 0 0 0(q) 0(k) 0(Q) 0(K)
+  castling_rights: u8,
   en_passant_file: u8,
 
   side: PieceColor,
   number_of_moves: u8,
   half_move_clock: u8,
-  phase: i8,
 
   zobrist_hash: BoardHash,
+  undo_moves_index: usize,
+  undo_moves: [UndoMoveInfos; HISTORY_MAX_SIZE],
 }
 
 impl Position {
@@ -195,14 +198,11 @@ impl Position {
     let mut zobrish_hash: u64 = 0;
     zobrish_hash ^= ZobristHash::get_castling_key(castling_rights);
     zobrish_hash ^= u64::from(side == PieceColor::White) * ZobristHash::get_side_key();
-    let mut phase = TOTAL_PHASE;
 
     let boards: ByPieceType<BitBoard> = ByPieceType::new(pawns_board, knights_board, bishops_board, rooks_board, queens_board, kings_board);
     for piece_type in [PieceType::Pawn, PieceType::Knight, PieceType::Bishop, PieceType::Rook, PieceType::Queen, PieceType::King] {
       let mut board = boards[piece_type] & white_board;
       while board != 0 {
-        phase -= get_phase(piece_type);
-
         let square = get_lsb!(board);
         zobrish_hash ^= ZobristHash::get_piece_key(Piece { color: PieceColor::White, piece_type }, square);
         pop_lsb!(board);
@@ -210,8 +210,6 @@ impl Position {
 
       board = boards[piece_type] & black_board;
       while board != 0 {
-        phase -= get_phase(piece_type);
-
         let square = get_lsb!(board);
         zobrish_hash ^= ZobristHash::get_piece_key(Piece { color: PieceColor::Black, piece_type }, square);
         pop_lsb!(board);
@@ -250,8 +248,9 @@ impl Position {
       side,
       number_of_moves: number_of_moves_move_part.parse().unwrap_or(1),
       half_move_clock: half_move_part.parse().unwrap_or(0),
-      phase,
       zobrist_hash: zobrish_hash,
+      undo_moves_index: 0,
+      undo_moves: [UndoMoveInfos { capture_piece_type: PieceType::Pawn, castling_rights, en_passant_file, number_of_moves: 0, half_move_clock: 0, zobrist_hash: 0 }; HISTORY_MAX_SIZE],
     }
   }
 
@@ -269,11 +268,18 @@ impl Position {
     let source_piece = self.get_piece_on_square(source);
     let destination_piece = self.get_piece_on_square(destination);
 
+    self.undo_moves[self.undo_moves_index].capture_piece_type = destination_piece.piece_type;
+    self.undo_moves[self.undo_moves_index].castling_rights = self.castling_rights;
+    self.undo_moves[self.undo_moves_index].en_passant_file = self.en_passant_file;
+    self.undo_moves[self.undo_moves_index].number_of_moves = self.number_of_moves;
+    self.undo_moves[self.undo_moves_index].half_move_clock = self.half_move_clock;
+    self.undo_moves[self.undo_moves_index].zobrist_hash = self.zobrist_hash;
+    self.undo_moves_index += 1;
+
     // Putting 0 at the index of the destination
     if destination_piece.piece_type != PieceType::None {
       self.pieces_occupancies[destination_piece.piece_type] &= !destination_mask;
       self.zobrist_hash ^= ZobristHash::get_piece_key(destination_piece, destination);
-      self.phase += get_phase(destination_piece.piece_type);
       // If the destination is not empty, the half move clock will be reset
       self.half_move_clock = 0;
     } else {
@@ -327,8 +333,6 @@ impl Position {
         self.pieces_occupancies[PieceType::Pawn] &= !(1u64 << enemy_pawn_square);
         self.side_occupancies[enemy_side] &= !(1u64 << enemy_pawn_square);
         self.zobrist_hash ^= ZobristHash::get_key_after_en_passant_has_been_taken_by(our_side, enemy_pawn_square);
-
-        self.phase += get_phase(PieceType::Pawn);
       }
       _ => {
         // MoveType::PawnToKnight | MoveType::PawnToBishop | MoveType::PawnToRook | MoveType::PawnToQueen
@@ -343,9 +347,6 @@ impl Position {
 
         self.zobrist_hash ^= ZobristHash::get_piece_key(Piece { color: our_side, piece_type: PieceType::Pawn }, destination);
         self.zobrist_hash ^= ZobristHash::get_piece_key(Piece { color: our_side, piece_type: promotion_piece_type }, destination);
-
-        self.phase += get_phase(PieceType::Pawn);
-        self.phase -= get_phase(promotion_piece_type);
       }
     }
 
@@ -366,6 +367,72 @@ impl Position {
     self.zobrist_hash ^= ZobristHash::get_side_key();
     self.number_of_moves += u8::from(self.side == PieceColor::Black);
     self.side = enemy_side;
+  }
+
+  #[inline(always)]
+  pub fn unmake_move(&mut self, mov: Move) {
+    self.undo_moves_index -= 1;
+
+    let our_side = self.side.opposite();
+    let enemy_side = our_side.opposite();
+
+    let source: Square = mov.source();
+    let destination: Square = mov.destination();
+    let move_type = mov.move_type();
+
+    let source_mask: BitBoard = 1u64 << source;
+    let destination_mask: BitBoard = 1u64 << destination;
+
+    let source_piece = self.get_piece_on_square(destination);
+
+    // Putting 0 at the index of the destination
+    // And moving the moved piece back at the source by putting 1 for the corresponding piece
+    self.pieces_occupancies[source_piece.piece_type] ^= source_mask | destination_mask;
+    self.side_occupancies[our_side] ^= source_mask | destination_mask;
+
+    match move_type {
+      MoveType::Normal => {}
+      MoveType::ShortCastle => {
+        self.pieces_occupancies[PieceType::Rook] ^= SHORT_CASTLE_ROOK_MASK[our_side];
+        self.side_occupancies[our_side] ^= SHORT_CASTLE_ROOK_MASK[our_side];
+      }
+      MoveType::LongCastle => {
+        self.pieces_occupancies[PieceType::Rook] ^= LONG_CASTLE_ROOK_MASK[our_side];
+        self.side_occupancies[our_side] ^= LONG_CASTLE_ROOK_MASK[our_side];
+      }
+      MoveType::EnPassant => {
+        let enemy_pawn_square = (destination as i8 + EN_PASSANT_OFFSET[our_side]) as Square;
+
+        self.pieces_occupancies[PieceType::Pawn] |= 1u64 << enemy_pawn_square;
+        self.side_occupancies[enemy_side] |= 1u64 << enemy_pawn_square;
+      }
+      _ => {
+        // MoveType::PawnToKnight | MoveType::PawnToBishop | MoveType::PawnToRook | MoveType::PawnToQueen
+        static PROMOTION_INDEX_TO_PIECE_TYPE: [PieceType; 4] = [PieceType::Knight, PieceType::Bishop, PieceType::Rook, PieceType::Queen];
+
+        // IMPORTANT: This index calculation is heavily aligned with the value assigned to each type of move in the struct MoveType
+        let promotion_index = move_type as usize - 3;
+        let promotion_piece_type: PieceType = PROMOTION_INDEX_TO_PIECE_TYPE[promotion_index];
+
+        self.pieces_occupancies[PieceType::Pawn] |= source_mask;
+        self.pieces_occupancies[promotion_piece_type] &= !source_mask;
+      }
+    }
+
+    // Putting 1 at the index of the destination if there was a captured piece
+    if self.undo_moves[self.undo_moves_index].capture_piece_type != PieceType::None {
+      self.pieces_occupancies[self.undo_moves[self.undo_moves_index].capture_piece_type] |= destination_mask;
+      self.side_occupancies[enemy_side] |= destination_mask;
+      self.half_move_clock = 0;
+    }
+
+    self.zobrist_hash = self.undo_moves[self.undo_moves_index].zobrist_hash;
+    self.castling_rights = self.undo_moves[self.undo_moves_index].castling_rights;
+    self.en_passant_file = self.undo_moves[self.undo_moves_index].en_passant_file;
+    self.number_of_moves = self.undo_moves[self.undo_moves_index].number_of_moves;
+    self.half_move_clock = self.undo_moves[self.undo_moves_index].half_move_clock;
+
+    self.side = our_side;
   }
 
   #[inline(always)]
@@ -628,18 +695,6 @@ impl Position {
   }
 
   #[inline(always)]
-  pub fn get_phase(&self) -> i32 {
-    // max(0): if we have a custom setup with more pieces than a normal chess board start position
-    (self.phase.max(0) as i32 * 256 + (TOTAL_PHASE as i32 / 2)) / TOTAL_PHASE as i32 // phase from [0, 24] to [0, 256]
-  }
-
-  /// The game is about 80% the total phase
-  #[inline(always)]
-  pub fn is_endgame(&self) -> bool {
-    self.get_phase() >= 200
-  }
-
-  #[inline(always)]
   pub fn can_short_castle(&self, side: PieceColor) -> bool {
     if self.castling_rights & CAN_SHORT_CASTLE[side] == 0 {
       return false;
@@ -652,9 +707,7 @@ impl Position {
     let initial_king_square = KING_SQUARE_FROM_START_POSITION[side];
 
     (board & IMPORTANT_SQUARES_MASK_FOR_SHORT_CASTLE[side]) == 0
-      && !self.is_square_attack_by(initial_king_square, enemy_side)
-      && !self.is_square_attack_by(initial_king_square + 1, enemy_side)
-      && !self.is_square_attack_by(initial_king_square + 2, enemy_side)
+      && !self.is_square_attack_by(initial_king_square, enemy_side) & &!self.is_square_attack_by(initial_king_square + 1, enemy_side) & &!self.is_square_attack_by(initial_king_square + 2, enemy_side)
   }
 
   #[inline(always)]
@@ -670,9 +723,7 @@ impl Position {
     let initial_king_square = KING_SQUARE_FROM_START_POSITION[side];
 
     (board & IMPORTANT_SQUARES_MASK_FOR_LONG_CASTLE[side]) == 0
-      && !self.is_square_attack_by(initial_king_square, enemy_side)
-      && !self.is_square_attack_by(initial_king_square - 1, enemy_side)
-      && !self.is_square_attack_by(initial_king_square - 2, enemy_side)
+      && !self.is_square_attack_by(initial_king_square, enemy_side) & &!self.is_square_attack_by(initial_king_square - 1, enemy_side) & &!self.is_square_attack_by(initial_king_square - 2, enemy_side)
   }
 
   #[inline(always)]
@@ -710,14 +761,12 @@ impl Position {
       (PieceColor::White, PieceType::Rook) => '♖',
       (PieceColor::White, PieceType::Queen) => '♕',
       (PieceColor::White, PieceType::King) => '♔',
-
       (PieceColor::Black, PieceType::Pawn) => '♟',
       (PieceColor::Black, PieceType::Knight) => '♞',
       (PieceColor::Black, PieceType::Bishop) => '♝',
       (PieceColor::Black, PieceType::Rook) => '♜',
       (PieceColor::Black, PieceType::Queen) => '♛',
       (PieceColor::Black, PieceType::King) => '♚',
-
       _ => '·',
     }
   }

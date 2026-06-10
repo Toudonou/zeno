@@ -84,9 +84,6 @@ mod tuner_evaluation_tests {
 
     for fen in fens {
       let position = Position::from_fen(fen);
-      if position.get_phase() > 200 {
-        continue;
-      }
       let position_ir = PositionIR::from_position(&position);
       let tuner_params = TunerParams::from_eval_param(&EVAL_PARAMS_DEFAULT);
       assert!((Evaluator::evaluate(&position, &EVAL_PARAMS_DEFAULT) * position.get_side().to_i32() - tuner_evaluation(&position_ir, &tuner_params) as i32).abs() <= 1);

@@ -8,9 +8,9 @@ develop = "https://github.com/toudonou/zeno"
 # Compile the current version
 os.system("cargo build --release")
 
-# # Download the version currently on GitHub
-# os.system("mkdir zeno_develop/")
-# os.system(f"git clone {develop} zeno_develop")
+# Download the version currently on GitHub
+os.system("mkdir zeno_develop/")
+os.system(f"git clone {develop} zeno_develop")
 os.system(
     "cd zeno_develop/ && cargo build --release && mv ./target/release/zeno ./target/release/zeno_develop"
 )
@@ -24,14 +24,13 @@ execute_sprt_test_current_vs_develop = f"""
     -pgnout file="games.pgn" \
     -openings file=UHO_Lichess_4852_v1.epd format=epd order=random \
     -each tc=8+0.08 \
-    -rounds 1000 -repeat \
-    -concurrency 5 \
+    -rounds 200 -repeat \
+    -concurrency 8 \
     -recover \
-    -sprt elo0=150 elo1=180 alpha=0.01 beta=0.01
 """
 
 os.system(f"{execute_sprt_test_current_vs_develop}")
-os.system("rm zeno_develop/target/release/zeno_develop")
+os.system("rm -rf zeno_develop/")
 os.system("./ordo -o ratings.txt -- games.pgn ")
 os.system("cat ratings.txt")
 os.system("./ordo -o ratings.txt -- games.pgn ")

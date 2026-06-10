@@ -1,6 +1,8 @@
-use crate::piece::PieceColor;
+use crate::piece::{PieceColor, PieceType};
 use crate::position::Position;
-use crate::tuner::features::{Features, FEATURES_ALL, MAX_FEATURES};
+use crate::tuner::features::{FEATURES_ALL, Features, MAX_FEATURES};
+use crate::utils::{TOTAL_PHASE, get_phase};
+use crate::{get_lsb, pop_lsb};
 
 /// Position Intermediary Representation
 #[derive(Clone, Debug)]
@@ -14,6 +16,17 @@ pub struct PositionIR {
 impl PositionIR {
   #[inline(always)]
   pub fn from_position(position: &Position) -> PositionIR {
+    let mut phase = TOTAL_PHASE;
+    for piece_type in [PieceType::Pawn, PieceType::Knight, PieceType::Bishop, PieceType::Rook, PieceType::Queen, PieceType::King] {
+      for color in [PieceColor::White, PieceColor::Black] {
+        let mut board = position.get_by_side_and_type(color, piece_type);
+        while board != 0 {
+          phase -= get_phase(piece_type);
+          pop_lsb!(board);
+        }
+      }
+    }
+
     Self {
       board: {
         let mut position_features = [0; MAX_FEATURES];
@@ -34,8 +47,8 @@ impl PositionIR {
         }
         position_features
       },
-      mg_factor: (256f32 - position.get_phase() as f32) / 256f32,
-      eg_factor: position.get_phase() as f32 / 256f32,
+      mg_factor: (256f32 - phase as f32) / 256f32,
+      eg_factor: phase as f32 / 256f32,
       side: position.get_side(),
     }
   }

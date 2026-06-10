@@ -2,6 +2,7 @@ use crate::eval_params::EvalParams;
 use crate::piece::{PieceColor, PieceType};
 use crate::position::Position;
 use crate::square::{Square, SquareOps};
+use crate::utils::{get_phase, TOTAL_PHASE};
 use crate::zobrist_hash::BoardHash;
 use crate::{get_lsb, pop_lsb};
 
@@ -32,15 +33,7 @@ impl Evaluator {
   fn tapered_evaluation(position: &Position, eval_params: &EvalParams) -> i32 {
     let mut mg_evaluation: i32 = 0;
     let mut eg_evaluation: i32 = 0;
-
-    if position.is_endgame() {
-      // A draw by insufficient material can only occur during endgames
-      if Evaluator::is_draw_by_insufficient_material(position) {
-        return 0;
-      }
-      eg_evaluation += Evaluator::king_cornering(position.get_king_square(PieceColor::White), position.get_king_square(PieceColor::Black));
-      eg_evaluation -= Evaluator::king_cornering(position.get_king_square(PieceColor::Black), position.get_king_square(PieceColor::White));
-    }
+    let mut phase = TOTAL_PHASE;
 
     for piece_type in [PieceType::Pawn, PieceType::Knight, PieceType::Bishop, PieceType::Rook, PieceType::Queen, PieceType::King] {
       let mut board = position.get_by_side_and_type(PieceColor::White, piece_type);
@@ -48,6 +41,8 @@ impl Evaluator {
         let square = get_lsb!(board);
         mg_evaluation += eval_params.get_mg_piece_value(piece_type) + eval_params.get_mg_psqt_value(piece_type, PieceColor::White, square);
         eg_evaluation += eval_params.get_eg_piece_value(piece_type) + eval_params.get_eg_psqt_value(piece_type, PieceColor::White, square);
+
+        phase -= get_phase(piece_type);
         pop_lsb!(board);
       }
 
@@ -56,11 +51,23 @@ impl Evaluator {
         let square = get_lsb!(board);
         mg_evaluation -= eval_params.get_mg_piece_value(piece_type) + eval_params.get_mg_psqt_value(piece_type, PieceColor::Black, square);
         eg_evaluation -= eval_params.get_eg_piece_value(piece_type) + eval_params.get_eg_psqt_value(piece_type, PieceColor::Black, square);
+
+        phase -= get_phase(piece_type);
         pop_lsb!(board);
       }
     }
 
-    let phase = position.get_phase();
+    let phase = phase.max(0) as i32;
+    // The game is about 80% of the phase
+    if phase >= 200 {
+      // A draw by insufficient material can only occur during endgames
+      if Evaluator::is_draw_by_insufficient_material(position) {
+        return 0;
+      }
+      eg_evaluation += Evaluator::king_cornering(position.get_king_square(PieceColor::White), position.get_king_square(PieceColor::Black));
+      eg_evaluation -= Evaluator::king_cornering(position.get_king_square(PieceColor::Black), position.get_king_square(PieceColor::White));
+    }
+
     (((mg_evaluation * (256 - phase)) + (eg_evaluation * phase)) >> 8) * position.get_side().to_i32()
   }
 

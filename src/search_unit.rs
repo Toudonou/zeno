@@ -248,14 +248,16 @@ impl SearcherUnit {
       let is_capture = position.get_piece_on_square(mov.destination()).piece_type != PieceType::None || mov.move_type() == MoveType::EnPassant;
       let is_quiet = !is_capture && !mov.is_promotion();
 
-      let mut temp_position = position.clone();
-      temp_position.make_move(mov);
-      history.save_hash(temp_position.get_zobrist_hash());
+      // let mut temp_position = position.clone();
+      // temp_position.make_move(mov);
+      position.make_move(mov);
+      history.save_hash(position.get_zobrist_hash());
 
       // Late move pruning
       if depth <= LMP_DEPTH_HORIZON && is_quiet && !is_pv && !is_in_check && move_index >= LMP_MARGINS[depth as usize] {
-        let give_check = temp_position.is_check(side.opposite());
+        let give_check = position.is_check(side.opposite());
         if !give_check {
+          position.unmake_move(mov);
           history.pop_last_entry();
           continue;
         }
@@ -263,23 +265,24 @@ impl SearcherUnit {
 
       // Pv move or first move - Full Search
       if move_index == 0 {
-        eval = self.pv_search(&mut temp_position, history, ply + 1, depth - 1, -beta, -alpha, Some(mov), &mut child_pv_line, num_extensions + extension) * -1;
+        eval = self.pv_search(position, history, ply + 1, depth - 1, -beta, -alpha, Some(mov), &mut child_pv_line, num_extensions + extension) * -1;
       } else {
         // Late move reduction
         let can_lmr = ply > 1 && !is_in_check && is_quiet && !is_pv && depth >= LMR_DEPTH_LIMIT && quiets_moves.len() as i32 >= LMR_MOVE_SEARCHED;
         let lmr_r = if can_lmr { (LMR_REDUCTION + depth / (2 * LMR_DEPTH_LIMIT)).clamp(1, depth - 2) } else { 0 };
 
-        eval = self.pv_search(&mut temp_position, history, ply + 1, depth - 1 - lmr_r, -alpha - 1, -alpha, Some(mov), &mut child_pv_line, num_extensions + extension) * -1;
+        eval = self.pv_search(position, history, ply + 1, depth - 1 - lmr_r, -alpha - 1, -alpha, Some(mov), &mut child_pv_line, num_extensions + extension) * -1;
 
         if eval.value() > alpha && lmr_r > 0 {
-          eval = self.pv_search(&mut temp_position, history, ply + 1, depth - 1, -alpha - 1, -alpha, Some(mov), &mut child_pv_line, num_extensions + extension) * -1;
+          eval = self.pv_search(position, history, ply + 1, depth - 1, -alpha - 1, -alpha, Some(mov), &mut child_pv_line, num_extensions + extension) * -1;
         }
 
         if alpha < eval.value() && eval.value() < beta {
-          eval = self.pv_search(&mut temp_position, history, ply + 1, depth - 1, -beta, -alpha, Some(mov), &mut child_pv_line, num_extensions + extension) * -1;
+          eval = self.pv_search(position, history, ply + 1, depth - 1, -beta, -alpha, Some(mov), &mut child_pv_line, num_extensions + extension) * -1;
         }
       }
 
+      position.unmake_move(mov);
       history.pop_last_entry();
 
       if eval.value() > best_eval.value() {
@@ -350,10 +353,12 @@ impl SearcherUnit {
         continue;
       }
 
-      let mut temp_position = position.clone();
-      temp_position.make_move(mov);
+      // let mut temp_position = position.clone();
+      // temp_position.make_move(mov);
 
-      let eval = self.quiescence_search(&mut temp_position, -beta, -alpha, eval_params) * -1;
+      position.make_move(mov);
+      let eval = self.quiescence_search(position, -beta, -alpha, eval_params) * -1;
+      position.unmake_move(mov);
 
       if eval.value() >= beta {
         return eval;

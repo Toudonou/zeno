@@ -3,6 +3,7 @@ use std::fmt::{Display, Formatter};
 use crate::piece::{Piece, PieceColor};
 use crate::position::Position;
 use crate::square::SquareOps;
+use crate::zobrist_hash::{BoardHash, ZobristHash};
 use crate::{piece::PieceType, square::Square};
 
 pub static MOVE_LIST_MAX_SIZE: usize = 252;
@@ -59,12 +60,6 @@ impl Move {
 
   #[inline(always)]
   pub fn from_uci_notation(move_string: &str, position: &Position) -> Option<Move> {
-    // let reg = Regex::new(r"^[a-h][1-8][a-h][1-8][nbrq]?$").unwrap();
-    // if !reg.is_match(move_string) {
-    //   println!("Incorrect uci move notation: {}", move_string);
-    //   return None;
-    // }
-
     let part: Vec<char> = move_string.chars().collect();
     let source_rank = part[1].to_digit(10).unwrap() - 1;
     let source_file = part[0];
@@ -171,4 +166,14 @@ impl MoveList {
     self.moves[self.count] = m;
     self.count += 1;
   }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct UndoMoveInfos {
+  pub capture_piece_type: PieceType,
+  pub castling_rights: u8,
+  pub en_passant_file: u8,
+  pub number_of_moves: u8,
+  pub half_move_clock: u8,
+  pub zobrist_hash: BoardHash,
 }

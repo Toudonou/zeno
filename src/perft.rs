@@ -19,9 +19,9 @@ pub fn perft(depth: i32, position: &mut Position) -> u64 {
 
   let mut nodes: u64 = 0;
   for idx in 0..move_list.count {
-    let mut temp_position = position.clone();
-    temp_position.make_move(move_list.moves[idx]);
-    nodes += perft(depth - 1, &mut temp_position);
+    position.make_move(move_list.moves[idx]);
+    nodes += perft(depth - 1, position);
+    position.unmake_move(move_list.moves[idx]);
   }
 
   nodes
