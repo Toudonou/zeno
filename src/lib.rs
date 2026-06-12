@@ -1,5 +1,6 @@
 pub mod bitboard;
 pub mod cmd;
+pub mod configs;
 pub mod containers;
 pub mod eval_params;
 pub mod evaluator;

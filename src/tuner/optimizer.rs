@@ -18,7 +18,7 @@ use crate::tuner::features::MAX_FEATURES;
 use crate::tuner::position_ir::PositionIR;
 use crate::tuner::tuner_evaluation::tuner_evaluation;
 use crate::tuner::tuner_params::TunerParams;
-use crate::utils::{mse, sigmoid, MAX_TUNER_BUFFER_SIZE, ZENO_INFINITY};
+use crate::utils::{MAX_TUNER_BUFFER_SIZE, ZENO_INFINITY, mse, sigmoid};
 
 pub fn optimize_features(dataset_path: &str, max_number_of_samples: usize, max_iterations: usize, k: f32) -> Result<(), io::Error> {
   let mut number_of_samples = 0;
@@ -136,7 +136,7 @@ pub fn optimize_features(dataset_path: &str, max_number_of_samples: usize, max_i
 
 pub fn optimize_k(file_path: &str, max_number_of_samples: usize) -> Result<f32, io::Error> {
   let tt = Arc::new(TranspositionTable::default());
-  let mut searcher = SearcherUnit::new(0, tt, None,Arc::new(AtomicU32::new(0)));
+  let mut searcher = SearcherUnit::new(0, tt, None, Arc::new(AtomicU32::new(0)));
   let mut number_of_samples = 0;
 
   // Vector of (qScore, (result))

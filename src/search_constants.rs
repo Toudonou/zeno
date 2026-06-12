@@ -3,8 +3,11 @@ use crate::moves::Move;
 use crate::pos_eval::Evaluation;
 use crate::utils::MAX_PLY;
 
+pub static DEFAULT_NUMBERS_OF_THREADS: u32 = 1;
+pub static MIN_NUMBERS_OF_THREADS: u32 = 1;
+pub static MAX_NUMBERS_OF_THREADS: u32 = 1024;
+
 pub static BASE_ASPIRATION_WINDOW_DELTA: i32 = 30;
-pub static DEFAULT_NUMBERS_OF_THREADS: i32 = 4;
 pub static NODES_BETWEEN_TIME_CHECKS: u32 = 4096;
 
 pub static LMP_DEPTH_HORIZON: i32 = 5;

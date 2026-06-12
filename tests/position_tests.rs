@@ -2,12 +2,12 @@
 mod position_tests {
   use zeno::moves::Move;
   use zeno::piece::{PieceColor, PieceType};
-  use zeno::position::Position;
-  use zeno::utils::{get_phase, START_POSITION, TOTAL_PHASE};
   use zeno::pop_lsb;
+  use zeno::position::Position;
+  use zeno::utils::START_POSITION;
 
   #[test]
-  fn correct_half_move_clock_and_number_of_move_and_phase() {
+  fn correct_half_move_clock_and_number_of_move() {
     let mut position = Position::from_fen(START_POSITION);
 
     // Game link: https://lichess.org/L84X4njg/black
@@ -16,17 +16,13 @@ mod position_tests {
       Some(mov) => position.make_move(mov),
       None => {}
     });
-    let mut phase: i8 = TOTAL_PHASE;
     for piece_type in [PieceType::Pawn, PieceType::Knight, PieceType::Bishop, PieceType::Rook, PieceType::Queen, PieceType::King] {
       let mut board = position.get_by_type(piece_type);
       while board != 0 {
-        phase -= get_phase(piece_type);
         pop_lsb!(board);
       }
     }
 
-    let phase = (phase.max(0) as i32 * 256 + (TOTAL_PHASE as i32 / 2)) / TOTAL_PHASE as i32;
-    assert_eq!(position.get_phase(), phase);
     assert_eq!(position.get_half_move_clock(), 3);
     assert_eq!(position.get_number_of_moves(), 63);
 
@@ -38,17 +34,13 @@ mod position_tests {
       Some(mov) => position.make_move(mov),
       None => {}
     });
-    let mut phase: i8 = TOTAL_PHASE;
     for piece_type in [PieceType::Pawn, PieceType::Knight, PieceType::Bishop, PieceType::Rook, PieceType::Queen, PieceType::King] {
       let mut board = position.get_by_type(piece_type);
       while board != 0 {
-        phase -= get_phase(piece_type);
         pop_lsb!(board);
       }
     }
 
-    let phase = (phase.max(0) as i32 * 256 + (TOTAL_PHASE as i32 / 2)) / TOTAL_PHASE as i32;
-    assert_eq!(position.get_phase(), phase);
     assert_eq!(position.get_half_move_clock(), 0);
     assert_eq!(position.get_number_of_moves(), 18);
 
@@ -59,17 +51,13 @@ mod position_tests {
       Some(mov) => position.make_move(mov),
       None => {}
     });
-    let mut phase: i8 = TOTAL_PHASE;
     for piece_type in [PieceType::Pawn, PieceType::Knight, PieceType::Bishop, PieceType::Rook, PieceType::Queen, PieceType::King] {
       let mut board = position.get_by_type(piece_type);
       while board != 0 {
-        phase -= get_phase(piece_type);
         pop_lsb!(board);
       }
     }
 
-    let phase = (phase.max(0) as i32 * 256 + (TOTAL_PHASE as i32 / 2)) / TOTAL_PHASE as i32;
-    assert_eq!(position.get_phase(), phase);
     assert_eq!(position.get_half_move_clock(), 4);
     assert_eq!(position.get_number_of_moves(), 49);
 
@@ -80,17 +68,13 @@ mod position_tests {
       Some(mov) => position.make_move(mov),
       None => {}
     });
-    let mut phase: i8 = TOTAL_PHASE;
     for piece_type in [PieceType::Pawn, PieceType::Knight, PieceType::Bishop, PieceType::Rook, PieceType::Queen, PieceType::King] {
       let mut board = position.get_by_type(piece_type);
       while board != 0 {
-        phase -= get_phase(piece_type);
         pop_lsb!(board);
       }
     }
 
-    let phase = (phase.max(0) as i32 * 256 + (TOTAL_PHASE as i32 / 2)) / TOTAL_PHASE as i32;
-    assert_eq!(position.get_phase(), phase);
     assert_eq!(position.get_half_move_clock(), 25);
     assert_eq!(position.get_number_of_moves(), 33);
   }

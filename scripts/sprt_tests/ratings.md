@@ -2,7 +2,7 @@
 
 | Features                                                                                                                                              | Category      | Delta (Elo) | Total Elo |
 |:------------------------------------------------------------------------------------------------------------------------------------------------------|:--------------|:-----------:|:---------:|
-| [**Lazy SMP**](https://github.com/Toudonou/zeno/commit/45af0e0512fb749a019dbe7f0f5bdf4841af0b26)                                                      | Search        |    +180     |   2605    |
+| [**Lazy SMP (4 threads and 64 MB for the TT)**](https://github.com/Toudonou/zeno/commit/45af0e0512fb749a019dbe7f0f5bdf4841af0b26)                     | Search        |    +180     |   2605    |
 | [**Late Move Pruning**](https://github.com/Toudonou/zeno/commit/f1c5b865abf33db33a0349dde30229753ae00609)                                             | Search        |     +55     |   2425    |
 | [**Razoring**](https://github.com/Toudonou/zeno/commit/714a22958ae486c3e6b3a989902a80ec95e3a5c9)                                                      | Search        |     +20     |   2370    |
 | [**Static null move pruning**](https://github.com/Toudonou/zeno/commit/3fd2d62090a5d754987189219a5a6c4d141974fa)                                      | Search        |     +75     |   2350    |

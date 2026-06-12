@@ -59,12 +59,6 @@ impl Move {
 
   #[inline(always)]
   pub fn from_uci_notation(move_string: &str, position: &Position) -> Option<Move> {
-    // let reg = Regex::new(r"^[a-h][1-8][a-h][1-8][nbrq]?$").unwrap();
-    // if !reg.is_match(move_string) {
-    //   println!("Incorrect uci move notation: {}", move_string);
-    //   return None;
-    // }
-
     let part: Vec<char> = move_string.chars().collect();
     let source_rank = part[1].to_digit(10).unwrap() - 1;
     let source_file = part[0];
