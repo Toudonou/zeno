@@ -11,105 +11,115 @@ including castling and en passant.
 ![Blitz](https://img.shields.io/badge/dynamic/json?label=Blitz&color=darkred&query=$.perfs.blitz.rating&url=https://lichess.org/api/user/zeno-bot)
 ![Rapid](https://img.shields.io/badge/dynamic/json?label=Rapid&color=darkblue&query=$.perfs.rapid.rating&url=https://lichess.org/api/user/zeno-bot)
 ![Classical](https://img.shields.io/badge/dynamic/json?label=Classical&color=green&query=$.perfs.classical.rating&url=https://lichess.org/api/user/zeno-bot)
+
+![Rust](https://img.shields.io/badge/Language-Rust-red)
+![Version](https://img.shields.io/badge/Version-2.0.0-blue)
+![License](https://img.shields.io/badge/License-GPLv3-green)
+
 </div>
 
 
-## Features
+## Quick Start
 
-- [x] Bitboard-based move generation
-  - [x] Legal move generator
-- [x] Castling and en passant support
-- [x] Magic bitboard lookup for sliding pieces
-- [x] [UCI protocol support (partially)](https://backscattering.de/chess/uci/#engine-info-hashfull)
-- [x] Perft testing
-- [x] [Zobrist hashing](https://en.wikipedia.org/wiki/Zobrist_hashing)
-- [x] Evaluation
-    - [x] Material evaluation
-    - [x] Piece-square tables evaluation
-    - [x] [Tapered evaluation](https://www.chessprogramming.org/Tapered_Eval)
-    - [x] Draw by insufficient material
-    - [x] [Draw by Threefold repetition](https://en.wikipedia.org/wiki/Threefold_repetition)
-    - [x] [Fifty-move rule (partially)](https://en.wikipedia.org/wiki/Fifty-move_rule)
-- [x] Search
-    - [x] [Alpha-beta pruning (Negamax)](https://en.wikipedia.org/wiki/Negamax#Negamax_with_alpha_beta_pruning)
-    - [x] Move Ordering
-      - [x] TT Move ordering
-      - [x] [MVV_LVA](https://www.chessprogramming.org/MVV-LVA)
-      - [x] [Killer Heuristic](https://www.chessprogramming.org/Killer_Heuristic)
-      - [x] [Countermove Heuristic](https://www.chessprogramming.org/Countermove_Heuristic)
-      - [x] [History Heuristic](https://www.chessprogramming.org/History_Heuristic)
-      - [x] [Static exchange evaluation](https://www.chessprogramming.org/Static_Exchange_Evaluation)
-      - [x] `TT_MOVE` → `GOOD_CAPTURES + PROMOTIONS` → `PROMOTIONS` → `GOOD_CAPTURES` → `KILLERS_MOVES` → `COUNTER_MOVE` → `CASTLES` → `BAD_CAPTURES` → `QUIET_MOVES`
-    - [x] Iterative deepening
-    - [x] [Transposition table](https://en.wikipedia.org/wiki/Negamax#Negamax_with_alpha_beta_pruning_and_transposition_tables)
-    - [x] [Quiescence search](https://www.chessprogramming.org/Quiescence_Search)
-    - [x] [Principal Variation Search (PVS)](https://en.wikipedia.org/wiki/Principal_variation_search)
-    - [x] Aspiration window
-    - [x] [Null move pruning](https://web.archive.org/web/20040306081648/http://www.brucemo.com/compchess/programming/nullmove.htm)
-    - [x] [Check Extensions](https://www.chessprogramming.org/Check_Extensions)
-    - [x] [Late move reductions](https://web.archive.org/web/20070820072632/http://www.glaurungchess.com/lmr.html)
-    - [x] Late Move Pruning
-    - [x] [Eval parameters tuning](https://www.chessprogramming.org/Texel%27s_Tuning_Method)
-    - [x] SEE Pruning in the quiescence search
-    - [x] Static null move pruning
-    - [x] [Razoring](https://www.chessprogramming.org/Razoring)
-    - [x] Lazy SMP
-- [x] Time management (partially)
+### Installation
 
-
-## Installation
-1. Clone the repository:
+1. **Clone the repository:**
     ```sh
     git clone https://github.com/Toudonou/zeno.git
-    ```
-2. Navigate to the project directory:
-    ```sh
     cd zeno
     ```
-3. Build the project using `cargo`:
+
+2. **Build the project:**
     ```sh
     cargo build --release
     ```
-   ```sh
+
+3. **Run the engine:**
+    ```sh
     ./target/release/zeno
     ```
+
+### Usage
+
+Zeno supports the UCI (Universal Chess Interface) protocol. You can:
+
+- Connect it to UCI-compatible GUIs (Arena, Chess.com, Lichess, etc.)
+- Run it interactively from the command line
+- Use it for analysis and engine matches
+
+For UCI documentation, see the [UCI Protocol Reference](https://backscattering.de/chess/uci/).
+
+## Documentation
+
+- **[features.md](docs/features.md)** - Complete list of implemented features with references
+- **[ratings.md](docs/ratings.md)** - Elo progression and feature-by-feature performance analysis
+- **[testing.md](docs/testing.md)** - SPRT test results for major features
+
+## Development
+
+### Building for Development
+
+```sh
+cargo build  # Debug build
+cargo build --release  # Optimized release build
+```
+
+### Running Tests
+
+```sh
+cargo test  # Run all tests
+```
+
+Various test suites are available in the `tests/` directory:
+- Perft tests for move generation verification
+- Position evaluation tests
+- Transposition table tests
+- Zobrist hashing tests
+- Tuner evaluation tests
+
+### Testing the Engine
+
+See [docs/testing.md](docs/testing.md) for information on:
+- SPRT (Sequential Probability Ratio Test) methodology
+- Feature testing procedures
+- Performance benchmarking
+
+### Engine Influences
+
+- [Berserk](https://github.com/jhollld/berserk)
+- [Blunder](https://github.com/deanmchris/blunder)
+- [Ethereal](https://github.com/AndyGrant/Ethereal)
+
+### Learning Resources
+
+- [Chess Programming Wiki](https://www.chessprogramming.org)
+- [UCI Protocol Documentation](https://publish.obsidian.md/modern-uci-doc/UCI+Docs/Intro)
+- [Zobrist Hashing](https://dev.to/larswaechter/zobrist-hashing-72n)
+- [Board Representation](https://lichess.org/@/likeawizard/blog/review-of-different-board-representations-in-computer-chess/S9eQCAWa)
+- [Minimax & Alpha-Beta Pruning](https://algocademy.com/blog/implementing-game-algorithms-minimax-and-alpha-beta-pruning/)
+- [Polyglot Format](http://hgm.nubati.net/book_format.html)
+- [Polyglot Zobrist Key Generator](https://shinkarom.github.io/zobrist/)
+
+### Additional resources:
+- https://www.dogeystamp.com/chess1/
+- https://www.cs.vu.nl/~wanf/theses/bijl-tiet-bscthesis.pdf
+- https://www.cs.cmu.edu/afs/cs/academic/class/15418-s12/www/competition/www.contrib.andrew.cmu.edu/~jvirdo/rasmussen-2004.pdf
+- https://www.josherv.in/2021/03/19/chess-1/
+- https://jdhwilkins.com/python-chess-efficient-move-generation-using-bitwise-operations/
+- https://raytran.net/projects/protochess
+- https://markus7800.github.io/blog/AI/chess_engine.html
+- https://billylevin.dev/posts/chess-engine-programming/
+- https://cs.stackexchange.com/questions/1134/how-does-the-negascout-algorithm-work
 
 ## Author
 
 - [Toudonou](https://github.com/Toudonou)
 
 
-## Engine Influences
+## Contributing
 
-- [Berserk](https://github.com/jhonnold/berserk)
-- [Blunder](https://github.com/deanmchris/blunder)
-- [Ethereal](https://github.com/AndyGrant/Ethereal)
-
-
-## Useful Links
-
-- https://www.chessprogramming.org
-- https://www.dogeystamp.com/chess1/
-- https://www.cs.vu.nl/~wanf/theses/bijl-tiet-bscthesis.pdf
-- https://publish.obsidian.md/modern-uci-doc/UCI+Docs/Intro
-- https://dev.to/larswaechter/zobrist-hashing-72n
-- https://www.cs.cmu.edu/afs/cs/academic/class/15418-s12/www/competition/www.contrib.andrew.cmu.edu/~jvirdo/rasmussen-2004.pdf
-- https://www.josherv.in/2021/03/19/chess-1/
-- https://jdhwilkins.com/python-chess-efficient-move-generation-using-bitwise-operations/
-- https://raytran.net/projects/protochess
-- https://lichess.org/@/likeawizard/blog/review-of-different-board-representations-in-computer-chess/S9eQCAWa
-- https://markus7800.github.io/blog/AI/chess_engine.html
-- https://billylevin.dev/posts/chess-engine-programming/
-- https://cs.stackexchange.com/questions/1134/how-does-the-negascout-algorithm-work
-- [Polyglot Format](http://hgm.nubati.net/book_format.html)
-- [Polyglot Zobrist Key Generator](https://shinkarom.github.io/zobrist/)
-- [Implementing Game Algorithms: Minimax and Alpha-Beta Pruning](https://algocademy.com/blog/implementing-game-algorithms-minimax-and-alpha-beta-pruning/)
-- [AlphaDeepChess](https://docta.ucm.es/rest/api/core/bitstreams/4e289e34-0b84-4c1b-9d19-bc0911cfb48b/content)
+Contributions are welcome!
 
 ## License
 
 Zeno is free software, licensed under the GNU General Public License v3. See [LICENSE](LICENSE) for details.
-
-## Contributing
-
-Contributions are welcome! Please fork the repository and submit a pull request.

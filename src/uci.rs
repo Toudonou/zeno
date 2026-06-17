@@ -17,14 +17,14 @@ pub static NAME: &str = "Zeno 2.0-dev";
 pub static AUTHOR_NAME: &str = "Toudonou";
 
 pub fn uci_loop() {
-  let mut config: Config = Config { nbr_threads: DEFAULT_NUMBERS_OF_THREADS, tt_size: DEFAULT_TRANSPOSITION_SIZE };
+  let mut config: Config = Config { threads: DEFAULT_NUMBERS_OF_THREADS, hash: DEFAULT_TRANSPOSITION_SIZE };
 
   let mut history = History::new();
   let mut position = Position::from_fen(START_POSITION);
   perft::perft(1, &mut position); // To init the lookup tables
 
-  let mut transposition_table = Arc::new(TranspositionTable::with_capacity(config.tt_size));
-  let mut search_pool = SearchPool::new(transposition_table, config.nbr_threads);
+  let mut transposition_table = Arc::new(TranspositionTable::with_capacity(config.hash));
+  let mut search_pool = SearchPool::new(transposition_table, config.threads);
 
   println!("id name {}", NAME);
   println!("id author {}\n", AUTHOR_NAME);
@@ -38,7 +38,9 @@ pub fn uci_loop() {
       "uci" | "help" => uci_commands(),
       "isready" => println!("readyok"),
       "ucinewgame" => {
+        search_pool.reset();
         position = Position::from_fen(START_POSITION);
+
         history.clear();
         history.save_hash(position.get_zobrist_hash());
       }
@@ -46,9 +48,10 @@ pub fn uci_loop() {
       c if c.starts_with("go") => go(command, &mut position, &search_pool, &mut history),
       c if c.starts_with("setoption") => {
         set_option(command, &mut config);
+        println!("New engine config : {config:?}");
 
-        transposition_table = Arc::new(TranspositionTable::with_capacity(config.tt_size));
-        search_pool = SearchPool::new(transposition_table, config.nbr_threads);
+        transposition_table = Arc::new(TranspositionTable::with_capacity(config.hash));
+        search_pool = SearchPool::new(transposition_table, config.threads);
       }
       "stop" => {}
       "quit" => break,
@@ -171,9 +174,9 @@ fn go(command: &str, position: &mut Position, searcher_pool: &SearchPool, histor
 
 fn set_option(command: &str, config: &mut Config) {
   if command.starts_with("setoption name Threads value") {
-    config.nbr_threads = command[("setoption name Threads value".len() + 1)..].parse().unwrap_or(DEFAULT_NUMBERS_OF_THREADS);
+    config.threads = command[("setoption name Threads value".len() + 1)..].parse().unwrap_or(DEFAULT_NUMBERS_OF_THREADS);
   } else if command.starts_with("setoption name Hash value") {
-    config.nbr_threads = command[("setoption name Hash value".len() + 1)..].parse().unwrap_or(DEFAULT_TRANSPOSITION_SIZE);
+    config.hash = command[("setoption name Hash value".len() + 1)..].parse().unwrap_or(DEFAULT_TRANSPOSITION_SIZE);
   }
 }
 

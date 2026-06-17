@@ -52,7 +52,7 @@ impl SearcherUnit {
   pub fn search(&mut self, position: &Position, history: &History, search_limits: SearchLimits) -> SearchResult {
     let mut position = position.clone();
     let mut history = history.clone();
-    let mut score = Evaluation::Score(-ZENO_INFINITY);
+    let mut score = Evaluation::Score(0);
 
     self.stop_search = false;
     self.timer = Instant::now();
@@ -81,8 +81,8 @@ impl SearcherUnit {
           score = self.pv_search(&mut position, &mut history, 1, depth, -ZENO_INFINITY, ZENO_INFINITY, None, &mut temp_pv_line, 0);
           break;
         } else {
-          let alpha = score.value() - aspiration_window_delta;
-          let beta = score.value() + aspiration_window_delta;
+          let alpha = (score.value() - aspiration_window_delta).max(-ZENO_INFINITY);
+          let beta = (score.value() + aspiration_window_delta).min(ZENO_INFINITY);
 
           score = self.pv_search(&mut position, &mut history, 1, depth, alpha, beta, None, &mut temp_pv_line, 0);
           if !(alpha < score.value() && score.value() < beta) {

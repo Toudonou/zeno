@@ -1,0 +1,42 @@
+## Features
+
+- [x] Bitboard-based move generation
+    - [x] Legal move generator
+- [x] Castling and en passant support
+- [x] Magic bitboard lookup for sliding pieces
+- [x] [UCI protocol support (partially)](https://backscattering.de/chess/uci/#engine-info-hashfull)
+- [x] Perft testing
+- [x] [Zobrist hashing](https://en.wikipedia.org/wiki/Zobrist_hashing)
+- [x] Evaluation
+    - [x] Material evaluation
+    - [x] Piece-square tables evaluation
+    - [x] [Tapered evaluation](https://www.chessprogramming.org/Tapered_Eval)
+    - [x] Draw by insufficient material
+    - [x] [Draw by Threefold repetition](https://en.wikipedia.org/wiki/Threefold_repetition)
+    - [x] [Fifty-move rule (partially)](https://en.wikipedia.org/wiki/Fifty-move_rule)
+- [x] Search
+    - [x] [Alpha-beta pruning (Negamax)](https://en.wikipedia.org/wiki/Negamax#Negamax_with_alpha_beta_pruning)
+    - [x] Move Ordering
+        - [x] TT Move ordering
+        - [x] [MVV_LVA](https://www.chessprogramming.org/MVV-LVA)
+        - [x] [Killer Heuristic](https://www.chessprogramming.org/Killer_Heuristic)
+        - [x] [Countermove Heuristic](https://www.chessprogramming.org/Countermove_Heuristic)
+        - [x] [History Heuristic](https://www.chessprogramming.org/History_Heuristic)
+        - [x] [Static exchange evaluation](https://www.chessprogramming.org/Static_Exchange_Evaluation)
+        - [x] `TT_MOVE` → `GOOD_CAPTURES + PROMOTIONS` → `PROMOTIONS` → `GOOD_CAPTURES` → `KILLERS_MOVES` → `COUNTER_MOVE` → `CASTLES` → `BAD_CAPTURES` → `QUIET_MOVES`
+    - [x] Iterative deepening
+    - [x] [Transposition table](https://en.wikipedia.org/wiki/Negamax#Negamax_with_alpha_beta_pruning_and_transposition_tables)
+    - [x] [Quiescence search](https://www.chessprogramming.org/Quiescence_Search)
+    - [x] [Principal Variation Search (PVS)](https://en.wikipedia.org/wiki/Principal_variation_search)
+    - [x] Aspiration window
+    - [x] [Null move pruning](https://web.archive.org/web/20040306081648/http://www.brucemo.com/compchess/programming/nullmove.htm)
+    - [x] [Check Extensions](https://www.chessprogramming.org/Check_Extensions)
+    - [x] [Late move reductions](https://web.archive.org/web/20070820072632/http://www.glaurungchess.com/lmr.html)
+    - [x] Late Move Pruning
+    - [x] [Eval parameters tuning](https://www.chessprogramming.org/Texel%27s_Tuning_Method)
+    - [x] SEE Pruning in the quiescence search
+    - [x] Static null move pruning
+    - [x] [Razoring](https://www.chessprogramming.org/Razoring)
+    - [x] Lazy SMP
+- [x] Time management (partially)
+

@@ -1,8 +1,8 @@
 use crate::piece::{PieceColor, PieceType};
-use crate::position::Position;
-use crate::tuner::features::{Features, FEATURES_ALL, MAX_FEATURES};
-use crate::utils::{get_phase, TOTAL_PHASE};
 use crate::pop_lsb;
+use crate::position::Position;
+use crate::tuner::features::{FEATURES_ALL, Features, MAX_FEATURES};
+use crate::utils::{TOTAL_PHASE, get_phase};
 
 /// Position Intermediary Representation
 #[derive(Clone, Debug)]

@@ -1,10 +1,10 @@
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
-use std::sync::{Arc, mpsc};
+use std::sync::{mpsc, Arc};
 
 use crate::history::History;
 use crate::moves::Move;
 use crate::position::Position;
-use crate::search_constants::{MAX_NUMBERS_OF_THREADS, MIN_NUMBERS_OF_THREADS, SearchLimits, SearchResult};
+use crate::search_constants::{SearchLimits, SearchResult, MAX_NUMBERS_OF_THREADS, MIN_NUMBERS_OF_THREADS};
 use crate::search_unit::SearcherUnit;
 use crate::transposition_table::TranspositionTable;
 
@@ -57,5 +57,9 @@ impl SearchPool {
 
     let best_result = best_result.expect("At least one unit must produce a result");
     best_result.mov
+  }
+
+  pub fn reset(&self) {
+    self.transposition_table.clear();
   }
 }
