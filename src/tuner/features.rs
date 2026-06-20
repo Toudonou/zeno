@@ -1,7 +1,10 @@
 use crate::piece::PieceType;
 use crate::square::{Square, SquareOps};
+use std::collections::HashMap;
+use std::sync::LazyLock;
 
 pub static PIECE_TYPES: [PieceType; 6] = [PieceType::Pawn, PieceType::Knight, PieceType::Bishop, PieceType::Rook, PieceType::Queen, PieceType::King];
+
 pub static SQUARES: [Square; Square::INVALID_SQUARE as usize] = {
   let mut squares = [0; Square::INVALID_SQUARE as usize];
   let mut i = 0;
@@ -11,48 +14,46 @@ pub static SQUARES: [Square; Square::INVALID_SQUARE as usize] = {
   }
   squares
 };
+pub const MAX_FEATURES: usize = /* Material */ PIECE_TYPES.len() + /* PSQT */ PIECE_TYPES.len() * SQUARES.len() + /* Bishop Pair */ 1;
 
-static MAX_MATERIALS_FEATURES: usize = PIECE_TYPES.len();
-static MAX_PSQT_FEATURES: usize = PIECE_TYPES.len() * SQUARES.len();
-pub static MAX_FEATURES: usize = MAX_MATERIALS_FEATURES + MAX_PSQT_FEATURES + 1 /*(Isolated pawn penatly)*/;
+pub static FEATURES_ALL: LazyLock<Vec<Features>> = LazyLock::new(|| {
+  let mut features = Vec::new();
 
-pub static FEATURES_ALL: [Features; MAX_FEATURES] = {
-  let mut features = [Features::Material(PieceType::Pawn); MAX_FEATURES];
-  let mut index = 0;
-  let mut p = 0;
-
-  while p < PIECE_TYPES.len() {
-    features[index] = Features::Material(PIECE_TYPES[p]);
-    index += 1;
-    p += 1;
+  for piece in PIECE_TYPES {
+    features.push(Features::Material(piece));
   }
 
-  let mut p = 0;
-  while p < PIECE_TYPES.len() {
-    let mut s = 0;
-    while s < SQUARES.len() {
-      features[index] = Features::Psqt(PIECE_TYPES[p], SQUARES[s]);
-      index += 1;
-      s += 1;
+  for piece in PIECE_TYPES {
+    for square in SQUARES {
+      features.push(Features::Psqt(piece, square));
     }
-    p += 1;
   }
+
+  features.push(Features::BishopPair);
 
   features
-};
+});
 
-#[derive(Clone, Copy, Debug)]
+static FEATURES_TO_INDEX: LazyLock<HashMap<Features, usize>> = LazyLock::new(|| {
+  let mut map = HashMap::new();
+
+  FEATURES_ALL.iter().enumerate().for_each(|(i, feature)| {
+    map.insert(*feature, i);
+  });
+
+  map
+});
+
+#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
 pub enum Features {
   Material(PieceType),
   Psqt(PieceType, Square),
+  BishopPair,
 }
 
 impl Features {
   #[inline(always)]
   pub fn to_index(self) -> usize {
-    match self {
-      Features::Material(piece_type) => piece_type as usize,
-      Features::Psqt(piece_type, square) => PieceType::None as usize + Square::INVALID_SQUARE as usize * piece_type as usize + square as usize,
-    }
+    FEATURES_TO_INDEX[&self]
   }
 }

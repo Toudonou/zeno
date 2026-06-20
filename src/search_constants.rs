@@ -65,7 +65,7 @@ impl SearchResult {
     print!("info depth {} nodes {} time {} nps {} ", self.depth, self.nodes, self.search_time, 1000 * self.nodes as u128 / self.search_time);
 
     match self.score {
-      Evaluation::Score(score) => print!("score cp {} ", score),
+      Evaluation::CentiPawns(score) => print!("score cp {} ", score),
       Evaluation::MateIn(mate_in) => print!("score mate {} ", mate_in / 2),
     }
 

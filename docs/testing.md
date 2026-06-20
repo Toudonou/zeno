@@ -1,7 +1,27 @@
 # SPRT results per features
 
-## Lazy SMP
+## SF 16 Materials Values + Bishop pair
+
 * Zeno current vs Zeno develop
+
+```
+--------------------------------------------------
+Results of Zeno current vs Zeno Develop (8+0.08, 1t, 16MB, UHO_Lichess_4852_v1.epd):
+Elo: 99.70 +/- 9.03, nElo: 117.30 +/- 10.06
+LOS: 100.00 %, DrawRatio: 32.10 %, PairsRatio: 3.16
+Games: 4586, Wins: 2423, Losses: 1142, Draws: 1021, Points: 2933.5 (63.97 %)
+Ptnml(0-2): [147, 227, 736, 564, 619], WL/DD Ratio: 5.40
+LLR: 4.61 (100.3%) (-4.60, 4.60) [85.00, 90.00]
+--------------------------------------------------
+SPRT ([85.00, 90.00]) completed - H1 was accepted
+Finished match
+Total Time: 02:01:14 (hours:minutes:seconds)
+```
+
+## Lazy SMP
+
+* Zeno current vs Zeno develop
+
 ```
 --------------------------------------------------
 Results of Zeno current vs Zeno Develop (8+0.08, NULL, NULL, UHO_Lichess_4852_v1.epd):
@@ -17,7 +37,9 @@ Total Time: 00:35:23 (hours:minutes:seconds)
 ```
 
 ## Late move pruning
+
 * Zeno current vs Zeno develop
+
 ```
 --------------------------------------------------
 Results of Zeno current vs Zeno Develop (8+0.08, NULL, NULL, UHO_Lichess_4852_v1.epd):
@@ -33,7 +55,9 @@ Total Time: 02:04:38 (hours:minutes:seconds)
 ```
 
 ## Razoring
+
 * Zeno current vs Zeno develop
+
 ```
 --------------------------------------------------
 Results of Zeno current vs Zeno Develop (8+0.08, NULL, NULL, UHO_Lichess_4852_v1.epd):
@@ -49,7 +73,9 @@ Total Time: 02:14:29 (hours:minutes:seconds)
 ```
 
 ## Static null move pruning
+
 * Zeno current vs Zeno develop
+
 ```
 --------------------------------------------------
 Results of Zeno current vs Zeno Develop (8+0.08, NULL, NULL, UHO_Lichess_4852_v1.epd):
@@ -65,7 +91,9 @@ Total Time: 02:23:00 (hours:minutes:seconds)
 ```
 
 ## SEE Pruning in the quiescence search
+
 * Zeno current vs Zeno develop
+
 ```
 --------------------------------------------------
 Results of Zeno current vs Zeno Develop (8+0.08, NULL, NULL, UHO_Lichess_4852_v1.epd):
@@ -81,7 +109,9 @@ Total Time: 03:16:28 (hours:minutes:seconds)
 ```
 
 ## Eval parameters tuning
+
 * Zeno current vs Zeno 2.0
+
 ```
 --------------------------------------------------
 Results of Zeno Current vs Zeno 2.0 (8+0.08, NULL, NULL, UHO_Lichess_4852_v1.epd):
@@ -97,7 +127,9 @@ Total Time: 03:36:23 (hours:minutes:seconds)
 ```
 
 ## Zeno 2.0 vs Zeno 1.0
+
 * Zeno 2.0 vs Zeno 1.0
+
 ```
 --------------------------------------------------
 Results of Zeno 2.0 vs Zeno 1.0 (8+0.08, NULL, NULL, UHO_Lichess_4852_v1.epd):
@@ -122,7 +154,9 @@ done
 ```
 
 ## Late Move Reduction
+
 * Zeno current vs Zeno develop
+
 ```
 Results of Zeno current vs Zeno develop (8+0.08, NULL, NULL, UHO_Lichess_4852_v1.epd):
 Elo: 21.24 +/- 4.95, nElo: 27.22 +/- 6.33
@@ -137,7 +171,9 @@ Total Time: 04:27:21 (hours:minutes:seconds)
 ```
 
 ## Time management and search refactoring
+
 * Zeno current vs Zeno develop
+
 ```
 Results of Zeno current vs Zeno develop (8+0.08, NULL, NULL, UHO_Lichess_4852_v1.epd):
 Elo: 58.62 +/- 6.12, nElo: 71.16 +/- 7.29
@@ -151,9 +187,10 @@ Finished match
 Total Time: 03:03:53 (hours:minutes:seconds)
 ```
 
-
 ## Check Extensions
+
 * Zeno current vs Zeno develop
+
 ```
 Results of Zeno current vs Zeno develop (8+0.08, NULL, NULL, 8moves_v3.pgn):
 Elo: 51.92 +/- 9.55, nElo: 64.48 +/- 11.68
@@ -167,9 +204,10 @@ Finished match
 Total Time: 01:09:05 (hours:minutes:seconds)
 ```
 
-
 ## Change the conditions for returning an evaluation from the TT
+
 * Zeno current vs Zeno develop
+
 ```
 Results of Zeno current vs Zeno develop (8+0.08, NULL, NULL, 8moves_v3.pgn):
 Elo: 12.05 +/- 7.02, nElo: 16.07 +/- 9.35
@@ -183,9 +221,10 @@ Finished match
 Total Time: 01:43:17 (hours:minutes:seconds)
 ```
 
-
 ## Search tables refactoring
+
 * Zeno current vs Zeno develop
+
 ```
 Results of Zeno current vs Zeno develop (8+0.08, NULL, NULL, 8moves_v3.pgn):
 Elo: 21.14 +/- 9.71, nElo: 28.28 +/- 12.95
@@ -205,6 +244,7 @@ Total Time: 00:54:56 (hours:minutes:seconds)
 ```
 
 * Zeno current vs Zeno-1.0
+
 ```
 Results of Zeno current vs Zeno 1.0 (8+0.08, NULL, NULL, 8moves_v3.pgn):
 Elo: 161.30 +/- 9.38, nElo: 214.16 +/- 10.82
@@ -218,9 +258,10 @@ Finished match
 Total Time: 01:09:17 (hours:minutes:seconds)
 ```
 
-
 ## Null Move Pruning
-* Zeno current vs Zeno develop 
+
+* Zeno current vs Zeno develop
+
 ```
 Results of Zeno current vs Zeno develop (8+0.08, NULL, NULL, 8moves_v3.pgn):
 Elo: 141.48 +/- 13.88, nElo: 174.87 +/- 15.39
@@ -235,6 +276,7 @@ Total Time: 00:39:03 (hours:minutes:seconds)
 ```
 
 * Zeno current vs Zeno-1.0
+
 ```
 Results of Zeno current vs Zeno 1.0 (8+0.08, NULL, NULL, 8moves_v3.pgn):
 Elo: 167.84 +/- 12.39, nElo: 208.55 +/- 13.22
@@ -248,9 +290,10 @@ Finished match
 Total Time: 00:51:59 (hours:minutes:seconds)
 ```
 
-
 ## History Heuristic
-* Zeno current vs Zeno develop 
+
+* Zeno current vs Zeno develop
+
 ```
 Results of Zeno current vs Zeno develop (8+0.08, NULL, NULL, 8moves_v3.pgn):
 Elo: 7.12 +/- 8.57, nElo: 8.95 +/- 10.77
@@ -264,6 +307,7 @@ Total Time: 01:18:13 (hours:minutes:seconds)
 ```
 
 * Zeno current vs Zeno-1.0
+
 ```
 Results of Zeno current vs Zeno 1.0 (8+0.08, NULL, NULL, 8moves_v3.pgn):
 Elo: 30.92 +/- 8.87, nElo: 37.74 +/- 10.77

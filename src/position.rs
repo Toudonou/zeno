@@ -4,7 +4,7 @@ use crate::lookup_tables::{get_bishop_attacks, get_king_attacks, get_knight_atta
 use crate::moves::{Move, MoveType};
 use crate::piece::{Piece, PieceColor, PieceType};
 use crate::square::Square;
-use crate::utils::PAWNS_OCCUPANCY_OBLIGATION_FOR_EN_PASSANT;
+use crate::utils::{PAWNS_OCCUPANCY_OBLIGATION_FOR_EN_PASSANT, TOTAL_PHASE, get_phase};
 use crate::zobrist_hash::{BoardHash, ZobristHash};
 use crate::{get_lsb, pop_lsb};
 
@@ -665,15 +665,18 @@ impl Position {
   }
 
   #[inline(always)]
-  pub fn clone_state(&mut self, other: &Position) {
-    self.side = other.side;
-    self.zobrist_hash = other.zobrist_hash;
-    self.castling_rights = other.castling_rights;
-    self.en_passant_file = other.en_passant_file;
-    self.number_of_moves = other.number_of_moves;
-    self.half_move_clock = other.half_move_clock;
-    self.side_occupancies = other.side_occupancies;
-    self.pieces_occupancies = other.pieces_occupancies;
+  pub fn evaluate_phase(&self) -> i32 {
+    let mut phase = TOTAL_PHASE;
+
+    for piece_type in [PieceType::Pawn, PieceType::Knight, PieceType::Bishop, PieceType::Rook, PieceType::Queen, PieceType::King] {
+      let mut board = self.get_by_type(piece_type);
+      while board != 0 {
+        phase -= get_phase(piece_type);
+        pop_lsb!(board);
+      }
+    }
+
+    phase.max(0) as i32
   }
 
   pub fn print_board(&self) {
