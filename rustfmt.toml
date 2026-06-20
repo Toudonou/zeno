@@ -1,9 +1,9 @@
 max_width = 200
 tab_spaces = 2
 
-fn_call_width = 220
+fn_call_width = 200
 fn_params_layout = "Tall"
 
-struct_lit_width = 220
-attr_fn_like_width = 220
-chain_width = 220
+struct_lit_width = 200
+attr_fn_like_width = 200
+chain_width = 200

@@ -23,7 +23,7 @@ use crate::utils::{MAX_TUNER_BUFFER_SIZE, ZENO_INFINITY, mse, sigmoid};
 pub fn optimize_features(dataset_path: &str, max_number_of_samples: usize, max_iterations: usize, k: f32) -> Result<(), io::Error> {
   let mut number_of_samples = 0;
 
-  // Vector of (Position Intermediary Representation, result)
+  // Vector of (Position Intermediate Representation, result)
   let mut total_positions: Vec<(PositionIR, f32)> = Vec::with_capacity(MAX_TUNER_BUFFER_SIZE);
   let file = File::open(dataset_path)?;
   let reader = BufReader::with_capacity(MAX_TUNER_BUFFER_SIZE, file);
@@ -105,7 +105,7 @@ pub fn optimize_features(dataset_path: &str, max_number_of_samples: usize, max_i
       eval_params.eg[index] -= learning_rate * inverse_n * gradients.eg[index];
     }
 
-    if iteration % 10 == 0 {
+    if iteration & (16 - 1) == 0 {
       let loss = total_positions
         .par_iter()
         .map(|(position, result)| {

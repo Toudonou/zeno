@@ -65,7 +65,7 @@ impl TTEntry {
     let eval = Evaluation::from_u32(((self.data >> (4 * 8)) & 0xFFFFFFFF) as u32);
 
     match eval {
-      Evaluation::Score(_) => eval,
+      Evaluation::CentiPawns(_) => eval,
       Evaluation::MateIn(mate_in) => Evaluation::MateIn(mate_in.signum() * (mate_in.abs() + ply as i32)),
     }
   }
@@ -109,7 +109,7 @@ impl AtomicTTEntry {
     let flag = flag.to_u32() as u64;
     let depth = depth as u64;
     let evaluation = match evaluation {
-      Evaluation::Score(_) => evaluation.to_u32() as u64,
+      Evaluation::CentiPawns(_) => evaluation.to_u32() as u64,
       Evaluation::MateIn(mate_in) => Evaluation::MateIn(mate_in.signum() * (mate_in.abs() - ply as i32)).to_u32() as u64,
     };
 
@@ -134,7 +134,7 @@ impl TranspositionTable {
     let max_entries = ((tt_size_mb * 1024 * 1024) as usize / size_of::<AtomicTTEntry>()).next_power_of_two();
 
     let mut table = Vec::with_capacity(max_entries);
-    table.resize_with(max_entries, || AtomicTTEntry::new(0, None, 0, TTFlag::None, Evaluation::Score(0), 0));
+    table.resize_with(max_entries, || AtomicTTEntry::new(0, None, 0, TTFlag::None, Evaluation::CentiPawns(0), 0));
 
     TranspositionTable { table, max_entries }
   }

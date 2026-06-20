@@ -1,8 +1,7 @@
-use crate::piece::{PieceColor, PieceType};
-use crate::pop_lsb;
+use crate::evaluator::Evaluator;
+use crate::piece::PieceColor;
 use crate::position::Position;
 use crate::tuner::features::{FEATURES_ALL, Features, MAX_FEATURES};
-use crate::utils::{TOTAL_PHASE, get_phase};
 
 /// Position Intermediary Representation
 #[derive(Clone, Debug)]
@@ -16,21 +15,11 @@ pub struct PositionIR {
 impl PositionIR {
   #[inline(always)]
   pub fn from_position(position: &Position) -> PositionIR {
-    let mut phase = TOTAL_PHASE;
-    for piece_type in [PieceType::Pawn, PieceType::Knight, PieceType::Bishop, PieceType::Rook, PieceType::Queen, PieceType::King] {
-      for color in [PieceColor::White, PieceColor::Black] {
-        let mut board = position.get_by_side_and_type(color, piece_type);
-        while board != 0 {
-          phase -= get_phase(piece_type);
-          pop_lsb!(board);
-        }
-      }
-    }
-
+    let phase = position.evaluate_phase();
     Self {
       board: {
         let mut position_features = [0; MAX_FEATURES];
-        for feature in FEATURES_ALL {
+        for &feature in FEATURES_ALL.iter() {
           let index = feature.to_index();
           position_features[index] = match feature {
             Features::Material(piece_type) => {
@@ -43,6 +32,7 @@ impl PositionIR {
               i8::from(piece_white_pov.piece_type == piece_type && piece_white_pov.color == PieceColor::White)
                 - i8::from(piece_black_pov.piece_type == piece_type && piece_black_pov.color == PieceColor::Black)
             }
+            Features::BishopPair => i8::from(Evaluator::has_bishop_pair(position, PieceColor::White)) - i8::from(Evaluator::has_bishop_pair(position, PieceColor::Black)),
           };
         }
         position_features

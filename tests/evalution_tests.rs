@@ -6,7 +6,7 @@ mod evaluation_tests {
   use zeno::history::History;
   use zeno::moves::{Move, MoveType};
   use zeno::moves_picker::MovePicker;
-  use zeno::piece::PieceType;
+  use zeno::piece::{PieceColor, PieceType};
   use zeno::pos_eval::{Evaluation, MATE_SCORE};
   use zeno::position::Position;
   use zeno::search_constants::SearchLimits;
@@ -19,7 +19,7 @@ mod evaluation_tests {
   fn test_evaluation_conversion_from_i32_to_u32_and_reverse() {
     // Simple score
     for i in -(MATE_SCORE / 2)..=(MATE_SCORE / 2) {
-      let initial_eval = Evaluation::Score(i);
+      let initial_eval = Evaluation::CentiPawns(i);
       let value_after_double_transition = Evaluation::from_u32(initial_eval.to_u32());
       assert_eq!(value_after_double_transition, initial_eval);
     }
@@ -105,7 +105,10 @@ mod evaluation_tests {
     let source = Square::from_algebraic_notation("e4");
     let destination = Square::from_algebraic_notation("f3");
     let see_value = MovePicker::see_capture(&position, Move::new(source, destination, MoveType::Normal));
-    assert_eq!(see_value, EVAL_PARAMS_DEFAULT.get_mg_piece_value(PieceType::Knight) + EVAL_PARAMS_DEFAULT.get_mg_piece_value(PieceType::Pawn) - 2 * EVAL_PARAMS_DEFAULT.get_mg_piece_value(PieceType::Pawn));
+    assert_eq!(
+      see_value,
+      EVAL_PARAMS_DEFAULT.get_mg_piece_value(PieceType::Knight) + EVAL_PARAMS_DEFAULT.get_mg_piece_value(PieceType::Pawn) - 2 * EVAL_PARAMS_DEFAULT.get_mg_piece_value(PieceType::Pawn)
+    );
     assert!(see_value > 0, "This capture is good for back");
 
     let position = Position::from_fen("3r1rk1/pnpqb1p1/1p1p1n1p/8/P5p1/2PPBp1P/1P2BRPN/R2Q2K1 w - - 0 1");
@@ -126,5 +129,23 @@ mod evaluation_tests {
     let destination = Square::from_algebraic_notation("e5");
     let see_value = MovePicker::see_capture(&position, Move::new(source, destination, MoveType::Normal));
     assert_eq!(see_value, EVAL_PARAMS_DEFAULT.get_mg_piece_value(PieceType::Pawn) - EVAL_PARAMS_DEFAULT.get_mg_piece_value(PieceType::Knight));
+  }
+
+  #[test]
+  fn test_has_bishop_pair() {
+    assert_eq!(Evaluator::has_bishop_pair(&Position::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"), PieceColor::White), true);
+    assert_eq!(Evaluator::has_bishop_pair(&Position::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"), PieceColor::Black), true);
+
+    assert_eq!(Evaluator::has_bishop_pair(&Position::from_fen("rnBqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RN1QKBNR b KQkq - 0 1"), PieceColor::White), false);
+    assert_eq!(Evaluator::has_bishop_pair(&Position::from_fen("r2qr1k1/pp1n2pp/2pb1np1/3p4/3P2P1/7P/PP1NPPB1/R1BQ1RK1 w - - 0 13"), PieceColor::White), true);
+
+    assert_eq!(Evaluator::has_bishop_pair(&Position::from_fen("r2q1rk1/2p1ppbp/p1n3p1/1p1nP3/1P1P4/P1Nb1N1P/1BQ2PP1/3RK2R w K - 0 18"), PieceColor::Black), true);
+    assert_eq!(Evaluator::has_bishop_pair(&Position::from_fen("r2r2k1/1R1b1pbp/p3p1p1/3pPn2/2pP4/2P5/P1NNBPPP/5RK1 w - - 2 20"), PieceColor::Black), true);
+
+    assert_eq!(Evaluator::has_bishop_pair(&Position::from_fen("2b4k/1p5p/1q3n2/pP3pQ1/3P3R/P7/2P2PP1/2RK4 w - - 0 1"), PieceColor::White), false);
+    assert_eq!(Evaluator::has_bishop_pair(&Position::from_fen("2b4k/1p5p/1q3n2/pP3pQ1/3P3R/P7/2P2PP1/2RK4 w - - 0 1"), PieceColor::Black), false);
+
+    assert_eq!(Evaluator::has_bishop_pair(&Position::from_fen("r6r/1pp2pk1/p1n3p1/2Np4/3P2Pq/P2P3P/1P1Q1PK1/R4R2 w - - 4 20"), PieceColor::White), false);
+    assert_eq!(Evaluator::has_bishop_pair(&Position::from_fen("r6r/1pp2pk1/p1n3p1/2Np4/3P2Pq/P2P3P/1P1Q1PK1/R4R2 w - - 4 20"), PieceColor::Black), false);
   }
 }

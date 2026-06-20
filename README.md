@@ -60,22 +60,14 @@ For UCI documentation, see the [UCI Protocol Reference](https://backscattering.d
 ### Building for Development
 
 ```sh
-cargo build  # Debug build
-cargo build --release  # Optimized release build
+cargo build --release # Always in release
 ```
 
 ### Running Tests
 
 ```sh
-cargo test  # Run all tests
+cargo test --release
 ```
-
-Various test suites are available in the `tests/` directory:
-- Perft tests for move generation verification
-- Position evaluation tests
-- Transposition table tests
-- Zobrist hashing tests
-- Tuner evaluation tests
 
 ### Testing the Engine
 
@@ -86,11 +78,11 @@ See [docs/testing.md](docs/testing.md) for information on:
 
 ### Engine Influences
 
-- [Berserk](https://github.com/jhollld/berserk)
+- [Berserk](https://github.com/jhonnold/berserk)
 - [Blunder](https://github.com/deanmchris/blunder)
 - [Ethereal](https://github.com/AndyGrant/Ethereal)
 
-### Learning Resources
+### Additional resources:
 
 - [Chess Programming Wiki](https://www.chessprogramming.org)
 - [UCI Protocol Documentation](https://publish.obsidian.md/modern-uci-doc/UCI+Docs/Intro)
@@ -99,8 +91,6 @@ See [docs/testing.md](docs/testing.md) for information on:
 - [Minimax & Alpha-Beta Pruning](https://algocademy.com/blog/implementing-game-algorithms-minimax-and-alpha-beta-pruning/)
 - [Polyglot Format](http://hgm.nubati.net/book_format.html)
 - [Polyglot Zobrist Key Generator](https://shinkarom.github.io/zobrist/)
-
-### Additional resources:
 - https://www.dogeystamp.com/chess1/
 - https://www.cs.vu.nl/~wanf/theses/bijl-tiet-bscthesis.pdf
 - https://www.cs.cmu.edu/afs/cs/academic/class/15418-s12/www/competition/www.contrib.andrew.cmu.edu/~jvirdo/rasmussen-2004.pdf
@@ -118,7 +108,7 @@ See [docs/testing.md](docs/testing.md) for information on:
 
 ## Contributing
 
-Contributions are welcome!
+Contributions are welcome! Please fork the repository and submit pull requests for any features, bug fixes, or improvements.
 
 ## License
 

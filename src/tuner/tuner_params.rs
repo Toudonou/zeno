@@ -5,7 +5,7 @@ use std::io::{BufWriter, Write};
 use crate::eval_params::EvalParams;
 use crate::piece::{PieceColor, PieceType};
 use crate::square::Square;
-use crate::tuner::features::{FEATURES_ALL, Features, MAX_FEATURES};
+use crate::tuner::features::{FEATURES_ALL, Features};
 use crate::utils::get_psqt_index;
 
 #[derive(Clone, Debug)]
@@ -19,7 +19,7 @@ impl TunerParams {
   pub fn from_eval_param(eval_params: &EvalParams) -> Self {
     let mut params_f32 = Self::fill_with(0.0);
 
-    for feature in FEATURES_ALL {
+    for &feature in FEATURES_ALL.iter() {
       let index = feature.to_index();
       match feature {
         Features::Material(piece_type) => {
@@ -30,6 +30,10 @@ impl TunerParams {
           params_f32.mg[index] = eval_params.get_mg_psqt_value(piece_type, PieceColor::White, square) as f32;
           params_f32.eg[index] = eval_params.get_eg_psqt_value(piece_type, PieceColor::White, square) as f32;
         }
+        Features::BishopPair => {
+          params_f32.mg[index] = eval_params.get_mg_bishop_pair_value() as f32;
+          params_f32.eg[index] = eval_params.get_eg_bishop_pair_value() as f32;
+        }
       };
     }
 
@@ -38,7 +42,7 @@ impl TunerParams {
 
   #[inline(always)]
   pub fn fill_with(value: f32) -> Self {
-    TunerParams { mg: vec![value; MAX_FEATURES], eg: vec![value; MAX_FEATURES] }
+    TunerParams { mg: vec![value; FEATURES_ALL.len()], eg: vec![value; FEATURES_ALL.len()] }
   }
 
   pub fn save_to_file(&self, file_name: &str, header_comments: &str) -> Result<(), io::Error> {
@@ -67,7 +71,15 @@ impl TunerParams {
       string_buffer.push_str(";\n");
     }
 
-    string_buffer.push_str("\n\n");
+    string_buffer.push_str("\n");
+    string_buffer.push_str("pub static MG_BISHOP_PAIR: i32 = ");
+    string_buffer.push_str(&(self.mg[Features::BishopPair.to_index()] as i32).to_string());
+    string_buffer.push_str(";\n");
+
+    string_buffer.push_str("pub static EG_BISHOP_PAIR: i32 = ");
+    string_buffer.push_str(&(self.eg[Features::BishopPair.to_index()] as i32).to_string());
+    string_buffer.push_str(";\n");
+
     for piece_type in [PieceType::Pawn, PieceType::Knight, PieceType::Bishop, PieceType::Rook, PieceType::Queen, PieceType::King] {
       println!();
       string_buffer.push_str("\n");
