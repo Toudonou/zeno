@@ -5,8 +5,8 @@ use crate::moves::Move;
 use crate::pos_eval::Evaluation;
 use crate::zobrist_hash::BoardHash;
 
-pub static DEFAULT_TRANSPOSITION_SIZE: u32 = 1; // 16 MB
-pub static MIN_TRANSPOSITION_SIZE: u32 = 1; // 16 MB
+pub static DEFAULT_TRANSPOSITION_SIZE: u32 = 1; // 1 MB
+pub static MIN_TRANSPOSITION_SIZE: u32 = 1; // 1 MB
 pub static MAX_TRANSPOSITION_SIZE: u32 = 256 * 1024; // 256 GB
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
