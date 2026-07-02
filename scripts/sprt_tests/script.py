@@ -21,14 +21,13 @@ execute_sprt_test_current_vs_develop = f"""
 ./fastchess \
     -engine cmd={zeno_current} name="Zeno current" \
     -engine cmd={zeno_develop} name="Zeno Develop" \
-    -each option.Threads=4 option.Hash=64 \
     -pgnout file="games.pgn" \
     -openings file=UHO_Lichess_4852_v1.epd format=epd order=random \
     -each tc=8+0.08 \
     -rounds 2000 -repeat \
-    -concurrency 2 \
+    -concurrency 15 \
+    -sprt elo0=100 elo1=110 alpha=0.01 beta=0.01 \
     -recover \
-    -sprt elo0=85 elo1=90 alpha=0.01 beta=0.01
 """
 
 os.system(f"{execute_sprt_test_current_vs_develop}")

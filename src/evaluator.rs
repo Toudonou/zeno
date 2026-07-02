@@ -40,8 +40,7 @@ impl Evaluator {
     let mut score = Score { mg: 0, eg: 0 };
     let phase = position.evaluate_phase();
 
-    // The game is about 80% of the phase
-    if phase >= 200 {
+    if phase > 150 {
       // A draw by insufficient material can only occur during endgames
       if Evaluator::is_draw_by_insufficient_material(position) {
         return 0;
@@ -57,7 +56,6 @@ impl Evaluator {
       score.mg += MG_BISHOP_PAIR;
       score.eg += EG_BISHOP_PAIR;
     }
-
     if Evaluator::has_bishop_pair(position, PieceColor::Black) {
       score.mg -= MG_BISHOP_PAIR;
       score.eg -= EG_BISHOP_PAIR;

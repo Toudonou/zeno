@@ -1,5 +1,23 @@
 # SPRT results per features
 
+## Fix phase conversion for the evaluation 
+
+* Zeno current vs Zeno develop
+
+```
+--------------------------------------------------
+Results of Zeno current vs Zeno Develop (8+0.08, 1t, 1MB, UHO_Lichess_4852_v1.epd):
+Elo: 117.58 +/- 13.98, nElo: 150.08 +/- 16.54
+LOS: 100.00 %, DrawRatio: 30.19 %, PairsRatio: 4.48
+Games: 1696, Wins: 906, Losses: 353, Draws: 437, Points: 1124.5 (66.30 %)
+Ptnml(0-2): [34, 74, 256, 273, 211], WL/DD Ratio: 4.69
+LLR: 4.60 (100.0%) (-4.60, 4.60) [100.00, 110.00]
+--------------------------------------------------
+SPRT ([100.00, 110.00]) completed - H1 was accepted
+Finished match
+Total Time: 00:44:51 (hours:minutes:seconds)
+```
+
 ## SF 16 Materials Values + Bishop pair
 
 * Zeno current vs Zeno develop

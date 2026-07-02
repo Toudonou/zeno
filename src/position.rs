@@ -676,7 +676,7 @@ impl Position {
       }
     }
 
-    phase.max(0) as i32
+    (phase.max(0) as i32 * 256 + (TOTAL_PHASE as i32 / 2)) / TOTAL_PHASE as i32 // phase from [0, 24] to [0, 256]
   }
 
   pub fn print_board(&self) {
