@@ -89,7 +89,11 @@ mod evaluation_tests {
   #[test]
   fn is_draw_by_insufficient_material_kb_same_square_color_vs_kb_same_square_color() {
     assert_eq!(Evaluator::is_draw_by_insufficient_material(&Position::from_fen("8/5K2/8/4b3/8/8/1k3B2/8 b - - 0 1")), true);
-    assert_eq!(Evaluator::is_draw_by_insufficient_material(&Position::from_fen("8/5K2/8/2B1b3/8/3b3B/1k6/8 w - - 0 1")), false, "There should only one bishop one each side");
+    assert_eq!(
+      Evaluator::is_draw_by_insufficient_material(&Position::from_fen("8/5K2/8/2B1b3/8/3b3B/1k6/8 w - - 0 1")),
+      false,
+      "There should only one bishop one each side"
+    );
   }
 
   #[test]
@@ -98,7 +102,10 @@ mod evaluation_tests {
     let source = Square::from_algebraic_notation("f3");
     let destination = Square::from_algebraic_notation("e5");
     let see_value = MovePicker::see_capture(&position, Move::new(source, destination, MoveType::Normal));
-    assert_eq!(see_value, EVAL_PARAMS_DEFAULT.get_mg_piece_value(PieceType::Pawn) - EVAL_PARAMS_DEFAULT.get_mg_piece_value(PieceType::Knight));
+    assert_eq!(
+      see_value,
+      EVAL_PARAMS_DEFAULT.get_mg_piece_value(PieceType::Pawn) - EVAL_PARAMS_DEFAULT.get_mg_piece_value(PieceType::Knight)
+    );
     assert!(see_value < 0, "This capture is bad for white");
 
     let position = Position::from_fen("3r1rk1/pnpqb1p1/1p1p1n1p/8/P3p1p1/2PPBN1P/1P2BRPN/R2Q2K1 b - - 0 1");
@@ -107,7 +114,8 @@ mod evaluation_tests {
     let see_value = MovePicker::see_capture(&position, Move::new(source, destination, MoveType::Normal));
     assert_eq!(
       see_value,
-      EVAL_PARAMS_DEFAULT.get_mg_piece_value(PieceType::Knight) + EVAL_PARAMS_DEFAULT.get_mg_piece_value(PieceType::Pawn) - 2 * EVAL_PARAMS_DEFAULT.get_mg_piece_value(PieceType::Pawn)
+      EVAL_PARAMS_DEFAULT.get_mg_piece_value(PieceType::Knight) + EVAL_PARAMS_DEFAULT.get_mg_piece_value(PieceType::Pawn)
+        - 2 * EVAL_PARAMS_DEFAULT.get_mg_piece_value(PieceType::Pawn)
     );
     assert!(see_value > 0, "This capture is good for back");
 
@@ -115,37 +123,84 @@ mod evaluation_tests {
     let source = Square::from_algebraic_notation("g2");
     let destination = Square::from_algebraic_notation("f3");
     let see_value = MovePicker::see_capture(&position, Move::new(source, destination, MoveType::Normal));
-    assert_eq!(see_value, 2 * EVAL_PARAMS_DEFAULT.get_mg_piece_value(PieceType::Pawn) - EVAL_PARAMS_DEFAULT.get_mg_piece_value(PieceType::Pawn));
+    assert_eq!(
+      see_value,
+      2 * EVAL_PARAMS_DEFAULT.get_mg_piece_value(PieceType::Pawn) - EVAL_PARAMS_DEFAULT.get_mg_piece_value(PieceType::Pawn)
+    );
     assert!(see_value > 0, "This capture is good for back");
 
     let position = Position::from_fen("3r1rk1/p1pq2p1/1p1pb2p/n7/P1n1p1p1/1P1PB1NP/1P2BR1N/R2Q2K1 b - - 0 1");
     let source = Square::from_algebraic_notation("b3");
     let destination = Square::from_algebraic_notation("c4");
     let see_value = MovePicker::see_capture(&position, Move::new(source, destination, MoveType::Normal));
-    assert_eq!(see_value, EVAL_PARAMS_DEFAULT.get_mg_piece_value(PieceType::Knight), "It's better for black to just give up the knight");
+    assert_eq!(
+      see_value,
+      EVAL_PARAMS_DEFAULT.get_mg_piece_value(PieceType::Knight),
+      "It's better for black to just give up the knight"
+    );
 
     let position = Position::from_fen("1k1r3q/1ppn3p/p4b2/4p3/8/P2N2P1/1PP1R1BP/2K1Q3 w - - 0 1");
     let source = Square::from_algebraic_notation("d3");
     let destination = Square::from_algebraic_notation("e5");
     let see_value = MovePicker::see_capture(&position, Move::new(source, destination, MoveType::Normal));
-    assert_eq!(see_value, EVAL_PARAMS_DEFAULT.get_mg_piece_value(PieceType::Pawn) - EVAL_PARAMS_DEFAULT.get_mg_piece_value(PieceType::Knight));
+    assert_eq!(
+      see_value,
+      EVAL_PARAMS_DEFAULT.get_mg_piece_value(PieceType::Pawn) - EVAL_PARAMS_DEFAULT.get_mg_piece_value(PieceType::Knight)
+    );
   }
 
   #[test]
   fn test_has_bishop_pair() {
-    assert_eq!(Evaluator::has_bishop_pair(&Position::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"), PieceColor::White), true);
-    assert_eq!(Evaluator::has_bishop_pair(&Position::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"), PieceColor::Black), true);
+    assert_eq!(
+      Evaluator::has_bishop_pair(&Position::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"), PieceColor::White),
+      true
+    );
+    assert_eq!(
+      Evaluator::has_bishop_pair(&Position::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"), PieceColor::Black),
+      true
+    );
 
-    assert_eq!(Evaluator::has_bishop_pair(&Position::from_fen("rnBqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RN1QKBNR b KQkq - 0 1"), PieceColor::White), false);
-    assert_eq!(Evaluator::has_bishop_pair(&Position::from_fen("r2qr1k1/pp1n2pp/2pb1np1/3p4/3P2P1/7P/PP1NPPB1/R1BQ1RK1 w - - 0 13"), PieceColor::White), true);
+    assert_eq!(
+      Evaluator::has_bishop_pair(&Position::from_fen("rnBqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RN1QKBNR b KQkq - 0 1"), PieceColor::White),
+      false
+    );
+    assert_eq!(
+      Evaluator::has_bishop_pair(&Position::from_fen("r2qr1k1/pp1n2pp/2pb1np1/3p4/3P2P1/7P/PP1NPPB1/R1BQ1RK1 w - - 0 13"), PieceColor::White),
+      true
+    );
 
-    assert_eq!(Evaluator::has_bishop_pair(&Position::from_fen("r2q1rk1/2p1ppbp/p1n3p1/1p1nP3/1P1P4/P1Nb1N1P/1BQ2PP1/3RK2R w K - 0 18"), PieceColor::Black), true);
-    assert_eq!(Evaluator::has_bishop_pair(&Position::from_fen("r2r2k1/1R1b1pbp/p3p1p1/3pPn2/2pP4/2P5/P1NNBPPP/5RK1 w - - 2 20"), PieceColor::Black), true);
+    assert_eq!(
+      Evaluator::has_bishop_pair(
+        &Position::from_fen("r2q1rk1/2p1ppbp/p1n3p1/1p1nP3/1P1P4/P1Nb1N1P/1BQ2PP1/3RK2R w K - 0 18"),
+        PieceColor::Black
+      ),
+      true
+    );
+    assert_eq!(
+      Evaluator::has_bishop_pair(&Position::from_fen("r2r2k1/1R1b1pbp/p3p1p1/3pPn2/2pP4/2P5/P1NNBPPP/5RK1 w - - 2 20"), PieceColor::Black),
+      true
+    );
 
-    assert_eq!(Evaluator::has_bishop_pair(&Position::from_fen("2b4k/1p5p/1q3n2/pP3pQ1/3P3R/P7/2P2PP1/2RK4 w - - 0 1"), PieceColor::White), false);
-    assert_eq!(Evaluator::has_bishop_pair(&Position::from_fen("2b4k/1p5p/1q3n2/pP3pQ1/3P3R/P7/2P2PP1/2RK4 w - - 0 1"), PieceColor::Black), false);
+    assert_eq!(
+      Evaluator::has_bishop_pair(&Position::from_fen("2b4k/1p5p/1q3n2/pP3pQ1/3P3R/P7/2P2PP1/2RK4 w - - 0 1"), PieceColor::White),
+      false
+    );
+    assert_eq!(
+      Evaluator::has_bishop_pair(&Position::from_fen("2b4k/1p5p/1q3n2/pP3pQ1/3P3R/P7/2P2PP1/2RK4 w - - 0 1"), PieceColor::Black),
+      false
+    );
 
     assert_eq!(Evaluator::has_bishop_pair(&Position::from_fen("r6r/1pp2pk1/p1n3p1/2Np4/3P2Pq/P2P3P/1P1Q1PK1/R4R2 w - - 4 20"), PieceColor::White), false);
     assert_eq!(Evaluator::has_bishop_pair(&Position::from_fen("r6r/1pp2pk1/p1n3p1/2Np4/3P2Pq/P2P3P/1P1Q1PK1/R4R2 w - - 4 20"), PieceColor::Black), false);
+    assert_eq!(
+      Evaluator::has_bishop_pair(&Position::from_fen("r6r/1pp2pk1/p1n3p1/2Np4/3P2Pq/P2P3P/1P1Q1PK1/R4R2 w - - 4 20"), PieceColor::White),
+      false
+    );
+    assert_eq!(
+      Evaluator::has_bishop_pair(&Position::from_fen("r6r/1pp2pk1/p1n3p1/2Np4/3P2Pq/P2P3P/1P1Q1PK1/R4R2 w - - 4 20"), PieceColor::Black),
+      false
+    );
+  }
+
   }
 }

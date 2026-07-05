@@ -8,6 +8,7 @@ use crate::{get_lsb, pop_lsb};
 use std::ops::{Add, AddAssign, SubAssign};
 
 pub static DRAW_VALUE: i32 = 0;
+pub static DRAW_PHASE_THRESHOLD: i32 = 200;
 static LIGHT_SQUARES: BitBoard = 0x55AA55AA55AA55AAu64;
 
 #[rustfmt::skip]
@@ -40,7 +41,7 @@ impl Evaluator {
     let mut score = Score { mg: 0, eg: 0 };
     let phase = position.evaluate_phase();
 
-    if phase > 150 {
+    if phase >= DRAW_PHASE_THRESHOLD {
       // A draw by insufficient material can only occur during endgames
       if Evaluator::is_draw_by_insufficient_material(position) {
         return 0;
@@ -91,7 +92,7 @@ impl Evaluator {
 
   #[inline(always)]
   pub fn is_draw_by_insufficient_material(position: &Position) -> bool {
-    if position.get_by_type(PieceType::Pawn).count_ones() != 0 || position.get_by_type(PieceType::Rook).count_ones() != 0 || position.get_by_type(PieceType::Queen).count_ones() != 0 {
+    if position.get_by_type(PieceType::Pawn) != 0 || position.get_by_type(PieceType::Rook) != 0 || position.get_by_type(PieceType::Queen) != 0 {
       return false;
     }
 

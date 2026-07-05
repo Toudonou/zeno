@@ -24,14 +24,14 @@ execute_sprt_test_current_vs_develop = f"""
     -pgnout file="games.pgn" \
     -openings file=UHO_Lichess_4852_v1.epd format=epd order=random \
     -each tc=8+0.08 \
-    -rounds 2000 -repeat \
-    -concurrency 15 \
-    -sprt elo0=100 elo1=110 alpha=0.01 beta=0.01 \
+    -rounds 1000 -repeat \
+    -sprt elo0=-5 elo1=-0 alpha=0.05 beta=0.05 \
+    -concurrency 16 \
     -recover \
 """
 
 os.system(f"{execute_sprt_test_current_vs_develop}")
-# os.system("rm -rf zeno_develop/")
+os.system("rm -rf zeno_develop/")
 os.system("./ordo -o ratings.txt -- games.pgn ")
 os.system("cat ratings.txt")
 os.system("./ordo -o ratings.txt -- games.pgn ")

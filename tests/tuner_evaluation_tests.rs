@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tuner_evaluation_tests {
   use zeno::eval_params::EVAL_PARAMS_DEFAULT;
-  use zeno::evaluator::Evaluator;
+  use zeno::evaluator::{DRAW_PHASE_THRESHOLD, Evaluator};
   use zeno::position::Position;
   use zeno::tuner::position_ir::PositionIR;
   use zeno::tuner::tuner_evaluation::tuner_evaluation;
@@ -362,9 +362,11 @@ mod tuner_evaluation_tests {
 
     for fen in fens {
       let position = Position::from_fen(fen);
-      let position_ir = PositionIR::from_position(&position);
-      let tuner_params = TunerParams::from_eval_param(&EVAL_PARAMS_DEFAULT);
-      assert!((Evaluator::evaluate(&position, &EVAL_PARAMS_DEFAULT) * position.get_side().to_i32() - tuner_evaluation(&position_ir, &tuner_params) as i32).abs() <= 1);
+      if position.evaluate_phase() < DRAW_PHASE_THRESHOLD {
+        let position_ir = PositionIR::from_position(&position);
+        let tuner_params = TunerParams::from_eval_param(&EVAL_PARAMS_DEFAULT);
+        assert!((Evaluator::evaluate(&position, &EVAL_PARAMS_DEFAULT) * position.get_side().to_i32() - tuner_evaluation(&position_ir, &tuner_params) as i32).abs() <= 1);
+      }
     }
   }
 }

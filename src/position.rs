@@ -201,14 +201,26 @@ impl Position {
       let mut board = boards[piece_type] & white_board;
       while board != 0 {
         let square = get_lsb!(board);
-        zobrish_hash ^= ZobristHash::get_piece_key(Piece { color: PieceColor::White, piece_type }, square);
+        zobrish_hash ^= ZobristHash::get_piece_key(
+          Piece {
+            color: PieceColor::White,
+            piece_type,
+          },
+          square,
+        );
         pop_lsb!(board);
       }
 
       board = boards[piece_type] & black_board;
       while board != 0 {
         let square = get_lsb!(board);
-        zobrish_hash ^= ZobristHash::get_piece_key(Piece { color: PieceColor::Black, piece_type }, square);
+        zobrish_hash ^= ZobristHash::get_piece_key(
+          Piece {
+            color: PieceColor::Black,
+            piece_type,
+          },
+          square,
+        );
         pop_lsb!(board);
       }
     }
@@ -301,8 +313,20 @@ impl Position {
         self.pieces_occupancies[PieceType::Rook] ^= SHORT_CASTLE_ROOK_MASK[our_side];
         self.side_occupancies[our_side] ^= SHORT_CASTLE_ROOK_MASK[our_side];
 
-        self.zobrist_hash ^= ZobristHash::get_piece_key(Piece { color: our_side, piece_type: PieceType::Rook }, INITIALS_ROOKS_SQUARES[our_side]);
-        self.zobrist_hash ^= ZobristHash::get_piece_key(Piece { color: our_side, piece_type: PieceType::Rook }, finals_rook_square);
+        self.zobrist_hash ^= ZobristHash::get_piece_key(
+          Piece {
+            color: our_side,
+            piece_type: PieceType::Rook,
+          },
+          INITIALS_ROOKS_SQUARES[our_side],
+        );
+        self.zobrist_hash ^= ZobristHash::get_piece_key(
+          Piece {
+            color: our_side,
+            piece_type: PieceType::Rook,
+          },
+          finals_rook_square,
+        );
       }
       MoveType::LongCastle => {
         static INITIALS_ROOKS_SQUARES: ByColor<Square> = ByColor::new(0, 56);
@@ -311,8 +335,20 @@ impl Position {
         self.pieces_occupancies[PieceType::Rook] ^= LONG_CASTLE_ROOK_MASK[our_side];
         self.side_occupancies[our_side] ^= LONG_CASTLE_ROOK_MASK[our_side];
 
-        self.zobrist_hash ^= ZobristHash::get_piece_key(Piece { color: our_side, piece_type: PieceType::Rook }, INITIALS_ROOKS_SQUARES[our_side]);
-        self.zobrist_hash ^= ZobristHash::get_piece_key(Piece { color: our_side, piece_type: PieceType::Rook }, finals_rook_square);
+        self.zobrist_hash ^= ZobristHash::get_piece_key(
+          Piece {
+            color: our_side,
+            piece_type: PieceType::Rook,
+          },
+          INITIALS_ROOKS_SQUARES[our_side],
+        );
+        self.zobrist_hash ^= ZobristHash::get_piece_key(
+          Piece {
+            color: our_side,
+            piece_type: PieceType::Rook,
+          },
+          finals_rook_square,
+        );
       }
       MoveType::EnPassant => {
         let enemy_pawn_square = (destination as i8 + EN_PASSANT_OFFSET[our_side]) as Square;
@@ -332,8 +368,20 @@ impl Position {
         self.pieces_occupancies[PieceType::Pawn] &= !destination_mask;
         self.pieces_occupancies[promotion_piece_type] |= destination_mask;
 
-        self.zobrist_hash ^= ZobristHash::get_piece_key(Piece { color: our_side, piece_type: PieceType::Pawn }, destination);
-        self.zobrist_hash ^= ZobristHash::get_piece_key(Piece { color: our_side, piece_type: promotion_piece_type }, destination);
+        self.zobrist_hash ^= ZobristHash::get_piece_key(
+          Piece {
+            color: our_side,
+            piece_type: PieceType::Pawn,
+          },
+          destination,
+        );
+        self.zobrist_hash ^= ZobristHash::get_piece_key(
+          Piece {
+            color: our_side,
+            piece_type: promotion_piece_type,
+          },
+          destination,
+        );
       }
     }
 
@@ -552,7 +600,10 @@ impl Position {
       PieceColor::Black
     } else {
       // If the square has no color, there is no piece on it
-      return Piece { color: PieceColor::None, piece_type: PieceType::None };
+      return Piece {
+        color: PieceColor::None,
+        piece_type: PieceType::None,
+      };
     };
 
     let piece_type = if self.pieces_occupancies[PieceType::Pawn] & square_mask != 0 {
