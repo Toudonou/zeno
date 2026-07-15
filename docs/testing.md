@@ -1,5 +1,23 @@
 # SPRT results per features
 
+## Adam optimizer for the tuner: values tuned from 0.0
+
+* Zeno current vs Zeno develop
+
+```
+--------------------------------------------------
+Results of Zeno current vs Zeno Develop (8+0.08, 1t, 1MB, UHO_Lichess_4852_v1.epd):
+Elo: 138.33 +/- 15.72, nElo: 160.90 +/- 16.47
+LOS: 100.00 %, DrawRatio: 32.40 %, PairsRatio: 4.84
+Games: 1710, Wins: 1044, Losses: 397, Draws: 269, Points: 1178.5 (68.92 %)
+Ptnml(0-2): [42, 57, 277, 170, 309], WL/DD Ratio: 12.19
+LLR: 4.61 (100.4%) (-4.60, 4.60) [110.00, 120.00]
+--------------------------------------------------
+SPRT ([110.00, 120.00]) completed - H1 was accepted
+Finished match
+Total Time: 00:36:52 (hours:minutes:seconds)
+```
+
 ## Fix phase conversion for the evaluation 
 
 * Zeno current vs Zeno develop

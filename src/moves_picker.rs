@@ -1,12 +1,11 @@
 use std::cmp;
 
-use crate::eval_params::EVAL_PARAMS_DEFAULT;
-use crate::moves::{Move, MoveList, MoveType, MOVE_LIST_MAX_SIZE};
+use crate::moves::{MOVE_LIST_MAX_SIZE, Move, MoveList, MoveType};
 use crate::moves_generator::{generate_legal_moves, generate_quiescences_moves};
 use crate::piece::{Piece, PieceType};
 use crate::position::Position;
 use crate::square::Square;
-use crate::utils::ZENO_INFINITY;
+use crate::utils::{SEE_VALUES, ZENO_INFINITY};
 
 // Move's order
 // 1. TT move
@@ -33,13 +32,24 @@ pub struct MovePicker {
 
 impl MovePicker {
   #[inline(always)]
-  pub fn new(position: &mut Position, tt_move: Option<Move>, killers: Option<(Move, Move)>, counter: Option<Move>, history_heuristic: Option<&[[i32; 64]; 64]>, is_quiescence_search: bool) -> Self {
+  pub fn new(
+    position: &mut Position,
+    tt_move: Option<Move>,
+    killers: Option<(Move, Move)>,
+    counter: Option<Move>,
+    history_heuristic: Option<&[[i32; 64]; 64]>,
+    is_quiescence_search: bool,
+  ) -> Self {
     let tt_move = tt_move.unwrap_or_default();
     let killers = killers.unwrap_or_default();
     let counter = counter.unwrap_or_default();
     let history_heuristic = history_heuristic.unwrap_or(&[[0; 64]; 64]);
 
-    let mut move_picker = MovePicker { moves_list: MoveList::new(), scores: [-ZENO_INFINITY; MOVE_LIST_MAX_SIZE], start_index: 0 };
+    let mut move_picker = MovePicker {
+      moves_list: MoveList::new(),
+      scores: [-ZENO_INFINITY; MOVE_LIST_MAX_SIZE],
+      start_index: 0,
+    };
 
     if is_quiescence_search {
       generate_quiescences_moves(position, &mut move_picker.moves_list);
@@ -128,7 +138,7 @@ impl MovePicker {
 
     (if victim.piece_type != PieceType::None {
       temp_position.make_see_capture(attacker, victim, mov.source(), mov.destination());
-      EVAL_PARAMS_DEFAULT.get_mg_piece_value(victim.piece_type)
+      SEE_VALUES[victim.piece_type]
     } else {
       0
     }) - MovePicker::see(&mut temp_position, mov.destination(), attacker)
@@ -138,12 +148,15 @@ impl MovePicker {
   fn see(position: &mut Position, destination: Square, victim: Piece) -> i32 {
     let mut value: i32 = 0;
     let attacker_type_and_square = position.get_smallest_attacker_infos(destination, victim.color.opposite());
-    let attacker = Piece { color: victim.color.opposite(), piece_type: attacker_type_and_square.0 };
+    let attacker = Piece {
+      color: victim.color.opposite(),
+      piece_type: attacker_type_and_square.0,
+    };
 
     if attacker.piece_type != PieceType::None {
       position.make_see_capture(attacker, victim, attacker_type_and_square.1, destination);
       // Should be good, all captures are not forced
-      value = cmp::max(0, EVAL_PARAMS_DEFAULT.get_mg_piece_value(victim.piece_type) - Self::see(position, destination, attacker));
+      value = cmp::max(0, SEE_VALUES[victim.piece_type] - Self::see(position, destination, attacker));
     }
 
     value

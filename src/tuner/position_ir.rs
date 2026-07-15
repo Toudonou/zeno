@@ -1,12 +1,12 @@
 use crate::evaluator::Evaluator;
 use crate::piece::PieceColor;
 use crate::position::Position;
-use crate::tuner::features::{FEATURES_ALL, Features, MAX_FEATURES};
+use crate::tuner::features::{FEATURES_ALL, Features};
 
-/// Position Intermediary Representation
+/// Position Intermediate Representation
 #[derive(Clone, Debug)]
 pub struct PositionIR {
-  pub board: [i8; MAX_FEATURES],
+  pub board: Vec<(usize, i8)>,
   pub side: PieceColor,
   pub mg_factor: f32,
   pub eg_factor: f32,
@@ -18,10 +18,10 @@ impl PositionIR {
     let phase = position.evaluate_phase();
     Self {
       board: {
-        let mut position_features = [0; MAX_FEATURES];
+        let mut position_features = Vec::with_capacity(64);
         for &feature in FEATURES_ALL.iter() {
           let index = feature.to_index();
-          position_features[index] = match feature {
+          let feature = match feature {
             Features::Material(piece_type) => {
               position.get_by_side_and_type(PieceColor::White, piece_type).count_ones() as i8 - position.get_by_side_and_type(PieceColor::Black, piece_type).count_ones() as i8
             }
@@ -34,6 +34,10 @@ impl PositionIR {
             }
             Features::BishopPair => i8::from(Evaluator::has_bishop_pair(position, PieceColor::White)) - i8::from(Evaluator::has_bishop_pair(position, PieceColor::Black)),
           };
+
+          if feature != 0 {
+            position_features.push((index, feature));
+          }
         }
         position_features
       },

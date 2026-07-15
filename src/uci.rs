@@ -17,7 +17,10 @@ pub static NAME: &str = "Zeno 2.0-dev";
 pub static AUTHOR_NAME: &str = "Toudonou";
 
 pub fn uci_loop() {
-  let mut config: Config = Config { threads: DEFAULT_NUMBERS_OF_THREADS, hash: DEFAULT_TRANSPOSITION_SIZE };
+  let mut config: Config = Config {
+    threads: DEFAULT_NUMBERS_OF_THREADS,
+    hash: DEFAULT_TRANSPOSITION_SIZE,
+  };
 
   let mut history = History::new();
   let mut position = Position::from_fen(START_POSITION);
@@ -64,8 +67,14 @@ fn uci_commands() {
   println!("\nid name {}", NAME);
   println!("id author {}\n", AUTHOR_NAME);
 
-  println!("option name Threads type spin default {} min {} max {}", DEFAULT_NUMBERS_OF_THREADS, MIN_NUMBERS_OF_THREADS, MAX_NUMBERS_OF_THREADS);
-  println!("option name Hash type spin default {} min {} max {}", DEFAULT_TRANSPOSITION_SIZE, MIN_TRANSPOSITION_SIZE, MAX_TRANSPOSITION_SIZE);
+  println!(
+    "option name Threads type spin default {} min {} max {}",
+    DEFAULT_NUMBERS_OF_THREADS, MIN_NUMBERS_OF_THREADS, MAX_NUMBERS_OF_THREADS
+  );
+  println!(
+    "option name Hash type spin default {} min {} max {}",
+    DEFAULT_TRANSPOSITION_SIZE, MIN_TRANSPOSITION_SIZE, MAX_TRANSPOSITION_SIZE
+  );
 
   println!();
   println!("uciok\n");
@@ -190,7 +199,13 @@ fn handle_perft(command: &str, position: &mut Position) {
   let seconds = duration.as_secs_f64();
   let nps = if seconds > 0.0 { (nodes as f64 / seconds) as u64 } else { 0 };
 
-  println!("Perft({}) = {} in {:?}; Speed: {} NPS", depth, nodes.separate_with_commas(), duration, nps.separate_with_commas());
+  println!(
+    "Perft({}) = {} in {:?}; Speed: {} NPS",
+    depth,
+    nodes.separate_with_commas(),
+    duration,
+    nps.separate_with_commas()
+  );
 }
 
 fn allocate_time(position: &Position, remaining_time: u32, increment: u32, move_to_go: u32) -> u128 {

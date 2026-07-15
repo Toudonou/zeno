@@ -5,7 +5,7 @@ use std::io::{BufWriter, Write};
 use crate::eval_params::EvalParams;
 use crate::piece::{PieceColor, PieceType};
 use crate::square::Square;
-use crate::tuner::features::{FEATURES_ALL, Features};
+use crate::tuner::features::{FEATURES_ALL, Features, MAX_FEATURES};
 use crate::utils::get_psqt_index;
 
 #[derive(Clone, Debug)]
@@ -17,7 +17,7 @@ pub struct TunerParams {
 impl TunerParams {
   #[inline(always)]
   pub fn from_eval_param(eval_params: &EvalParams) -> Self {
-    let mut params_f32 = Self::fill_with(0.0);
+    let mut params_f32 = Self::from_value(0.0);
 
     for &feature in FEATURES_ALL.iter() {
       let index = feature.to_index();
@@ -41,14 +41,23 @@ impl TunerParams {
   }
 
   #[inline(always)]
-  pub fn fill_with(value: f32) -> Self {
-    TunerParams { mg: vec![value; FEATURES_ALL.len()], eg: vec![value; FEATURES_ALL.len()] }
+  pub fn from_value(value: f32) -> Self {
+    TunerParams {
+      mg: vec![value; MAX_FEATURES],
+      eg: vec![value; MAX_FEATURES],
+    }
   }
 
-  pub fn save_to_file(&self, file_name: &str, header_comments: &str) -> Result<(), io::Error> {
+  #[inline(always)]
+  pub fn fill_with(&mut self, value: f32) {
+    self.mg.fill(value);
+    self.eg.fill(value);
+  }
+
+  pub fn save_to_file(&mut self, file_name: &str, header_comments: &str) -> Result<(), io::Error> {
     let mut string_buffer = String::with_capacity(8192);
 
-    string_buffer.push_str(header_comments);
+    string_buffer.push_str(&header_comments);
     string_buffer.push_str("\n");
     string_buffer.push_str("use crate::containers::ByPieceType;\n");
 
@@ -56,7 +65,11 @@ impl TunerParams {
       println!();
       string_buffer.push_str("\n");
 
-      println!("{piece_type:?} : MG {} - EG {}", self.mg[Features::Material(piece_type).to_index()] as i32, self.eg[Features::Material(piece_type).to_index()] as i32);
+      println!(
+        "{piece_type:?} : MG {} - EG {}",
+        self.mg[Features::Material(piece_type).to_index()] as i32,
+        self.eg[Features::Material(piece_type).to_index()] as i32
+      );
 
       string_buffer.push_str("pub static MG_");
       string_buffer.push_str(&format!("{:?}", piece_type).to_uppercase());
@@ -94,8 +107,17 @@ impl TunerParams {
         print!("{} ", 8 - rank);
         for file in 0..=7 {
           let index = rank * 8 + file;
-          print!("{:4} ", self.mg[Features::Psqt(piece_type, get_psqt_index(PieceColor::White, index) as Square).to_index()] as i32);
-          string_buffer.push_str(&format!("{:4}, ", self.mg[Features::Psqt(piece_type, get_psqt_index(PieceColor::White, index) as Square).to_index()] as i32).to_uppercase());
+          print!(
+            "{:4} ",
+            self.mg[Features::Psqt(piece_type, get_psqt_index(PieceColor::White, index) as Square).to_index()] as i32
+          );
+          string_buffer.push_str(
+            &format!(
+              "{:4}, ",
+              self.mg[Features::Psqt(piece_type, get_psqt_index(PieceColor::White, index) as Square).to_index()] as i32
+            )
+            .to_uppercase(),
+          );
         }
         println!();
         string_buffer.push_str("\n");
@@ -116,8 +138,17 @@ impl TunerParams {
         print!("{} ", 8 - rank);
         for file in 0..=7 {
           let index = rank * 8 + file;
-          print!("{:4} ", self.eg[Features::Psqt(piece_type, get_psqt_index(PieceColor::White, index) as Square).to_index()] as i32);
-          string_buffer.push_str(&format!("{:4}, ", self.eg[Features::Psqt(piece_type, get_psqt_index(PieceColor::White, index) as Square).to_index()] as i32).to_uppercase());
+          print!(
+            "{:4} ",
+            self.eg[Features::Psqt(piece_type, get_psqt_index(PieceColor::White, index) as Square).to_index()] as i32
+          );
+          string_buffer.push_str(
+            &format!(
+              "{:4}, ",
+              self.eg[Features::Psqt(piece_type, get_psqt_index(PieceColor::White, index) as Square).to_index()] as i32
+            )
+            .to_uppercase(),
+          );
         }
         println!();
         string_buffer.push_str("\n");
@@ -129,8 +160,12 @@ impl TunerParams {
       string_buffer.push_str("];\n");
     }
 
-    string_buffer.push_str("\npub static MG_PIECES_VALUES: ByPieceType<i32> = ByPieceType::new(MG_PAWN_VALUE, MG_KNIGHT_VALUE, MG_BISHOP_VALUE, MG_ROOK_VALUE, MG_QUEEN_VALUE, MG_KING_VALUE);");
-    string_buffer.push_str("\npub static EG_PIECES_VALUES: ByPieceType<i32> = ByPieceType::new(EG_PAWN_VALUE, EG_KNIGHT_VALUE, EG_BISHOP_VALUE, EG_ROOK_VALUE, EG_QUEEN_VALUE, EG_KING_VALUE);");
+    string_buffer.push_str(
+      "\npub static MG_PIECES_VALUES: ByPieceType<i32> = ByPieceType::new(MG_PAWN_VALUE, MG_KNIGHT_VALUE, MG_BISHOP_VALUE, MG_ROOK_VALUE, MG_QUEEN_VALUE, MG_KING_VALUE);",
+    );
+    string_buffer.push_str(
+      "\npub static EG_PIECES_VALUES: ByPieceType<i32> = ByPieceType::new(EG_PAWN_VALUE, EG_KNIGHT_VALUE, EG_BISHOP_VALUE, EG_ROOK_VALUE, EG_QUEEN_VALUE, EG_KING_VALUE);",
+    );
     string_buffer
       .push_str("\npub static MG_PIECES_SQUARES_TABLES: ByPieceType<[i32; 64]> = ByPieceType::new(MG_PAWN_TABLE, MG_KNIGHT_TABLE, MG_BISHOP_TABLE, MG_ROOK_TABLE, MG_QUEEN_TABLE, MG_KING_TABLE);");
     string_buffer

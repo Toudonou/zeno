@@ -66,13 +66,37 @@ impl Move {
     let destination_file = part[2];
     let mut move_type = MoveType::Normal;
 
-    if move_string == "e1g1" && (position.get_piece_on_square(Square::from_algebraic_notation("e1")) == Piece { color: PieceColor::White, piece_type: PieceType::King }) {
+    if move_string == "e1g1"
+      && (position.get_piece_on_square(Square::from_algebraic_notation("e1"))
+        == Piece {
+          color: PieceColor::White,
+          piece_type: PieceType::King,
+        })
+    {
       move_type = MoveType::ShortCastle;
-    } else if move_string == "e1c1" && (position.get_piece_on_square(Square::from_algebraic_notation("e1")) == Piece { color: PieceColor::White, piece_type: PieceType::King }) {
+    } else if move_string == "e1c1"
+      && (position.get_piece_on_square(Square::from_algebraic_notation("e1"))
+        == Piece {
+          color: PieceColor::White,
+          piece_type: PieceType::King,
+        })
+    {
       move_type = MoveType::LongCastle;
-    } else if move_string == "e8g8" && (position.get_piece_on_square(Square::from_algebraic_notation("e8")) == Piece { color: PieceColor::Black, piece_type: PieceType::King }) {
+    } else if move_string == "e8g8"
+      && (position.get_piece_on_square(Square::from_algebraic_notation("e8"))
+        == Piece {
+          color: PieceColor::Black,
+          piece_type: PieceType::King,
+        })
+    {
       move_type = MoveType::ShortCastle;
-    } else if move_string == "e8c8" && (position.get_piece_on_square(Square::from_algebraic_notation("e8")) == Piece { color: PieceColor::Black, piece_type: PieceType::King }) {
+    } else if move_string == "e8c8"
+      && (position.get_piece_on_square(Square::from_algebraic_notation("e8"))
+        == Piece {
+          color: PieceColor::Black,
+          piece_type: PieceType::King,
+        })
+    {
       move_type = MoveType::LongCastle;
     } else if part.len() == 5 {
       match part[4] {
@@ -157,7 +181,10 @@ pub struct MoveList {
 impl MoveList {
   #[inline(always)]
   pub fn new() -> Self {
-    MoveList { moves: [Move::default(); MOVE_LIST_MAX_SIZE], count: 0 }
+    MoveList {
+      moves: [Move::default(); MOVE_LIST_MAX_SIZE],
+      count: 0,
+    }
   }
 
   #[inline(always)]

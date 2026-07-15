@@ -95,12 +95,18 @@ pub struct AtomicTTEntry {
 impl AtomicTTEntry {
   #[inline(always)]
   pub fn new(hash: BoardHash, best_move: Option<Move>, depth: u32, flag: TTFlag, evaluation: Evaluation, ply: u32) -> AtomicTTEntry {
-    AtomicTTEntry { hash: hash.into(), data: AtomicTTEntry::pack_data(best_move, depth, flag, evaluation, ply).into() }
+    AtomicTTEntry {
+      hash: hash.into(),
+      data: AtomicTTEntry::pack_data(best_move, depth, flag, evaluation, ply).into(),
+    }
   }
 
   #[inline(always)]
   pub fn get_tt_entry(&self) -> TTEntry {
-    TTEntry { hash: self.hash.load(Ordering::Relaxed), data: self.data.load(Ordering::Relaxed) }
+    TTEntry {
+      hash: self.hash.load(Ordering::Relaxed),
+      data: self.data.load(Ordering::Relaxed),
+    }
   }
 
   #[inline(always)]
@@ -152,12 +158,19 @@ impl TranspositionTable {
   pub fn save_entry(&self, hash: BoardHash, best_move: Option<Move>, depth: u32, flag: TTFlag, evaluation: Evaluation, ply: u32) {
     let entry = &self.table[self.index(hash)]; // max_entries is a power of 2, therefore (x % max_entries) == x & (max_entries)
     entry.hash.store(hash, Ordering::Relaxed);
-    entry.data.store(AtomicTTEntry::pack_data(best_move, depth, flag, evaluation, ply).into(), Ordering::Relaxed);
+    entry
+      .data
+      .store(AtomicTTEntry::pack_data(best_move, depth, flag, evaluation, ply).into(), Ordering::Relaxed);
   }
 
   pub fn print_transposition_stats(&self) {
     let count = self.table.iter().filter(|x| x.get_tt_entry().get_flag() != TTFlag::None).count();
-    println!("Transposition utilization: {}/{} = {:.3}%", count.separate_with_commas(), self.max_entries.separate_with_commas(), 100f64 * count as f64 / self.max_entries as f64);
+    println!(
+      "Transposition utilization: {}/{} = {:.3}%",
+      count.separate_with_commas(),
+      self.max_entries.separate_with_commas(),
+      100f64 * count as f64 / self.max_entries as f64
+    );
   }
 
   #[inline(always)]

@@ -12,8 +12,9 @@ use crate::piece::{PieceColor, PieceType};
 use crate::pos_eval::{Evaluation, MATE_SCORE};
 use crate::position::Position;
 use crate::search_constants::{
-  BASE_ASPIRATION_WINDOW_DELTA, LMP_DEPTH_HORIZON, LMP_MARGINS, LMR_DEPTH_LIMIT, LMR_MOVE_SEARCHED, LMR_REDUCTION, MAX_EXTENSION, MAX_HISTORY_BONUS, NMP_DEPTH_LIMIT, NMP_DEPTH_REDUCTION,
-  NODES_BETWEEN_TIME_CHECKS, RAZORING_BASE, RAZORING_DEPTH_HORIZON, RAZORING_MARGIN, STATIC_NMP_DEPTH_HORIZON, STATIC_NMP_MARGIN, SearchLimits, SearchResult, SearchTables,
+  BASE_ASPIRATION_WINDOW_DELTA, LMP_DEPTH_HORIZON, LMP_MARGINS, LMR_DEPTH_LIMIT, LMR_MOVE_SEARCHED, LMR_REDUCTION, MAX_EXTENSION, MAX_HISTORY_BONUS, NMP_DEPTH_LIMIT,
+  NMP_DEPTH_REDUCTION, NODES_BETWEEN_TIME_CHECKS, RAZORING_BASE, RAZORING_DEPTH_HORIZON, RAZORING_MARGIN, STATIC_NMP_DEPTH_HORIZON, STATIC_NMP_MARGIN, SearchLimits, SearchResult,
+  SearchTables,
 };
 use crate::transposition_table::{TTFlag, TranspositionTable};
 use crate::utils::{MAX_PLY, ZENO_INFINITY};
@@ -58,7 +59,14 @@ impl SearcherUnit {
     self.timer = Instant::now();
     self.search_limits = search_limits;
 
-    let mut search_result = SearchResult { mov: None, depth: -1, score, nodes: 0, search_time: 1, pv: vec![] };
+    let mut search_result = SearchResult {
+      mov: None,
+      depth: -1,
+      score,
+      nodes: 0,
+      search_time: 1,
+      pv: vec![],
+    };
 
     // Iterative deepening
     for depth in 1..=MAX_PLY {
@@ -212,7 +220,17 @@ impl SearcherUnit {
       history.save_hash(position.get_zobrist_hash());
 
       let nmp_reduction = NMP_DEPTH_REDUCTION + depth / 6;
-      let eval = self.pv_search(position, history, ply + 1, depth - 1 - nmp_reduction, -beta, -alpha, None, &mut child_pv_line, num_extensions) * -1;
+      let eval = self.pv_search(
+        position,
+        history,
+        ply + 1,
+        depth - 1 - nmp_reduction,
+        -beta,
+        -alpha,
+        None,
+        &mut child_pv_line,
+        num_extensions,
+      ) * -1;
 
       position.unmake_null_move(previous_en_passant_file);
       history.pop_last_entry();
@@ -263,20 +281,64 @@ impl SearcherUnit {
 
       // Pv move or first move - Full Search
       if move_index == 0 {
-        eval = self.pv_search(&mut temp_position, history, ply + 1, depth - 1, -beta, -alpha, Some(mov), &mut child_pv_line, num_extensions + extension) * -1;
+        eval = self.pv_search(
+          &mut temp_position,
+          history,
+          ply + 1,
+          depth - 1,
+          -beta,
+          -alpha,
+          Some(mov),
+          &mut child_pv_line,
+          num_extensions + extension,
+        ) * -1;
       } else {
         // Late move reduction
         let can_lmr = ply > 1 && !is_in_check && is_quiet && !is_pv && depth >= LMR_DEPTH_LIMIT && quiets_moves.len() as i32 >= LMR_MOVE_SEARCHED;
-        let lmr_r = if can_lmr { (LMR_REDUCTION + depth / (2 * LMR_DEPTH_LIMIT)).clamp(1, depth - 2) } else { 0 };
+        let lmr_r = if can_lmr {
+          (LMR_REDUCTION + depth / (2 * LMR_DEPTH_LIMIT)).clamp(1, depth - 2)
+        } else {
+          0
+        };
 
-        eval = self.pv_search(&mut temp_position, history, ply + 1, depth - 1 - lmr_r, -alpha - 1, -alpha, Some(mov), &mut child_pv_line, num_extensions + extension) * -1;
+        eval = self.pv_search(
+          &mut temp_position,
+          history,
+          ply + 1,
+          depth - 1 - lmr_r,
+          -alpha - 1,
+          -alpha,
+          Some(mov),
+          &mut child_pv_line,
+          num_extensions + extension,
+        ) * -1;
 
         if eval.value() > alpha && lmr_r > 0 {
-          eval = self.pv_search(&mut temp_position, history, ply + 1, depth - 1, -alpha - 1, -alpha, Some(mov), &mut child_pv_line, num_extensions + extension) * -1;
+          eval = self.pv_search(
+            &mut temp_position,
+            history,
+            ply + 1,
+            depth - 1,
+            -alpha - 1,
+            -alpha,
+            Some(mov),
+            &mut child_pv_line,
+            num_extensions + extension,
+          ) * -1;
         }
 
         if alpha < eval.value() && eval.value() < beta {
-          eval = self.pv_search(&mut temp_position, history, ply + 1, depth - 1, -beta, -alpha, Some(mov), &mut child_pv_line, num_extensions + extension) * -1;
+          eval = self.pv_search(
+            &mut temp_position,
+            history,
+            ply + 1,
+            depth - 1,
+            -beta,
+            -alpha,
+            Some(mov),
+            &mut child_pv_line,
+            num_extensions + extension,
+          ) * -1;
         }
       }
 
@@ -325,7 +387,9 @@ impl SearcherUnit {
       } else {
         TTFlag::Exact
       };
-      self.transposition_table.save_entry(position.get_zobrist_hash(), best_move, depth as u32, tt_flag, best_eval, ply as u32);
+      self
+        .transposition_table
+        .save_entry(position.get_zobrist_hash(), best_move, depth as u32, tt_flag, best_eval, ply as u32);
     }
 
     best_eval

@@ -1,10 +1,10 @@
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
-use std::sync::{mpsc, Arc};
+use std::sync::{Arc, mpsc};
 
 use crate::history::History;
 use crate::moves::Move;
 use crate::position::Position;
-use crate::search_constants::{SearchLimits, SearchResult, MAX_NUMBERS_OF_THREADS, MIN_NUMBERS_OF_THREADS};
+use crate::search_constants::{MAX_NUMBERS_OF_THREADS, MIN_NUMBERS_OF_THREADS, SearchLimits, SearchResult};
 use crate::search_unit::SearcherUnit;
 use crate::transposition_table::TranspositionTable;
 
@@ -15,7 +15,10 @@ pub struct SearchPool {
 
 impl SearchPool {
   pub fn new(transposition_table: Arc<TranspositionTable>, number_of_threads: u32) -> Self {
-    Self { number_of_threads: number_of_threads.clamp(MIN_NUMBERS_OF_THREADS, MAX_NUMBERS_OF_THREADS), transposition_table }
+    Self {
+      number_of_threads: number_of_threads.clamp(MIN_NUMBERS_OF_THREADS, MAX_NUMBERS_OF_THREADS),
+      transposition_table,
+    }
   }
 
   pub fn search(&self, position: &Position, history: &History, search_limits: SearchLimits) -> Option<Move> {

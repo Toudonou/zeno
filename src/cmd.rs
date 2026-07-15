@@ -52,7 +52,7 @@ pub fn process_cmd(args: Cmd) {
         let dataset_path = train_args.input_file.into_os_string().into_string().unwrap();
         let iterations = train_args.iterations;
 
-        match optimize_features(&dataset_path, MAX_TUNER_BUFFER_SIZE, iterations, 1.0119941f32) {
+        match optimize_features(&dataset_path, MAX_TUNER_BUFFER_SIZE, iterations, 0.002699149f32) {
           Ok(_) => println!("Training done in {:?}", duration.elapsed()),
           Err(err) => println!("Error: {}", err),
         }

@@ -62,7 +62,13 @@ pub struct SearchResult {
 impl SearchResult {
   #[inline(always)]
   pub fn print_info(&self) {
-    print!("info depth {} nodes {} time {} nps {} ", self.depth, self.nodes, self.search_time, 1000 * self.nodes as u128 / self.search_time);
+    print!(
+      "info depth {} nodes {} time {} nps {} ",
+      self.depth,
+      self.nodes,
+      self.search_time,
+      1000 * self.nodes as u128 / self.search_time
+    );
 
     match self.score {
       Evaluation::CentiPawns(score) => print!("score cp {} ", score),

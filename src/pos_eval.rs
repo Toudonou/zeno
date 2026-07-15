@@ -1,6 +1,7 @@
 use std::fmt::{Display, Formatter};
 use std::ops::{Mul, MulAssign};
 
+use crate::params::MG_PAWN_VALUE;
 use crate::utils::MAX_PLY;
 
 pub static MATE_SCORE: i32 = 1_000_000;
@@ -71,7 +72,7 @@ impl MulAssign<i32> for Evaluation {
 impl Display for Evaluation {
   fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
     match self {
-      Evaluation::CentiPawns(score) => write!(f, "{}", (*score as f32) / 100f32),
+      Evaluation::CentiPawns(score) => write!(f, "{}", (*score as f32) / MG_PAWN_VALUE as f32),
       Evaluation::MateIn(mate_in) => {
         if *mate_in > 0 {
           write!(f, "+M{}", mate_in.abs() / 2)

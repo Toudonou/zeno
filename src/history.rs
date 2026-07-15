@@ -11,7 +11,10 @@ pub struct History {
 impl History {
   #[inline(always)]
   pub fn new() -> History {
-    History { history: [0u64; HISTORY_MAX_SIZE], count: 0 }
+    History {
+      history: [0u64; HISTORY_MAX_SIZE],
+      count: 0,
+    }
   }
 
   #[inline(always)]
@@ -31,7 +34,14 @@ impl History {
     // So the repetition check should only concern the last n (half_move_clock) reversible moves
     // https://www.freechess.org/Help/HelpFiles/fen.html
     let hash = position.get_zobrist_hash();
-    self.history.iter().take(self.count).rev().take(1 + position.get_half_move_clock() as usize).filter(|k| **k == hash).count()
+    self
+      .history
+      .iter()
+      .take(self.count)
+      .rev()
+      .take(1 + position.get_half_move_clock() as usize)
+      .filter(|k| **k == hash)
+      .count()
   }
 
   #[inline(always)]

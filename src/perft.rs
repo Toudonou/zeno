@@ -3,7 +3,7 @@ use thousands::Separable;
 
 use crate::moves::MoveList;
 use crate::moves_generator::generate_legal_moves;
-use crate::position::Position;  
+use crate::position::Position;
 
 pub fn perft(depth: i32, position: &mut Position) -> u64 {
   if depth == 0 {

@@ -8,4 +8,3 @@ rand = "0.10.0"
 thousands = "0.2.0"
 textplots = "0.8.7"
 clap = { version = "4.6.0", features = ["derive"] }
-rayon = "1.11"

@@ -17,7 +17,7 @@ pub static SQUARES: [Square; Square::INVALID_SQUARE as usize] = {
 pub const MAX_FEATURES: usize = /* Material */ PIECE_TYPES.len() + /* PSQT */ PIECE_TYPES.len() * SQUARES.len() + /* Bishop Pair */ 1;
 
 pub static FEATURES_ALL: LazyLock<Vec<Features>> = LazyLock::new(|| {
-  let mut features = Vec::new();
+  let mut features = Vec::with_capacity(MAX_FEATURES);
 
   for piece in PIECE_TYPES {
     features.push(Features::Material(piece));

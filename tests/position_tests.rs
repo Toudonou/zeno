@@ -29,7 +29,8 @@ mod position_tests {
     // Game link: https://lichess.org/qHgExmpR/black
     let mut position = Position::from_fen(START_POSITION);
     let moves =
-      "b1c3 d7d5 g1f3 d5d4 c3e4 f7f5 e4c5 e7e5 c5d3 e5e4 b2b4 e4d3 c2c3 d4c3 d2c3 d8f6 d1d3 f8b4 d3b5 b8c6 a2a4 f6c3 f3d2 c3a1 e1d1 g8f6 d2b3 a1a2 b3d4 f6e4 c1e3 a2b1 e3c1 e4f2".split_whitespace();
+      "b1c3 d7d5 g1f3 d5d4 c3e4 f7f5 e4c5 e7e5 c5d3 e5e4 b2b4 e4d3 c2c3 d4c3 d2c3 d8f6 d1d3 f8b4 d3b5 b8c6 a2a4 f6c3 f3d2 c3a1 e1d1 g8f6 d2b3 a1a2 b3d4 f6e4 c1e3 a2b1 e3c1 e4f2"
+        .split_whitespace();
     moves.for_each(|move_string| match Move::from_uci_notation(move_string, &position) {
       Some(mov) => position.make_move(mov),
       None => {}
@@ -87,7 +88,10 @@ mod position_tests {
     assert_eq!(position.get_en_passant(), 21);
 
     let ancient_en_passant = position.make_null_move();
-    assert_eq!(position.get_zobrist_hash(), Position::from_fen("r2qr1k1/ppp2p1p/3pbn2/3Nn3/4PPp1/3Q4/PP2B1PP/R1B2RK1 w - - 0 1").get_zobrist_hash());
+    assert_eq!(
+      position.get_zobrist_hash(),
+      Position::from_fen("r2qr1k1/ppp2p1p/3pbn2/3Nn3/4PPp1/3Q4/PP2B1PP/R1B2RK1 w - - 0 1").get_zobrist_hash()
+    );
     assert_eq!(position.get_side(), PieceColor::White);
     assert!(position.get_en_passant() >= 64);
 

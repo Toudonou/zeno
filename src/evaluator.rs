@@ -140,7 +140,10 @@ impl Add for Score {
   type Output = Self;
 
   fn add(self, rhs: Self) -> Self::Output {
-    Score { mg: self.mg + rhs.mg, eg: self.eg + rhs.eg }
+    Score {
+      mg: self.mg + rhs.mg,
+      eg: self.eg + rhs.eg,
+    }
   }
 }
 

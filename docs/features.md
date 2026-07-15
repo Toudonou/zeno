@@ -14,6 +14,7 @@
     - [x] Draw by insufficient material
     - [x] [Draw by Threefold repetition](https://en.wikipedia.org/wiki/Threefold_repetition)
     - [x] [Fifty-move rule (partially)](https://en.wikipedia.org/wiki/Fifty-move_rule)
+    - [x] [Bishop Pair](https://www.chessprogramming.org/Bishop_Pair)
 - [x] Search
     - [x] [Alpha-beta pruning (Negamax)](https://en.wikipedia.org/wiki/Negamax#Negamax_with_alpha_beta_pruning)
     - [x] Move Ordering
@@ -35,9 +36,9 @@
     - [x] Late Move Pruning
     - [x] [Eval parameters tuning](https://www.chessprogramming.org/Texel%27s_Tuning_Method)
         - [Dataset (lichess-big3-resolved.book)](https://talkchess.com/viewtopic.php?t=83382)
+        - [Adam Optimizer](https://en.wikipedia.org/wiki/Stochastic_gradient_descent#Adam)
     - [x] SEE Pruning in the quiescence search
     - [x] Static null move pruning
     - [x] [Razoring](https://www.chessprogramming.org/Razoring)
     - [x] Lazy SMP
 - [x] Time management (partially)
-

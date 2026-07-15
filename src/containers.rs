@@ -43,7 +43,9 @@ pub struct ByPieceType<T> {
 impl<T> ByPieceType<T> {
   pub const fn new(pawn: T, knight: T, bishop: T, rook: T, queen: T, king: T) -> Self {
     // [PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING]
-    Self { inner: [pawn, knight, bishop, rook, queen, king] }
+    Self {
+      inner: [pawn, knight, bishop, rook, queen, king],
+    }
   }
 }
 
