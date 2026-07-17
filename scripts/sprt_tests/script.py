@@ -11,7 +11,7 @@ os.system("cargo build --release")
 os.system("mkdir zeno_develop/")
 os.system(f"git clone {develop} zeno_develop")
 os.system(
-    "cd zeno_develop/ && cargo build --release && mv ./target/release/zeno ./target/release/zeno_develop"
+  "cd zeno_develop/ && cargo build --release && mv ./target/release/zeno ./target/release/zeno_develop"
 )
 
 zeno_develop = "./zeno_develop/target/release/zeno_develop"
@@ -24,7 +24,7 @@ execute_sprt_test_current_vs_develop = f"""
     -openings file=UHO_Lichess_4852_v1.epd format=epd order=random \
     -each tc=8+0.08 \
     -rounds 10000 -repeat \
-    -sprt elo0=110 elo1=120 alpha=0.01 beta=0.01 \
+    -sprt elo0=-5 elo1=0.0 alpha=0.01 beta=0.01 \
     -concurrency 16 \
     -recover \
 """

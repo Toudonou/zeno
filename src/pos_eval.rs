@@ -72,14 +72,8 @@ impl MulAssign<i32> for Evaluation {
 impl Display for Evaluation {
   fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
     match self {
-      Evaluation::CentiPawns(score) => write!(f, "{}", (*score as f32) / MG_PAWN_VALUE as f32),
-      Evaluation::MateIn(mate_in) => {
-        if *mate_in > 0 {
-          write!(f, "+M{}", mate_in.abs() / 2)
-        } else {
-          write!(f, "-M{}", mate_in.abs() / 2)
-        }
-      }
+      Evaluation::CentiPawns(score) => write!(f, "score cp {:.2}", 100 * *score / MG_PAWN_VALUE),
+      Evaluation::MateIn(mate_in) => write!(f, "score mate {}", mate_in / 2),
     }
   }
 }

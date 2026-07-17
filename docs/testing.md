@@ -1,5 +1,22 @@
 # SPRT results per features
 
+## Normalize the centipawns evaluation
+
+* Zeno current vs Zeno develop
+
+```
+--------------------------------------------------
+Results of Zeno current vs Zeno Develop (8+0.08, 1t, 1MB, UHO_Lichess_4852_v1.epd):
+Elo: -0.99 +/- 3.62, nElo: -1.32 +/- 4.82
+LOS: 29.58 %, DrawRatio: 41.98 %, PairsRatio: 0.98
+Games: 20000, Wins: 7001, Losses: 7058, Draws: 5941, Points: 9971.5 (49.86 %)
+Ptnml(0-2): [909, 2025, 4198, 1950, 918], WL/DD Ratio: 3.27
+LLR: 0.98 (21.3%) (-4.60, 4.60) [-5.00, 0.00]
+--------------------------------------------------
+Finished match
+Total Time: 07:41:40 (hours:minutes:seconds)
+```
+
 ## Adam optimizer for the tuner: values tuned from 0.0
 
 * Zeno current vs Zeno develop

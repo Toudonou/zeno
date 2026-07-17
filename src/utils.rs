@@ -41,6 +41,8 @@ pub static TOTAL_PHASE: i8 = PAWN_PHASE * 16 + KNIGHT_PHASE * 4 + BISHOP_PHASE *
 
 pub static SEE_VALUES: ByPieceType<i32> = ByPieceType::new(100, 300, 350, 500, 900, 10000);
 
+pub static SIGMOID_FACTOR: f32 = 0.002699149f32;
+
 pub fn random_u64() -> u64 {
   // https://www.chessprogramming.org/index.php?title=Looking_for_Magics&oldid=2272
   let mut rng = rand::rng();
