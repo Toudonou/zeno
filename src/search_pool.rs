@@ -58,4 +58,8 @@ impl SearchPool {
     let best_result = best_result.expect("At least one unit must produce a result");
     best_result.mov
   }
+
+  pub fn reset(&self) {
+    self.transposition_table.clear();
+  }
 }

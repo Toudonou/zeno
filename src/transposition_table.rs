@@ -50,12 +50,12 @@ impl TTFlag {
 /// - 4 bytes for the evaluation
 pub struct TTEntry {
   hash: BoardHash,
-  others_information: u64,
+  data: u64,
 }
 impl TTEntry {
   #[inline(always)]
-  pub fn new(hash: BoardHash, others_information: u64) -> TTEntry {
-    TTEntry { hash, others_information }
+  pub fn new(hash: BoardHash, data: u64) -> TTEntry {
+    TTEntry { hash, data }
   }
 
   #[inline(always)]
@@ -65,7 +65,7 @@ impl TTEntry {
 
   #[inline(always)]
   pub fn get_evaluation(&self, ply: u32) -> Evaluation {
-    let eval = Evaluation::from_u32(((self.others_information >> (4 * 8)) & 0xFFFFFFFF) as u32);
+    let eval = Evaluation::from_u32(((self.data >> (4 * 8)) & 0xFFFFFFFF) as u32);
 
     match eval {
       Evaluation::Score(_) => eval,
@@ -75,39 +75,39 @@ impl TTEntry {
 
   #[inline(always)]
   pub fn get_best_move(&self) -> Option<Move> {
-    let move_code = ((self.others_information >> (2 * 8)) & 0xFFFF) as u16;
+    let move_code = ((self.data >> (2 * 8)) & 0xFFFF) as u16;
     if move_code != 0 { Some(Move::from_u16(move_code)) } else { None }
   }
 
   #[inline(always)]
   pub fn get_depth(&self) -> u32 {
-    ((self.others_information >> (1 * 8)) & 0xFF) as u32
+    ((self.data >> (1 * 8)) & 0xFF) as u32
   }
 
   #[inline(always)]
   pub fn get_flag(&self) -> TTFlag {
-    TTFlag::from_u32(((self.others_information) & 0xFF) as u32)
+    TTFlag::from_u32(((self.data) & 0xFF) as u32)
   }
 }
 
 pub struct AtomicTTEntry {
   hash: AtomicU64,
-  others_information: AtomicU64,
+  data: AtomicU64,
 }
 
 impl AtomicTTEntry {
   #[inline(always)]
   pub fn new(hash: BoardHash, best_move: Option<Move>, depth: u32, flag: TTFlag, evaluation: Evaluation, ply: u32) -> AtomicTTEntry {
-    AtomicTTEntry { hash: hash.into(), others_information: AtomicTTEntry::generate_others_information(best_move, depth, flag, evaluation, ply).into() }
+    AtomicTTEntry { hash: hash.into(), data: AtomicTTEntry::pack_data(best_move, depth, flag, evaluation, ply).into() }
   }
 
   #[inline(always)]
   pub fn get_tt_entry(&self) -> TTEntry {
-    TTEntry { hash: self.hash.load(Ordering::Relaxed), others_information: self.others_information.load(Ordering::Relaxed) }
+    TTEntry { hash: self.hash.load(Ordering::Relaxed), data: self.data.load(Ordering::Relaxed) }
   }
 
   #[inline(always)]
-  pub fn generate_others_information(best_move: Option<Move>, depth: u32, flag: TTFlag, evaluation: Evaluation, ply: u32) -> u64 {
+  pub fn pack_data(best_move: Option<Move>, depth: u32, flag: TTFlag, evaluation: Evaluation, ply: u32) -> u64 {
     let best_move = if let Some(m) = best_move { m.to_u16() } else { 0 } as u64;
     let flag = flag.to_u32() as u64;
     let depth = depth as u64;
@@ -145,19 +145,19 @@ impl TranspositionTable {
   }
 
   pub fn index(&self, hash: BoardHash) -> usize {
-    hash as usize & (self.max_entries - 1)
+    hash as usize & (self.max_entries - 1) // max_entries is a power of 2, therefore (x % max_entries) == x & (max_entries)
   }
 
   #[inline(always)]
   pub fn get_entry(&self, hash: BoardHash) -> TTEntry {
-    self.table[self.index(hash)].get_tt_entry() // max_entries is a power of 2, therefore (x % max_entries) == x & (max_entries)
+    self.table[self.index(hash)].get_tt_entry()
   }
 
   #[inline(always)]
   pub fn save_entry(&self, hash: BoardHash, best_move: Option<Move>, depth: u32, flag: TTFlag, evaluation: Evaluation, ply: u32) {
-    let entry = &self.table[self.index(hash)]; // max_entries is a power of 2, therefore (x % max_entries) == x & (max_entries)
+    let entry = &self.table[self.index(hash)];
     entry.hash.store(hash, Ordering::Relaxed);
-    entry.others_information.store(AtomicTTEntry::generate_others_information(best_move, depth, flag, evaluation, ply).into(), Ordering::Relaxed);
+    entry.data.store(AtomicTTEntry::pack_data(best_move, depth, flag, evaluation, ply).into(), Ordering::Relaxed);
   }
 
   pub fn print_transposition_stats(&self) {
@@ -169,7 +169,7 @@ impl TranspositionTable {
   pub fn clear(&self) {
     for entry in &self.table {
       entry.hash.store(0, Ordering::Relaxed);
-      entry.others_information.store(0, Ordering::Relaxed);
+      entry.data.store(0, Ordering::Relaxed);
     }
   }
 }

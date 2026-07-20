@@ -319,11 +319,23 @@ impl LookUpTable {
 
     let mut j = 0;
     for (mask, moves) in temp_occupancy {
-      let final_mask =
-        ((mask >> 0 & 1) << 0) | ((mask >> 1 & 1) << 9) | ((mask >> 2 & 1) << 18) | ((mask >> 3 & 1) << 27) | ((mask >> 4 & 1) << 36) | ((mask >> 5 & 1) << 45) | ((mask >> 6 & 1) << 54) | ((mask >> 7 & 1) << 63);
+      let final_mask = ((mask >> 0 & 1) << 0)
+        | ((mask >> 1 & 1) << 9)
+        | ((mask >> 2 & 1) << 18)
+        | ((mask >> 3 & 1) << 27)
+        | ((mask >> 4 & 1) << 36)
+        | ((mask >> 5 & 1) << 45)
+        | ((mask >> 6 & 1) << 54)
+        | ((mask >> 7 & 1) << 63);
 
-      let final_moves =
-        ((moves >> 0 & 1) << 0) | ((moves >> 1 & 1) << 9) | ((moves >> 2 & 1) << 18) | ((moves >> 3 & 1) << 27) | ((moves >> 4 & 1) << 36) | ((moves >> 5 & 1) << 45) | ((moves >> 6 & 1) << 54) | ((moves >> 7 & 1) << 63);
+      let final_moves = ((moves >> 0 & 1) << 0)
+        | ((moves >> 1 & 1) << 9)
+        | ((moves >> 2 & 1) << 18)
+        | ((moves >> 3 & 1) << 27)
+        | ((moves >> 4 & 1) << 36)
+        | ((moves >> 5 & 1) << 45)
+        | ((moves >> 6 & 1) << 54)
+        | ((moves >> 7 & 1) << 63);
 
       occupancy[j] = (final_mask, final_moves);
       j += 1;
@@ -337,8 +349,14 @@ impl LookUpTable {
 
     let mut j = 0;
     for (mask, moves) in temp_occupancy {
-      let final_mask =
-        ((mask >> 0 & 1) << 56) | ((mask >> 1 & 1) << 49) | ((mask >> 2 & 1) << 42) | ((mask >> 3 & 1) << 35) | ((mask >> 4 & 1) << 28) | ((mask >> 5 & 1) << 21) | ((mask >> 6 & 1) << 14) | ((mask >> 7 & 1) << 7);
+      let final_mask = ((mask >> 0 & 1) << 56)
+        | ((mask >> 1 & 1) << 49)
+        | ((mask >> 2 & 1) << 42)
+        | ((mask >> 3 & 1) << 35)
+        | ((mask >> 4 & 1) << 28)
+        | ((mask >> 5 & 1) << 21)
+        | ((mask >> 6 & 1) << 14)
+        | ((mask >> 7 & 1) << 7);
 
       let final_moves = ((moves >> 0 & 1) << 56)
         | ((moves >> 1 & 1) << 49)

@@ -447,11 +447,10 @@ impl Position {
   pub fn get_smallest_attacker_infos(&self, target_square: Square, enemy_side: PieceColor) -> (PieceType, Square) {
     let full_board = self.get_full_board();
 
-    let enemy_board;
     let mut superior_mask;
     let mut result;
 
-    enemy_board = self.side_occupancies[enemy_side];
+    let enemy_board = self.side_occupancies[enemy_side];
     superior_mask = get_pawns_attacks(enemy_side.opposite(), target_square);
     result = superior_mask & self.pieces_occupancies[PieceType::Pawn] & enemy_board;
     if result != 0 {
