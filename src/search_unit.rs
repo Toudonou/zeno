@@ -19,7 +19,7 @@ use crate::transposition_table::{TTFlag, TranspositionTable};
 use crate::utils::{MAX_PLY, ZENO_INFINITY};
 
 pub struct SearcherUnit {
-  thread_id: i32,
+  thread_id: u32,
   timer: Instant,
   stop_search: bool,
   nodes_visited: u32,
@@ -31,7 +31,7 @@ pub struct SearcherUnit {
 }
 
 impl SearcherUnit {
-  pub fn new(thread_id: i32, transposition_table: Arc<TranspositionTable>, external_stop: Option<Arc<AtomicBool>>, total_threads_nodes: Arc<AtomicU32>) -> SearcherUnit {
+  pub fn new(thread_id: u32, transposition_table: Arc<TranspositionTable>, external_stop: Option<Arc<AtomicBool>>, total_threads_nodes: Arc<AtomicU32>) -> SearcherUnit {
     SearcherUnit {
       thread_id,
       external_stop,

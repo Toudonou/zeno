@@ -1,25 +1,27 @@
-use std::io;
-use std::sync::Arc;
-use std::time::Instant;
-use thousands::Separable;
-
 use crate::history::History;
 use crate::moves::Move;
 use crate::perft;
 use crate::piece::PieceColor;
 use crate::position::Position;
-use crate::search_constants::{SearchLimits, DEFAULT_NUMBERS_OF_THREADS};
+use crate::search_constants::{DEFAULT_NUMBERS_OF_THREADS, SearchLimits, MIN_NUMBERS_OF_THREADS, MAX_NUMBERS_OF_THREADS};
 use crate::search_pool::SearchPool;
-use crate::transposition_table::TranspositionTable;
+use crate::transposition_table::{DEFAULT_TRANSPOSITION_SIZE, TranspositionTable, MIN_TRANSPOSITION_SIZE, MAX_TRANSPOSITION_SIZE};
+use crate::uci_config::UciConfig;
 use crate::utils::START_POSITION;
+use std::io;
+use std::sync::Arc;
+use std::time::Instant;
+use thousands::Separable;
 
 pub static NAME: &str = "Zeno 2.0-dev";
 pub static AUTHOR_NAME: &str = "Toudonou";
 
 pub fn uci_loop() {
-  let transposition_table = Arc::new(TranspositionTable::default());
+  let mut uci_config: UciConfig = UciConfig { nbr_threads: DEFAULT_NUMBERS_OF_THREADS, tt_size: DEFAULT_TRANSPOSITION_SIZE };
+
   let mut history = History::new();
-  let search_pool = SearchPool::new(transposition_table, DEFAULT_NUMBERS_OF_THREADS);
+  let mut transposition_table = Arc::new(TranspositionTable::with_capacity(uci_config.tt_size));
+  let mut search_pool = SearchPool::new(transposition_table, uci_config.nbr_threads);
 
   let mut position = Position::from_fen(START_POSITION);
   perft::perft(1, &mut position); // To init the lookup tables
@@ -42,6 +44,13 @@ pub fn uci_loop() {
       }
       c if c.starts_with("position") => uci_position(command, &mut position, &mut history),
       c if c.starts_with("go") => go(command, &mut position, &search_pool, &mut history),
+      c if c.starts_with("setoption") => {
+        set_option(command, &mut uci_config);
+        println!("{:?}", uci_config);
+
+        transposition_table = Arc::new(TranspositionTable::with_capacity(uci_config.tt_size));
+        search_pool = SearchPool::new(transposition_table, uci_config.nbr_threads);
+      }
       "stop" => {}
       "quit" => break,
       _ => println!("Command not found {}", command),
@@ -50,26 +59,14 @@ pub fn uci_loop() {
 }
 
 fn uci_commands() {
-  println!("\nid name {}", NAME);
+  println!();
+  println!("id name {}", NAME);
   println!("id author {}\n", AUTHOR_NAME);
 
-  println!("Available UCI commands:");
-  println!("\t * uci");
-  println!("\t * isready");
-  println!("\t * ucinewgame");
+  println!("option name Threads type spin default {} min {} max {}", DEFAULT_NUMBERS_OF_THREADS, MIN_NUMBERS_OF_THREADS, MAX_NUMBERS_OF_THREADS);
+  println!("option name Hash type spin default {} min {} max {}", DEFAULT_TRANSPOSITION_SIZE, MIN_TRANSPOSITION_SIZE, MAX_TRANSPOSITION_SIZE);
+  println!();
 
-  println!("\t * position");
-  println!("\t\t * fen <FEN>");
-  println!("\t\t * startpos");
-
-  println!("\t * go");
-  println!("\t\t * wtime <MILLISECONDS>\t* btime <MILLISECONDS>\t* winc <MILLISECONDS>\t* binc <MILLISECONDS>");
-  println!("\t\t * movestogo <INTEGER>\n\t\t * depth <INTEGER>\n\t\t * nodes <INTEGER>\n\t\t * movetime <MILLISECONDS>");
-  println!("\t\t * infinite");
-  println!("\t\t * perft <INTEGER>");
-
-  println!("\t * stop");
-  println!("\t * quit\n");
   println!("uciok\n");
 }
 
@@ -102,6 +99,7 @@ fn uci_position(command: &str, position: &mut Position, history: &mut History) {
   if command.starts_with("position startpos") {
     *position = Position::from_fen(START_POSITION);
     history.clear();
+    history.save_hash(position.get_zobrist_hash());
   }
 
   if command.starts_with("position startpos moves") {
@@ -170,6 +168,14 @@ fn go(command: &str, position: &mut Position, searcher_pool: &SearchPool, histor
   match mov {
     Some(best_move) => println!("bestmove {}", best_move),
     None => println!("bestmove 0000"),
+  }
+}
+
+fn set_option(command: &str, config: &mut UciConfig) {
+  if command.starts_with("setoption name Threads value") {
+    config.nbr_threads = command[("setoption name Threads value".len() + 1)..].parse().unwrap_or(DEFAULT_NUMBERS_OF_THREADS);
+  } else if command.starts_with("setoption name Hash value") {
+    config.tt_size = command[("setoption name Hash value".len() + 1)..].parse().unwrap_or(DEFAULT_TRANSPOSITION_SIZE);
   }
 }
 

@@ -5,6 +5,13 @@ use crate::moves::Move;
 use crate::pos_eval::Evaluation;
 use crate::zobrist_hash::BoardHash;
 
+/// 1 MB
+pub static DEFAULT_TRANSPOSITION_SIZE: u32 = 1;
+/// 1 MB
+pub static MIN_TRANSPOSITION_SIZE: u32 = 1;
+/// 256 MB
+pub static MAX_TRANSPOSITION_SIZE: u32 = 256 * 1024;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TTFlag {
   None,
@@ -119,16 +126,16 @@ pub struct TranspositionTable {
 }
 
 impl TranspositionTable {
-  /// Default size: 64MB
+  /// Default size: [DEFAULT_TRANSPOSITION_SIZE] MB
   #[inline(always)]
   pub fn default() -> TranspositionTable {
-    Self::with_capacity(64)
+    Self::with_capacity(DEFAULT_TRANSPOSITION_SIZE)
   }
 
-  /// TT size between 64MB and 1024MB
+  /// TT size between [MIN_TRANSPOSITION_SIZE] MB and [MAX_TRANSPOSITION_SIZE] MB
   #[inline(always)]
   pub fn with_capacity(tt_size_mb: u32) -> TranspositionTable {
-    let tt_size_mb = tt_size_mb.clamp(64, 1024);
+    let tt_size_mb = tt_size_mb.clamp(MIN_TRANSPOSITION_SIZE, MAX_TRANSPOSITION_SIZE);
     let max_entries = ((tt_size_mb * 1024 * 1024) as usize / size_of::<AtomicTTEntry>()).next_power_of_two();
 
     let mut table = Vec::with_capacity(max_entries);
