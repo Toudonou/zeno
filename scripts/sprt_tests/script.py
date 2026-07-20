@@ -1,83 +1,97 @@
 import os
-from datetime import datetime, timezone
+import shutil
 
-zeno_2_0 = "./zeno-2.0"
-zeno_current = "../../target/release/zeno"
-develop = "https://github.com/toudonou/zeno"
+REPO = "https://github.com/toudonou/zeno"
 
-# Compile the current version
-os.system("cargo build --release")
+def build_current():
+    """Build the current local checkout."""
+    os.system("cargo build --release")
+    return "../../target/release/zeno"
 
-# # Download the version currently on GitHub
-# os.system("mkdir zeno_develop/")
-# os.system(f"git clone {develop} zeno_develop")
-os.system(
-    "cd zeno_develop/ && cargo build --release && mv ./target/release/zeno ./target/release/zeno_develop"
-)
+def build_zeno_ref(ref):
+  """
+  Build a zeno version from a git ref (tag, branch, or commit hash)
+  """
+  dirname = f"zeno_{ref[:8]}"
 
-zeno_develop = "./zeno_develop/target/release/zeno_develop"
+  if os.path.exists(dirname):
+    shutil.rmtree(dirname)
 
-execute_sprt_test_current_vs_develop = f"""
-./fastchess \
-    -engine cmd={zeno_current} name="Zeno current" \
-    -engine cmd={zeno_develop} name="Zeno Develop" \
+  os.system(f"git clone {REPO} {dirname}")
+  os.system(f"cd {dirname} && git checkout {ref} && cargo build --release")
+  os.system(
+    f"mv {dirname}/target/release/zeno {dirname}/target/release/zeno_{ref[:8]}"
+  )
+
+  return f"./{dirname}/target/release/zeno_{ref[:8]}", dirname
+
+
+def run_sprt_test(ref1, ref2, name1=None, name2=None, rounds=10000, threads=16, bounds=()):
+  """
+  Compare two zeno versions
+
+  ref can be:
+    - commit hash
+    - tag
+    - branch
+
+  If ref2 is None, compare against current local build
+  """
+
+  cleanup = []
+
+  if ref1 is None:
+    engine1 = build_current()
+    engine2, dir2 = build_zeno_ref(ref2)
+    cleanup.append(dir2)
+
+    name1 = name1 or "Zeno current"
+    name2 = name2 or ref2[:8]
+
+  else:
+    engine1, dir1 = build_zeno_ref(ref1)
+    engine2, dir2 = build_zeno_ref(ref2)
+    cleanup.extend([dir1, dir2])
+
+    name1 = name1 or ref1[:8]
+    name2 = name2 or ref2[:8]
+
+
+  sprt_bounds = ""
+  if bounds:
+    sprt_bounds = f" -sprt elo0={bounds[0]} elo1={bounds[1]} alpha=0.01 beta=0.01"
+
+  cmd = f"""
+    ./fastchess \
+    -engine cmd={engine1} name="{name1}" \
+    -engine cmd={engine2} name="{name2}" \
     -pgnout file="games.pgn" \
     -openings file=UHO_Lichess_4852_v1.epd format=epd order=random \
     -each tc=8+0.08 \
-    -rounds 1000 -repeat \
-    -concurrency 5 \
-    -recover \
-    -sprt elo0=150 elo1=180 alpha=0.01 beta=0.01
-"""
+    -rounds {rounds} -repeat \
+    {sprt_bounds} \
+    -concurrency {threads} \
+    -recover
+  """
 
-os.system(f"{execute_sprt_test_current_vs_develop}")
-os.system("rm zeno_develop/target/release/zeno_develop")
-os.system("./ordo -o ratings.txt -- games.pgn ")
-os.system("cat ratings.txt")
-os.system("./ordo -o ratings.txt -- games.pgn ")
-os.system("rm ratings.txt")
-os.system("rm games.pgn")
+  os.system(cmd)
 
-# execute_sprt_current_vs_release_2_0 = f"""
-# ./fastchess \
-#     -engine cmd={zeno_current} name="Zeno Current" \
-#     -engine cmd={zeno_2_0} name="Zeno 2.0" \
-#     -pgnout file="games_vs_releases.pgn" \
-#     -openings file=UHO_Lichess_4852_v1.epd format=epd order=random \
-#     -each tc=8+0.08 \
-#     -rounds 10000 -repeat \
-#     -concurrency 14 \
-#     -recover \
-#     -sprt elo0=20 elo1=25 alpha=0.01 beta=0.01
-# """
-#
-#
-# os.system(f"{execute_sprt_current_vs_release_2_0}")
-# os.system("./ordo -o ratings_vs_releases.txt -- games_vs_releases.pgn ")
-# os.system("cat ratings_vs_releases.txt")
-# os.system("rm games_vs_releases.pgn")
-# os.system("rm ratings_vs_releases.txt")
+  os.system("./ordo -o ratings.txt -- games.pgn")
+  os.system("cat ratings.txt")
+
+  for d in cleanup:
+    shutil.rmtree(d)
+
+  for f in ["ratings.txt", "games.pgn"]:
+    if os.path.exists(f):
+      os.remove(f)
 
 
-def play_games_for_tuning(number_of_games):
-    number_of_games = max(number_of_games, 2)
-
-    now = datetime.now(timezone.utc)
-    timestamp = now.strftime("%Y-%m-%d-%H-%M-%S")
-    output_file = f"games-for-tuner-{number_of_games}-{timestamp}.pgn"
-
-    execute_sprt_for_tuner = f"""
-    ./fastchess \
-        -engine cmd={zeno_current} name="Zeno current 1" \
-        -engine cmd={zeno_current} name="Zeno current 2" \
-        -pgnout file={output_file} \
-        -openings file=UHO_Lichess_4852_v1.epd format=epd order=random \
-        -each tc=1+0.08 \
-        -rounds {number_of_games // 2} -repeat \
-        -concurrency 16 \
-        -recover \
-    """
-    os.system(f"{execute_sprt_for_tuner}")
-
-
-# play_games_for_tuning(100000)
+run_sprt_test(
+    None,
+    "f1c5b865abf33db33a0349dde30229753ae00609", # https://github.com/Toudonou/zeno/commit/f1c5b865abf33db33a0349dde30229753ae00609
+    name1="Zeno current (Go options)",
+    name2="Late Move Pruning - 1t - 16MB",
+    rounds=5000,
+    bounds=(-35, -30)
+)

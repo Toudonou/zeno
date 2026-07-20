@@ -1,5 +1,25 @@
 # SPRT results per features
 
+## Setoption for threads and Hash - 1t - 16MB
+* Zeno current vs [Zeno Late Move Pruning](https://github.com/Toudonou/zeno/commit/f1c5b865abf33db33a0349dde30229753ae00609)
+
+The current version, the one with LazySMP and 1 thread and 1 MB of TT as default, is at most 30 Elo weaker than the previous version [no Lazy - 1 thread - 16 MB for the TT](https://github.com/Toudonou/zeno/commit/f1c5b865abf33db33a0349dde30229753ae00609) 
+That's ok
+
+```
+--------------------------------------------------
+Results of Zeno current (Go options) vs Late Move Pruning - 1t - 16MB (8+0.08, 1t - NULL, 1MB - NULL, UHO_Lichess_4852_v1.epd):
+Elo: -5.43 +/- 8.36, nElo: -6.71 +/- 10.33
+LOS: 10.13 %, DrawRatio: 37.21 %, PairsRatio: 0.92
+Games: 4348, Wins: 1527, Losses: 1595, Draws: 1226, Points: 2140.0 (49.22 %)
+Ptnml(0-2): [253, 458, 809, 412, 242], WL/DD Ratio: 3.54
+LLR: 4.60 (100.2%) (-4.60, 4.60) [-35.00, -30.00]
+--------------------------------------------------
+SPRT ([-35.00, -30.00]) completed - H1 was accepted
+Finished match
+Total Time: 01:39:55 (hours:minutes:seconds)
+```
+
 ## Lazy SMP
 * Zeno current vs Zeno develop
 ```
