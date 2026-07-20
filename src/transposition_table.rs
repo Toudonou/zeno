@@ -9,7 +9,7 @@ use crate::zobrist_hash::BoardHash;
 pub static DEFAULT_TRANSPOSITION_SIZE: u32 = 1;
 /// 1 MB
 pub static MIN_TRANSPOSITION_SIZE: u32 = 1;
-/// 256 MB
+/// 256 GB
 pub static MAX_TRANSPOSITION_SIZE: u32 = 256 * 1024;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
