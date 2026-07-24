@@ -1,5 +1,5 @@
 #[derive(Debug, Clone)]
 pub struct UciConfig {
-  pub nbr_threads: u32,
-  pub tt_size: u32,
+  pub threads: u32,
+  pub hash: u32,
 }

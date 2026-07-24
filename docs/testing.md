@@ -1,10 +1,31 @@
 # SPRT results per features
 
-## Setoption for threads and Hash - 1t - 16MB
-* Zeno current vs [Zeno Late Move Pruning](https://github.com/Toudonou/zeno/commit/f1c5b865abf33db33a0349dde30229753ae00609)
+## Refactoring + resetting the transposition table after receiving an ucinewgame command 
 
-The current version, the one with LazySMP and 1 thread and 1 MB of TT as default, is at most 30 Elo weaker than the previous version [no Lazy - 1 thread - 16 MB for the TT](https://github.com/Toudonou/zeno/commit/f1c5b865abf33db33a0349dde30229753ae00609) 
+Another regression again; at most -10 Elo; it's ok
+
+* Zeno current vs [little-refactoring](https://github.com/Toudonou/zeno/compare/develop...little-refactoring)
+
+```
+--------------------------------------------------
+Results of little-refactoring vs develop (8+0.08, 1t, 1MB, UHO_Lichess_4852_v1.epd):
+Elo: 1.58 +/- 2.42, nElo: 2.12 +/- 3.25
+LOS: 89.97 %, DrawRatio: 41.82 %, PairsRatio: 1.02
+Games: 43996, Wins: 15393, Losses: 15193, Draws: 13410, Points: 22098.0 (50.23 %)
+Ptnml(0-2): [1909, 4418, 9199, 4508, 1964], WL/DD Ratio: 3.10
+LLR: 4.60 (100.1%) (-4.60, 4.60) [-11.00, -10.00]
+--------------------------------------------------
+SPRT ([-11.00, -10.00]) completed - H1 was accepted
+Finished match
+Total Time: 16:57:53 (hours:minutes:seconds)
+```
+
+## Setoption for threads and Hash - 1t - 16MB
+
+The current version, the one with LazySMP and 1 thread and 1 MB of TT as default, is at most 30 Elo weaker than the previous version [no Lazy - 1 thread - 16 MB for the TT](https://github.com/Toudonou/zeno/commit/f1c5b865abf33db33a0349dde30229753ae00609)
 That's ok
+
+* Zeno current vs [Zeno Late Move Pruning](https://github.com/Toudonou/zeno/commit/f1c5b865abf33db33a0349dde30229753ae00609)
 
 ```
 --------------------------------------------------
@@ -21,6 +42,7 @@ Total Time: 01:39:55 (hours:minutes:seconds)
 ```
 
 ## Lazy SMP
+
 * Zeno current vs Zeno develop
 ```
 --------------------------------------------------
@@ -37,6 +59,7 @@ Total Time: 00:35:23 (hours:minutes:seconds)
 ```
 
 ## Late move pruning
+
 * Zeno current vs Zeno develop
 ```
 --------------------------------------------------
@@ -53,6 +76,7 @@ Total Time: 02:04:38 (hours:minutes:seconds)
 ```
 
 ## Razoring
+
 * Zeno current vs Zeno develop
 ```
 --------------------------------------------------
@@ -69,6 +93,7 @@ Total Time: 02:14:29 (hours:minutes:seconds)
 ```
 
 ## Static null move pruning
+
 * Zeno current vs Zeno develop
 ```
 --------------------------------------------------
@@ -85,6 +110,7 @@ Total Time: 02:23:00 (hours:minutes:seconds)
 ```
 
 ## SEE Pruning in the quiescence search
+
 * Zeno current vs Zeno develop
 ```
 --------------------------------------------------
@@ -101,6 +127,7 @@ Total Time: 03:16:28 (hours:minutes:seconds)
 ```
 
 ## Eval parameters tuning
+
 * Zeno current vs Zeno 2.0
 ```
 --------------------------------------------------
@@ -117,6 +144,7 @@ Total Time: 03:36:23 (hours:minutes:seconds)
 ```
 
 ## Zeno 2.0 vs Zeno 1.0
+
 * Zeno 2.0 vs Zeno 1.0
 ```
 --------------------------------------------------
@@ -142,6 +170,7 @@ done
 ```
 
 ## Late Move Reduction
+
 * Zeno current vs Zeno develop
 ```
 Results of Zeno current vs Zeno develop (8+0.08, NULL, NULL, UHO_Lichess_4852_v1.epd):
@@ -157,6 +186,7 @@ Total Time: 04:27:21 (hours:minutes:seconds)
 ```
 
 ## Time management and search refactoring
+
 * Zeno current vs Zeno develop
 ```
 Results of Zeno current vs Zeno develop (8+0.08, NULL, NULL, UHO_Lichess_4852_v1.epd):
@@ -173,6 +203,7 @@ Total Time: 03:03:53 (hours:minutes:seconds)
 
 
 ## Check Extensions
+
 * Zeno current vs Zeno develop
 ```
 Results of Zeno current vs Zeno develop (8+0.08, NULL, NULL, 8moves_v3.pgn):
@@ -189,6 +220,7 @@ Total Time: 01:09:05 (hours:minutes:seconds)
 
 
 ## Change the conditions for returning an evaluation from the TT
+
 * Zeno current vs Zeno develop
 ```
 Results of Zeno current vs Zeno develop (8+0.08, NULL, NULL, 8moves_v3.pgn):
@@ -205,6 +237,7 @@ Total Time: 01:43:17 (hours:minutes:seconds)
 
 
 ## Search tables refactoring
+
 * Zeno current vs Zeno develop
 ```
 Results of Zeno current vs Zeno develop (8+0.08, NULL, NULL, 8moves_v3.pgn):
@@ -240,6 +273,7 @@ Total Time: 01:09:17 (hours:minutes:seconds)
 
 
 ## Null Move Pruning
+
 * Zeno current vs Zeno develop 
 ```
 Results of Zeno current vs Zeno develop (8+0.08, NULL, NULL, 8moves_v3.pgn):
@@ -270,6 +304,7 @@ Total Time: 00:51:59 (hours:minutes:seconds)
 
 
 ## History Heuristic
+
 * Zeno current vs Zeno develop 
 ```
 Results of Zeno current vs Zeno develop (8+0.08, NULL, NULL, 8moves_v3.pgn):

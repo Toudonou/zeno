@@ -1,6 +1,6 @@
 # Features Elo Evolution (8+0.08)
 
-| Features                                                                                                                                              | Category      | Delta (Elo) | Total Elo |
+| Features                                                                                                                                              | Category      | Delta (Elo) | Estimated Elo |
 |:------------------------------------------------------------------------------------------------------------------------------------------------------|:--------------|:-----------:|:---------:|
 | [**Lazy SMP (4 threads and 64 MB for the TT)**](https://github.com/Toudonou/zeno/commit/45af0e0512fb749a019dbe7f0f5bdf4841af0b26)                     | Search        |    +180     |     -     |
 |                                                                                                                                                       |               |             |           |
