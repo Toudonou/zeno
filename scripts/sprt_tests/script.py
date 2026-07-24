@@ -26,7 +26,7 @@ def build_zeno_ref(ref):
   return f"./{dirname}/target/release/zeno_{ref[:8]}", dirname
 
 
-def run_sprt_test(ref1, ref2, name1=None, name2=None, rounds=10000, threads=16, bounds=()):
+def run_sprt_test(ref1, ref2, name1=None, name2=None, rounds=10000, threads=16, bounds=(), alpha=0.01, beta=0.01):
   """
   Compare two zeno versions
 
@@ -59,7 +59,7 @@ def run_sprt_test(ref1, ref2, name1=None, name2=None, rounds=10000, threads=16, 
 
   sprt_bounds = ""
   if bounds:
-    sprt_bounds = f" -sprt elo0={bounds[0]} elo1={bounds[1]} alpha=0.01 beta=0.01"
+    sprt_bounds = f" -sprt elo0={bounds[0]} elo1={bounds[1]} alpha={alpha} beta={beta}"
 
   cmd = f"""
     ./fastchess \
@@ -88,10 +88,12 @@ def run_sprt_test(ref1, ref2, name1=None, name2=None, rounds=10000, threads=16, 
 
 
 run_sprt_test(
-    None,
-    "f1c5b865abf33db33a0349dde30229753ae00609", # https://github.com/Toudonou/zeno/commit/f1c5b865abf33db33a0349dde30229753ae00609
-    name1="Zeno current (Go options)",
-    name2="Late Move Pruning - 1t - 16MB",
-    rounds=5000,
-    bounds=(-35, -30)
+    "little-refactoring",
+    "develop",
+    name1="little-refactoring",
+    name2="develop",
+    rounds=30000,
+    bounds=(-11, -10),
+    alpha=0.01,
+    beta=0.01
 )

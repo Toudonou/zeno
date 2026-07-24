@@ -1,5 +1,25 @@
 # SPRT results per features
 
+## Refactoring + resetting the transposition table after receiving an ucinewgame command 
+
+Another regression again; at most -10 Elo; it's ok
+
+* Zeno current vs [little-refactoring](https://github.com/Toudonou/zeno/compare/develop...little-refactoring)
+
+```
+--------------------------------------------------
+Results of little-refactoring vs develop (8+0.08, 1t, 1MB, UHO_Lichess_4852_v1.epd):
+Elo: 1.58 +/- 2.42, nElo: 2.12 +/- 3.25
+LOS: 89.97 %, DrawRatio: 41.82 %, PairsRatio: 1.02
+Games: 43996, Wins: 15393, Losses: 15193, Draws: 13410, Points: 22098.0 (50.23 %)
+Ptnml(0-2): [1909, 4418, 9199, 4508, 1964], WL/DD Ratio: 3.10
+LLR: 4.60 (100.1%) (-4.60, 4.60) [-11.00, -10.00]
+--------------------------------------------------
+SPRT ([-11.00, -10.00]) completed - H1 was accepted
+Finished match
+Total Time: 16:57:53 (hours:minutes:seconds)
+```
+
 ## Setoption for threads and Hash - 1t - 16MB
 
 The current version, the one with LazySMP and 1 thread and 1 MB of TT as default, is at most 30 Elo weaker than the previous version [no Lazy - 1 thread - 16 MB for the TT](https://github.com/Toudonou/zeno/commit/f1c5b865abf33db33a0349dde30229753ae00609)
