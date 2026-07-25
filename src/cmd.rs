@@ -4,7 +4,7 @@ use std::time::Instant;
 
 use crate::tuner::optimizer::optimize_features;
 use crate::uci;
-use crate::utils::MAX_TUNER_BUFFER_SIZE;
+use crate::utils::{MAX_TUNER_BUFFER_SIZE, SIGMOID_FACTOR};
 
 /// Zeno: a chess engine built by Toudonou 2025-2026
 #[derive(Parser, Debug)]
@@ -52,7 +52,7 @@ pub fn process_cmd(args: Cmd) {
         let dataset_path = train_args.input_file.into_os_string().into_string().unwrap();
         let iterations = train_args.iterations;
 
-        match optimize_features(&dataset_path, MAX_TUNER_BUFFER_SIZE, iterations, 1.0119941f32) {
+        match optimize_features(&dataset_path, MAX_TUNER_BUFFER_SIZE, iterations, SIGMOID_FACTOR) {
           Ok(_) => println!("Training done in {:?}", duration.elapsed()),
           Err(err) => println!("Error: {}", err),
         }

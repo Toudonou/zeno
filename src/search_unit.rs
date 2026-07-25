@@ -52,7 +52,7 @@ impl SearcherUnit {
   pub fn search(&mut self, position: &Position, history: &History, search_limits: SearchLimits) -> SearchResult {
     let mut position = position.clone();
     let mut history = history.clone();
-    let mut score = Evaluation::Score(-ZENO_INFINITY);
+    let mut score = Evaluation::CentiPawns(-ZENO_INFINITY);
 
     self.stop_search = false;
     self.timer = Instant::now();
@@ -142,7 +142,7 @@ impl SearcherUnit {
     num_extensions: i32,
   ) -> Evaluation {
     if self.update_and_check_stop(depth) {
-      return Evaluation::Score(-ZENO_INFINITY);
+      return Evaluation::CentiPawns(-ZENO_INFINITY);
     }
 
     self.nodes_visited += 1;
@@ -160,7 +160,7 @@ impl SearcherUnit {
     // Check for threefold repetition and fifty-move rule (partially)
     if history.is_repetition(position) || position.get_half_move_clock() >= 100 {
       pv_line.clear();
-      return Evaluation::Score(DRAW_VALUE);
+      return Evaluation::CentiPawns(DRAW_VALUE);
     }
 
     if depth <= 0 || ply > MAX_PLY {
@@ -200,7 +200,7 @@ impl SearcherUnit {
       if static_score < alpha - razoring_margin {
         let quiescence_eval = self.quiescence_search(position, alpha, beta, &EVAL_PARAMS_DEFAULT);
         if quiescence_eval.value() < alpha {
-          return Evaluation::Score(alpha);
+          return Evaluation::CentiPawns(alpha);
         }
       }
     }
@@ -218,7 +218,7 @@ impl SearcherUnit {
       history.pop_last_entry();
 
       if !eval.is_mate_score() && eval.value() >= beta {
-        return Evaluation::Score(beta);
+        return Evaluation::CentiPawns(beta);
       }
     }
 
@@ -236,11 +236,11 @@ impl SearcherUnit {
       if is_in_check {
         return Evaluation::MateIn(-ply);
       }
-      return Evaluation::Score(DRAW_VALUE);
+      return Evaluation::CentiPawns(DRAW_VALUE);
     }
 
     let original_alpha = alpha;
-    let mut best_eval = Evaluation::Score(-ZENO_INFINITY);
+    let mut best_eval = Evaluation::CentiPawns(-ZENO_INFINITY);
     let mut best_move = None;
     let mut quiets_moves: Vec<Move> = Vec::with_capacity(move_picker.get_moves_count());
     while let Some((mov, move_index)) = move_picker.pick_best_move() {
@@ -334,7 +334,7 @@ impl SearcherUnit {
   #[inline(always)]
   pub fn quiescence_search(&mut self, position: &mut Position, mut alpha: i32, beta: i32, eval_params: &EvalParams) -> Evaluation {
     self.nodes_visited += 1;
-    let static_evaluation = Evaluation::Score(Evaluator::evaluate(position, eval_params));
+    let static_evaluation = Evaluation::CentiPawns(Evaluator::evaluate(position, eval_params));
 
     let mut best_eval = static_evaluation;
     if best_eval.value() >= beta {

@@ -62,12 +62,14 @@ pub struct SearchResult {
 impl SearchResult {
   #[inline(always)]
   pub fn print_info(&self) {
-    print!("info depth {} nodes {} time {} nps {} ", self.depth, self.nodes, self.search_time, 1000 * self.nodes as u128 / self.search_time);
-
-    match self.score {
-      Evaluation::Score(score) => print!("score cp {} ", score),
-      Evaluation::MateIn(mate_in) => print!("score mate {} ", mate_in / 2),
-    }
+    print!(
+      "info depth {} nodes {} time {} nps {} {} ",
+      self.depth,
+      self.nodes,
+      self.search_time,
+      1000 * self.nodes as u128 / self.search_time,
+      self.score
+    );
 
     print!("pv ");
     for mov in &self.pv {
