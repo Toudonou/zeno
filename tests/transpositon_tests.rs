@@ -12,7 +12,7 @@ mod transposition_tests {
     let best_move = Some(Move::new(25, 35, MoveType::EnPassant));
     let depth = 5;
     let flag = TTFlag::LowerBound;
-    let evaluation = Evaluation::Score(25);
+    let evaluation = Evaluation::CentiPawns(25);
     let ply = 0;
     let tt_entry = AtomicTTEntry::new(position.get_zobrist_hash(), best_move, depth, flag, evaluation, ply).get_tt_entry();
     assert_eq!(tt_entry.get_hash(), position.get_zobrist_hash());
@@ -53,7 +53,7 @@ mod transposition_tests {
     let best_move = Some(Move::new(25, 35, MoveType::Normal));
     let depth = 5;
     let flag = TTFlag::LowerBound;
-    let evaluation = Evaluation::Score(-6);
+    let evaluation = Evaluation::CentiPawns(-6);
     let ply = 5;
     let tt_entry = AtomicTTEntry::new(position.get_zobrist_hash(), best_move, depth, flag, evaluation, ply).get_tt_entry();
     assert_eq!(tt_entry.get_hash(), position.get_zobrist_hash());

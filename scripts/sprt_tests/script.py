@@ -1,67 +1,82 @@
 import os
 import shutil
+from random import randint
 
 REPO = "https://github.com/toudonou/zeno"
+
 
 def build_current():
     """Build the current local checkout."""
     os.system("cargo build --release")
     return "../../target/release/zeno"
 
+
 def build_zeno_ref(ref):
-  """
-  Build a zeno version from a git ref (tag, branch, or commit hash)
-  """
-  dirname = f"zeno_{ref[:8]}"
+    """
+    Build a zeno version from a git ref (tag, branch, or commit hash)
+    """
+    name = ref[:24] + "_" + str(randint(0, 10))
+    name = name.replace("/", "_")
 
-  if os.path.exists(dirname):
-    shutil.rmtree(dirname)
+    dirname = f"zeno_{name}"
 
-  os.system(f"git clone {REPO} {dirname}")
-  os.system(f"cd {dirname} && git checkout {ref} && cargo build --release")
-  os.system(
-    f"mv {dirname}/target/release/zeno {dirname}/target/release/zeno_{ref[:8]}"
-  )
+    if os.path.exists(dirname):
+        shutil.rmtree(dirname)
 
-  return f"./{dirname}/target/release/zeno_{ref[:8]}", dirname
+    os.system(f"git clone {REPO} {dirname}")
+    os.system(f"cd {dirname} && git checkout {ref} && cargo build --release")
+    os.system(f"mv {dirname}/target/release/zeno {dirname}/target/release/zeno_{name}")
 
-
-def run_sprt_test(ref1, ref2, name1=None, name2=None, rounds=10000, threads=16, bounds=(), alpha=0.01, beta=0.01):
-  """
-  Compare two zeno versions
-
-  ref can be:
-    - commit hash
-    - tag
-    - branch
-
-  If ref2 is None, compare against current local build
-  """
-
-  cleanup = []
-
-  if ref1 is None:
-    engine1 = build_current()
-    engine2, dir2 = build_zeno_ref(ref2)
-    cleanup.append(dir2)
-
-    name1 = name1 or "Zeno current"
-    name2 = name2 or ref2[:8]
-
-  else:
-    engine1, dir1 = build_zeno_ref(ref1)
-    engine2, dir2 = build_zeno_ref(ref2)
-    cleanup.extend([dir1, dir2])
-
-    name1 = name1 or ref1[:8]
-    name2 = name2 or ref2[:8]
+    return f"./{dirname}/target/release/zeno_{name}", dirname
 
 
-  sprt_bounds = ""
-  if bounds:
-    sprt_bounds = f" -sprt elo0={bounds[0]} elo1={bounds[1]} alpha={alpha} beta={beta}"
+def run_sprt_test(
+    ref1,
+    ref2,
+    name1=None,
+    name2=None,
+    rounds=10000,
+    threads=15,
+    bounds=(),
+    alpha=0.01,
+    beta=0.01,
+):
+    """
+    Compare two zeno versions
 
-  cmd = f"""
+    ref can be:
+      - commit hash
+      - tag
+      - branch
+
+    If ref2 is None, compare against current local build
+    """
+
+    cleanup = []
+
+    if ref1 is None:
+        engine1 = build_current()
+        engine2, dir2 = build_zeno_ref(ref2)
+        cleanup.append(dir2)
+
+        name1 = name1 or "Zeno current"
+        name2 = name2 or ref2[:24]
+
+    else:
+        engine1, dir1 = build_zeno_ref(ref1)
+        engine2, dir2 = build_zeno_ref(ref2)
+        cleanup.extend([dir1, dir2])
+
+        name1 = name1 or ref1[:24]
+        name2 = name2 or ref2[:24]
+
+    sprt_bounds = ""
+    if bounds:
+        sprt_bounds = (
+            f" -sprt elo0={bounds[0]} elo1={bounds[1]} alpha={alpha} beta={beta}"
+        )
+
+    cmd = f"""
     ./fastchess \
     -engine cmd={engine1} name="{name1}" \
     -engine cmd={engine2} name="{name2}" \
@@ -74,26 +89,23 @@ def run_sprt_test(ref1, ref2, name1=None, name2=None, rounds=10000, threads=16, 
     -recover
   """
 
-  os.system(cmd)
+    os.system(cmd)
 
-  os.system("./ordo -o ratings.txt -- games.pgn")
-  os.system("cat ratings.txt")
+    os.system("./ordo -o ratings.txt -- games.pgn")
+    os.system("cat ratings.txt")
 
-  for d in cleanup:
-    shutil.rmtree(d)
+    for d in cleanup:
+        shutil.rmtree(d)
 
-  for f in ["ratings.txt", "games.pgn"]:
-    if os.path.exists(f):
-      os.remove(f)
+    for f in ["ratings.txt", "games.pgn"]:
+        if os.path.exists(f):
+            os.remove(f)
 
 
 run_sprt_test(
-    "little-refactoring",
+    "feature/normalize-score-output",
     "develop",
-    name1="little-refactoring",
+    name1="normalize-score-output",
     name2="develop",
-    rounds=30000,
-    bounds=(-11, -10),
-    alpha=0.01,
-    beta=0.01
+    rounds=40000,
 )
