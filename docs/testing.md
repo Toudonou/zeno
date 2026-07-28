@@ -1,10 +1,45 @@
 # SPRT results per features
 
+## Normalize output score
+
+Nothing to worry about
+
+* [Zeno current](https://github.com/Toudonou/zeno/pull/5/changes/0fdd1ca44770178cc1a15a85d3a1c1d59254688f) vs Zeno develop
+
+```
+--------------------------------------------------
+Results of normalize-score-output vs develop (8+0.08, 1t, 1MB, UHO_Lichess_4852_v1.epd):
+Elo: -3.09 +/- 1.81, nElo: -4.10 +/- 2.41
+LOS: 0.04 %, DrawRatio: 41.18 %, PairsRatio: 0.96
+Games: 80000, Wins: 27435, Losses: 28147, Draws: 24418, Points: 39644.0 (49.55 %)
+Ptnml(0-2): [3782, 8208, 16471, 8018, 3521], WL/DD Ratio: 3.02
+--------------------------------------------------
+Finished match
+Total Time: 32:52:53 (hours:minutes:seconds)
+
+Loading data (2000 games x dot): 
+..............................................|
+Total games            93418
+ - White wins          34711
+ - Draws               28546
+ - Black wins          30161
+ - Truncated               0
+Unique head to head     0.00%
+Reference rating      2300.0 (average of the pool)²
+
+Post-Convergence rating estimation
+done
+
+   # PLAYER                    : RATING    POINTS  PLAYED    (%)
+   1 develop                   : 2301.6   47145.0   93418   50.5%
+   2 normalize-score-output    : 2298.4   46273.0   93418   49.5%
+```
+
 ## Refactoring + resetting the transposition table after receiving an ucinewgame command 
 
 Another regression again; at most -10 Elo; it's ok
 
-* Zeno current vs [little-refactoring](https://github.com/Toudonou/zeno/compare/develop...little-refactoring)
+* Zeno [little-refactoring](https://github.com/Toudonou/zeno/compare/develop...little-refactoring) vs Zeno develop
 
 ```
 --------------------------------------------------
