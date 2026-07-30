@@ -1,5 +1,6 @@
 use crate::bitboard::BitBoard;
 use crate::containers::{ByColor, ByPieceType};
+use crate::evaluator::DRAW_PHASE_THRESHOLD;
 use crate::lookup_tables::{get_bishop_attacks, get_king_attacks, get_knight_attacks, get_pawns_attacks, get_rook_attacks};
 use crate::moves::{Move, MoveType};
 use crate::piece::{Piece, PieceColor, PieceType};
@@ -635,7 +636,7 @@ impl Position {
   /// The game is about 80% the total phase
   #[inline(always)]
   pub fn is_endgame(&self) -> bool {
-    self.get_phase() >= 200
+    self.get_phase() >= DRAW_PHASE_THRESHOLD
   }
 
   #[inline(always)]

@@ -17,9 +17,9 @@ pub struct TunerParams {
 impl TunerParams {
   #[inline(always)]
   pub fn from_eval_param(eval_params: &EvalParams) -> Self {
-    let mut params_f32 = Self::fill_with(0.0);
+    let mut params_f32 = Self::from_value(0.0);
 
-    for feature in FEATURES_ALL {
+    for &feature in FEATURES_ALL.iter() {
       let index = feature.to_index();
       match feature {
         Features::Material(piece_type) => {
@@ -37,14 +37,20 @@ impl TunerParams {
   }
 
   #[inline(always)]
-  pub fn fill_with(value: f32) -> Self {
+  pub fn from_value(value: f32) -> Self {
     TunerParams { mg: vec![value; MAX_FEATURES], eg: vec![value; MAX_FEATURES] }
   }
 
-  pub fn save_to_file(&self, file_name: &str, header_comments: &str) -> Result<(), io::Error> {
+  #[inline(always)]
+  pub fn fill_with(&mut self, value: f32) {
+    self.mg.fill(value);
+    self.eg.fill(value);
+  }
+
+  pub fn save_to_file(&mut self, file_name: &str, header_comments: &str) -> Result<(), io::Error> {
     let mut string_buffer = String::with_capacity(8192);
 
-    string_buffer.push_str(header_comments);
+    string_buffer.push_str(&header_comments);
     string_buffer.push_str("\n");
     string_buffer.push_str("use crate::containers::ByPieceType;\n");
 
@@ -67,7 +73,6 @@ impl TunerParams {
       string_buffer.push_str(";\n");
     }
 
-    string_buffer.push_str("\n\n");
     for piece_type in [PieceType::Pawn, PieceType::Knight, PieceType::Bishop, PieceType::Rook, PieceType::Queen, PieceType::King] {
       println!();
       string_buffer.push_str("\n");

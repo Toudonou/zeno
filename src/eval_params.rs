@@ -1,6 +1,7 @@
 use crate::containers::ByPieceType;
 use crate::params::{EG_PIECES_SQUARES_TABLES, EG_PIECES_VALUES, MG_PIECES_SQUARES_TABLES, MG_PIECES_VALUES};
 use crate::piece::{PieceColor, PieceType};
+use crate::square::Square;
 use crate::utils::get_psqt_index;
 
 pub static EVAL_PARAMS_DEFAULT: EvalParams = EvalParams::default();
@@ -30,12 +31,12 @@ impl EvalParams {
   }
 
   #[inline(always)]
-  pub fn get_mg_psqt_value(&self, piece_type: PieceType, side: PieceColor, square: u8) -> i32 {
+  pub fn get_mg_psqt_value(&self, piece_type: PieceType, side: PieceColor, square: Square) -> i32 {
     self.mg_psqt_values[piece_type][get_psqt_index(side, square)]
   }
 
   #[inline(always)]
-  pub fn get_eg_psqt_value(&self, piece_type: PieceType, side: PieceColor, square: u8) -> i32 {
+  pub fn get_eg_psqt_value(&self, piece_type: PieceType, side: PieceColor, square: Square) -> i32 {
     self.eg_psqt_values[piece_type][get_psqt_index(side, square)]
   }
 }

@@ -103,9 +103,9 @@ def run_sprt_test(
 
 
 run_sprt_test(
-    "feature/normalize-score-output",
+    None, # "feature/adam-optimizer",
     "develop",
-    name1="normalize-score-output",
+    name1="adam-optimizer",
     name2="develop",
-    rounds=40000,
+    rounds=200,
 )

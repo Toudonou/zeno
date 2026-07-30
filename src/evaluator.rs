@@ -8,6 +8,9 @@ use crate::{get_lsb, pop_lsb};
 pub static DRAW_VALUE: i32 = 0;
 static LIGHT_SQUARES: BoardHash = 0x55AA55AA55AA55AAu64;
 
+/// The game is about 80% the total phase
+pub static DRAW_PHASE_THRESHOLD: i32 = 200;
+
 #[rustfmt::skip]
 static ARR_CENTER_MANHATTAN_DISTANCE: [i32; 64] = [
   6, 5, 4, 3, 3, 4, 5, 6,
@@ -77,7 +80,7 @@ impl Evaluator {
 
   #[inline(always)]
   pub fn is_draw_by_insufficient_material(position: &Position) -> bool {
-    if position.get_by_type(PieceType::Pawn).count_ones() != 0 || position.get_by_type(PieceType::Rook).count_ones() != 0 || position.get_by_type(PieceType::Queen).count_ones() != 0 {
+    if position.get_by_type(PieceType::Pawn) != 0 || position.get_by_type(PieceType::Rook) != 0 || position.get_by_type(PieceType::Queen) != 0 {
       return false;
     }
 
