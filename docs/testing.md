@@ -1,5 +1,23 @@
 # SPRT results per features
 
+## Adam optimizer for the tuner: values tuned from 0.0
+
+* [Zeno Adam](https://github.com/Toudonou/zeno/pull/6/changes/e41c5c0ae2ad30a70f76359d1278211b67bd5fd0) vs Zeno develop
+
+```
+--------------------------------------------------
+Results of adam-optimizer vs develop (8+0.08, 1t, 1MB, UHO_Lichess_4852_v1.epd):
+Elo: 118.23 +/- 10.75, nElo: 135.06 +/- 11.38
+LOS: 100.00 %, DrawRatio: 32.44 %, PairsRatio: 3.45
+Games: 3582, Wins: 2082, Losses: 908, Draws: 592, Points: 2378.0 (66.39 %)
+Ptnml(0-2): [97, 175, 581, 333, 605], WL/DD Ratio: 12.83
+LLR: 4.62 (100.5%) (-4.60, 4.60) [110.00, 120.00]
+--------------------------------------------------
+SPRT ([110.00, 120.00]) completed - H1 was accepted
+Finished match
+Total Time: 01:24:42 (hours:minutes:seconds)
+```
+
 ## Normalize output score
 
 Nothing to worry about
