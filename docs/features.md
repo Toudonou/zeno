@@ -33,6 +33,8 @@
     - [x] [Late move reductions](https://web.archive.org/web/20070820072632/http://www.glaurungchess.com/lmr.html)
     - [x] Late Move Pruning
     - [x] [Eval parameters tuning](https://www.chessprogramming.org/Texel%27s_Tuning_Method)
+      - [Adam Optimizer](https://en.wikipedia.org/wiki/Stochastic_gradient_descent#Adam)
+      - [Dataset (lichess-big3-resolved.book)](https://archive.org/details/lichess-big3-resolved.7z)
     - [x] SEE Pruning in the quiescence search
     - [x] Static null move pruning
     - [x] [Razoring](https://www.chessprogramming.org/Razoring)

@@ -103,9 +103,12 @@ def run_sprt_test(
 
 
 run_sprt_test(
-    "feature/normalize-score-output",
+    "e41c5c0ae2ad30a70f76359d1278211b67bd5fd0", # https://github.com/Toudonou/zeno/commit/e41c5c0ae2ad30a70f76359d1278211b67bd5fd0
     "develop",
-    name1="normalize-score-output",
+    name1="adam-optimizer",
     name2="develop",
-    rounds=40000,
+    rounds=10000,
+    bounds=(110, 120),
+    alpha=0.01,
+    beta=0.01
 )

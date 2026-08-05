@@ -15,11 +15,7 @@ macro_rules! pop_lsb {
 #[macro_export]
 macro_rules! shift {
   ($bitboard:expr, $amount:expr) => {
-    if $amount > 0 {
-      $bitboard << $amount as u8
-    } else {
-      $bitboard >> (-$amount) as u8
-    }
+    if $amount > 0 { $bitboard << $amount as u8 } else { $bitboard >> (-$amount) as u8 }
   };
 }
 

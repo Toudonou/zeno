@@ -6,7 +6,7 @@
 |                                                                                                                                                       |               |             |               |
 | [**Normalize score output**](https://github.com/Toudonou/zeno/pull/5)                                                                                 | Uci           |     +0      |     2385      |
 | [**Refactoring and TT reset after ucinewgame**](https://github.com/Toudonou/zeno/pull/3)                                                              | Uci           |     -10     |     2385      |
-| [**Update Go Command for setoption threads and Hash**](https://github.com/Toudonou/zeno/commit/0312202ff19c8258f1893abd6314c00269c746f2)              | Uci           |     -30     |     2395      |
+| [**Update Go Command for setoption threads and Hash (1t && 1MB )**](https://github.com/Toudonou/zeno/commit/0312202ff19c8258f1893abd6314c00269c746f2) | Uci           |     -30     |     2395      |
 | [**Late Move Pruning**](https://github.com/Toudonou/zeno/commit/f1c5b865abf33db33a0349dde30229753ae00609)                                             | Search        |     +55     |     2425      |
 | [**Razoring**](https://github.com/Toudonou/zeno/commit/714a22958ae486c3e6b3a989902a80ec95e3a5c9)                                                      | Search        |     +20     |     2370      |
 | [**Static null move pruning**](https://github.com/Toudonou/zeno/commit/3fd2d62090a5d754987189219a5a6c4d141974fa)                                      | Search        |     +75     |     2350      |

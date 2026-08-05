@@ -39,7 +39,9 @@ static QUEEN_PHASE: i8 = 4;
 static PHASE_TABLE: ByPieceType<i8> = ByPieceType::new(PAWN_PHASE, KNIGHT_PHASE, BISHOP_PHASE, ROOK_PHASE, QUEEN_PHASE, 0);
 pub static TOTAL_PHASE: i8 = PAWN_PHASE * 16 + KNIGHT_PHASE * 4 + BISHOP_PHASE * 4 + ROOK_PHASE * 4 + QUEEN_PHASE * 2;
 
-pub static SIGMOID_FACTOR: f32 = 1.0119941f32;
+pub static SEE_VALUES: ByPieceType<i32> = ByPieceType::new(100, 300, 350, 500, 900, 10000);
+
+pub static SIGMOID_FACTOR: f32 = 0.0025299853; // 1.0119941f32 / 400.0;
 
 pub fn random_u64() -> u64 {
   // https://www.chessprogramming.org/index.php?title=Looking_for_Magics&oldid=2272
@@ -70,7 +72,7 @@ pub fn get_psqt_index(side: PieceColor, square: u8) -> usize {
 
 #[inline(always)]
 pub fn sigmoid(k: f32, x: f32) -> f32 {
-  1.0 / (1.0 + (-(k * x) / 400.0).exp())
+  1.0 / (1.0 + (-k * x).exp())
 }
 
 #[inline(always)]

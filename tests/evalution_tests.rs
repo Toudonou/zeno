@@ -1,7 +1,6 @@
 #[cfg(test)]
 mod evaluation_tests {
   use std::sync::Arc;
-  use zeno::eval_params::EVAL_PARAMS_DEFAULT;
   use zeno::evaluator::Evaluator;
   use zeno::history::History;
   use zeno::moves::{Move, MoveType};
@@ -13,7 +12,7 @@ mod evaluation_tests {
   use zeno::search_pool::SearchPool;
   use zeno::square::{Square, SquareOps};
   use zeno::transposition_table::TranspositionTable;
-  use zeno::utils::{MAX_PLY, START_POSITION};
+  use zeno::utils::{MAX_PLY, SEE_VALUES, START_POSITION};
 
   #[test]
   fn test_evaluation_conversion_from_i32_to_u32_and_reverse() {
@@ -98,33 +97,33 @@ mod evaluation_tests {
     let source = Square::from_algebraic_notation("f3");
     let destination = Square::from_algebraic_notation("e5");
     let see_value = MovePicker::see_capture(&position, Move::new(source, destination, MoveType::Normal));
-    assert_eq!(see_value, EVAL_PARAMS_DEFAULT.get_mg_piece_value(PieceType::Pawn) - EVAL_PARAMS_DEFAULT.get_mg_piece_value(PieceType::Knight));
+    assert_eq!(see_value, SEE_VALUES[PieceType::Pawn] - SEE_VALUES[PieceType::Knight]);
     assert!(see_value < 0, "This capture is bad for white");
 
     let position = Position::from_fen("3r1rk1/pnpqb1p1/1p1p1n1p/8/P3p1p1/2PPBN1P/1P2BRPN/R2Q2K1 b - - 0 1");
     let source = Square::from_algebraic_notation("e4");
     let destination = Square::from_algebraic_notation("f3");
     let see_value = MovePicker::see_capture(&position, Move::new(source, destination, MoveType::Normal));
-    assert_eq!(see_value, EVAL_PARAMS_DEFAULT.get_mg_piece_value(PieceType::Knight) + EVAL_PARAMS_DEFAULT.get_mg_piece_value(PieceType::Pawn) - 2 * EVAL_PARAMS_DEFAULT.get_mg_piece_value(PieceType::Pawn));
+    assert_eq!(see_value, SEE_VALUES[PieceType::Knight] + SEE_VALUES[PieceType::Pawn] - 2 * SEE_VALUES[PieceType::Pawn]);
     assert!(see_value > 0, "This capture is good for back");
 
     let position = Position::from_fen("3r1rk1/pnpqb1p1/1p1p1n1p/8/P5p1/2PPBp1P/1P2BRPN/R2Q2K1 w - - 0 1");
     let source = Square::from_algebraic_notation("g2");
     let destination = Square::from_algebraic_notation("f3");
     let see_value = MovePicker::see_capture(&position, Move::new(source, destination, MoveType::Normal));
-    assert_eq!(see_value, 2 * EVAL_PARAMS_DEFAULT.get_mg_piece_value(PieceType::Pawn) - EVAL_PARAMS_DEFAULT.get_mg_piece_value(PieceType::Pawn));
+    assert_eq!(see_value, 2 * SEE_VALUES[PieceType::Pawn] - SEE_VALUES[PieceType::Pawn]);
     assert!(see_value > 0, "This capture is good for back");
 
     let position = Position::from_fen("3r1rk1/p1pq2p1/1p1pb2p/n7/P1n1p1p1/1P1PB1NP/1P2BR1N/R2Q2K1 b - - 0 1");
     let source = Square::from_algebraic_notation("b3");
     let destination = Square::from_algebraic_notation("c4");
     let see_value = MovePicker::see_capture(&position, Move::new(source, destination, MoveType::Normal));
-    assert_eq!(see_value, EVAL_PARAMS_DEFAULT.get_mg_piece_value(PieceType::Knight), "It's better for black to just give up the knight");
+    assert_eq!(see_value, SEE_VALUES[PieceType::Knight], "It's better for black to just give up the knight");
 
     let position = Position::from_fen("1k1r3q/1ppn3p/p4b2/4p3/8/P2N2P1/1PP1R1BP/2K1Q3 w - - 0 1");
     let source = Square::from_algebraic_notation("d3");
     let destination = Square::from_algebraic_notation("e5");
     let see_value = MovePicker::see_capture(&position, Move::new(source, destination, MoveType::Normal));
-    assert_eq!(see_value, EVAL_PARAMS_DEFAULT.get_mg_piece_value(PieceType::Pawn) - EVAL_PARAMS_DEFAULT.get_mg_piece_value(PieceType::Knight));
+    assert_eq!(see_value, SEE_VALUES[PieceType::Pawn] - SEE_VALUES[PieceType::Knight]);
   }
 }

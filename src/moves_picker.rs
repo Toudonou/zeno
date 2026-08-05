@@ -1,12 +1,11 @@
 use std::cmp;
 
-use crate::eval_params::EVAL_PARAMS_DEFAULT;
 use crate::moves::{MOVE_LIST_MAX_SIZE, Move, MoveList, MoveType};
 use crate::moves_generator::{generate_legal_moves, generate_quiescences_moves};
 use crate::piece::{Piece, PieceType};
 use crate::position::Position;
 use crate::square::Square;
-use crate::utils::ZENO_INFINITY;
+use crate::utils::{SEE_VALUES, ZENO_INFINITY};
 
 // Move's order
 // 1. TT move
@@ -128,7 +127,7 @@ impl MovePicker {
 
     (if victim.piece_type != PieceType::None {
       temp_position.make_see_capture(attacker, victim, mov.source(), mov.destination());
-      EVAL_PARAMS_DEFAULT.get_mg_piece_value(victim.piece_type)
+      SEE_VALUES[victim.piece_type]
     } else {
       0
     }) - MovePicker::see(&mut temp_position, mov.destination(), attacker)
@@ -143,7 +142,7 @@ impl MovePicker {
     if attacker.piece_type != PieceType::None {
       position.make_see_capture(attacker, victim, attacker_type_and_square.1, destination);
       // Should be good, all captures are not forced
-      value = cmp::max(0, EVAL_PARAMS_DEFAULT.get_mg_piece_value(victim.piece_type) - Self::see(position, destination, attacker));
+      value = cmp::max(0, SEE_VALUES[victim.piece_type] - Self::see(position, destination, attacker));
     }
 
     value
