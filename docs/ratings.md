@@ -4,6 +4,7 @@
 |:------------------------------------------------------------------------------------------------------------------------------------------------------|:--------------|:-----------:|:-------------:|
 | [**Lazy SMP (4 threads and 64 MB for the TT)**](https://github.com/Toudonou/zeno/commit/45af0e0512fb749a019dbe7f0f5bdf4841af0b26)                     | Search        |    +180     |       -       |
 |                                                                                                                                                       |               |             |               |
+| [**Adam optimizer for the tuner**](https://github.com/Toudonou/zeno/pull/6)                                                                           | Uci           |    +120     |     2505      |
 | [**Normalize score output**](https://github.com/Toudonou/zeno/pull/5)                                                                                 | Uci           |     +0      |     2385      |
 | [**Refactoring and TT reset after ucinewgame**](https://github.com/Toudonou/zeno/pull/3)                                                              | Uci           |     -10     |     2385      |
 | [**Update Go Command for setoption threads and Hash (1t && 1MB )**](https://github.com/Toudonou/zeno/commit/0312202ff19c8258f1893abd6314c00269c746f2) | Uci           |     -30     |     2395      |
