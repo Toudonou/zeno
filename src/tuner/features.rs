@@ -16,7 +16,7 @@ pub static SQUARES: [Square; Square::INVALID_SQUARE as usize] = {
   squares
 };
 
-pub const MAX_FEATURES: usize = /* Material */ PIECE_TYPES.len() + /* PSQT */ PIECE_TYPES.len() * SQUARES.len();
+pub const MAX_FEATURES: usize = /* Material */ PIECE_TYPES.len() + /* PSQT */ PIECE_TYPES.len() * SQUARES.len() + /* Bishop Pair */ 1;
 
 pub static FEATURES_ALL: LazyLock<Vec<Features>> = LazyLock::new(|| {
   let mut features = Vec::with_capacity(MAX_FEATURES);
@@ -30,6 +30,8 @@ pub static FEATURES_ALL: LazyLock<Vec<Features>> = LazyLock::new(|| {
       features.push(Features::Psqt(piece, square));
     }
   }
+
+  features.push(Features::BishopPair);
 
   features
 });
@@ -48,6 +50,7 @@ static FEATURES_TO_INDEX: LazyLock<HashMap<Features, usize>> = LazyLock::new(|| 
 pub enum Features {
   Material(PieceType),
   Psqt(PieceType, Square),
+  BishopPair,
 }
 
 impl Features {

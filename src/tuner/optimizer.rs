@@ -48,8 +48,8 @@ pub fn adam_optimizer(dataset_path: &str, max_number_of_samples: usize, max_iter
   println!("Validation dataset size size: {}", validation_positions.len().separate_with_commas());
   println!();
 
-  let mut best_tuner_params = TunerParams::from_value(0.0);
-  let mut current_tuner_params = TunerParams::from_value(0.0);
+  let mut best_tuner_params = TunerParams::from_eval_param(&EVAL_PARAMS_DEFAULT);
+  let mut current_tuner_params = TunerParams::from_eval_param(&EVAL_PARAMS_DEFAULT);
   let mut gradients = TunerParams::from_value(0.0);
 
   let learning_rate = 1e-2;

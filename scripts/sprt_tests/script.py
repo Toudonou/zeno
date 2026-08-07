@@ -103,12 +103,9 @@ def run_sprt_test(
 
 
 run_sprt_test(
-    "e41c5c0ae2ad30a70f76359d1278211b67bd5fd0", # https://github.com/Toudonou/zeno/commit/e41c5c0ae2ad30a70f76359d1278211b67bd5fd0
+  None,
     "develop",
-    name1="adam-optimizer",
+    name1="bishop-pair",
     name2="develop",
-    rounds=10000,
-    bounds=(110, 120),
-    alpha=0.01,
-    beta=0.01
+    rounds=300,
 )

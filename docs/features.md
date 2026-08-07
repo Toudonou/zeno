@@ -14,6 +14,7 @@
     - [x] Draw by insufficient material
     - [x] [Draw by Threefold repetition](https://en.wikipedia.org/wiki/Threefold_repetition)
     - [x] [Fifty-move rule (partially)](https://en.wikipedia.org/wiki/Fifty-move_rule)
+    - [x] [Bishop Pair](https://www.chessprogramming.org/Bishop_Pair)
 - [x] Search
     - [x] [Alpha-beta pruning (Negamax)](https://en.wikipedia.org/wiki/Negamax#Negamax_with_alpha_beta_pruning)
     - [x] Move Ordering

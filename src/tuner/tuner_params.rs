@@ -30,6 +30,10 @@ impl TunerParams {
           params_f32.mg[index] = eval_params.get_mg_psqt_value(piece_type, PieceColor::White, square) as f32;
           params_f32.eg[index] = eval_params.get_eg_psqt_value(piece_type, PieceColor::White, square) as f32;
         }
+        Features::BishopPair => {
+          params_f32.mg[index] = eval_params.get_mg_bishop_pair_value() as f32;
+          params_f32.eg[index] = eval_params.get_eg_bishop_pair_value() as f32;
+        }
       };
     }
 
@@ -72,6 +76,15 @@ impl TunerParams {
       string_buffer.push_str(&(self.eg[Features::Material(piece_type).to_index()] as i32).to_string());
       string_buffer.push_str(";\n");
     }
+
+    string_buffer.push_str("\n");
+    string_buffer.push_str("pub static MG_BISHOP_PAIR: i32 = ");
+    string_buffer.push_str(&(self.mg[Features::BishopPair.to_index()] as i32).to_string());
+    string_buffer.push_str(";\n");
+
+    string_buffer.push_str("pub static EG_BISHOP_PAIR: i32 = ");
+    string_buffer.push_str(&(self.eg[Features::BishopPair.to_index()] as i32).to_string());
+    string_buffer.push_str(";\n");
 
     for piece_type in [PieceType::Pawn, PieceType::Knight, PieceType::Bishop, PieceType::Rook, PieceType::Queen, PieceType::King] {
       println!();
