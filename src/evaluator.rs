@@ -1,13 +1,14 @@
+use crate::bitboard::BitBoard;
 use crate::eval_params::EvalParams;
+use crate::params::{EG_BISHOP_PAIR, MG_BISHOP_PAIR};
 use crate::piece::{PieceColor, PieceType};
 use crate::position::Position;
-use crate::square::{Square, SquareOps};
-use crate::zobrist_hash::BoardHash;
+use crate::square::Square;
 use crate::{get_lsb, pop_lsb};
+use std::ops::{Add, AddAssign, SubAssign};
 
 pub static DRAW_VALUE: i32 = 0;
-static LIGHT_SQUARES: BoardHash = 0x55AA55AA55AA55AAu64;
-
+static LIGHT_SQUARES: BitBoard = 0x55AA55AA55AA55AAu64;
 /// The game is about 80% the total phase
 pub static DRAW_PHASE_THRESHOLD: i32 = 200;
 
@@ -23,59 +24,71 @@ static ARR_CENTER_MANHATTAN_DISTANCE: [i32; 64] = [
   6, 5, 4, 3, 3, 4, 5, 6
 ];
 
+pub struct Score {
+  pub mg: i32,
+  pub eg: i32,
+}
+
 pub struct Evaluator {}
 
 impl Evaluator {
   #[inline(always)]
   pub fn evaluate(position: &Position, eval_params: &EvalParams) -> i32 {
-    Evaluator::tapered_evaluation(position, eval_params)
+    Evaluator::static_evaluation(position, eval_params)
   }
 
   #[inline(always)]
-  fn tapered_evaluation(position: &Position, eval_params: &EvalParams) -> i32 {
-    let mut mg_evaluation: i32 = 0;
-    let mut eg_evaluation: i32 = 0;
+  pub fn static_evaluation(position: &Position, eval_params: &EvalParams) -> i32 {
+    let mut score = Score { mg: 0, eg: 0 };
+    let phase = position.get_phase();
 
-    if position.is_endgame() {
+    if phase >= DRAW_PHASE_THRESHOLD {
       // A draw by insufficient material can only occur during endgames
       if Evaluator::is_draw_by_insufficient_material(position) {
         return 0;
       }
-      eg_evaluation += Evaluator::king_cornering(position.get_king_square(PieceColor::White), position.get_king_square(PieceColor::Black));
-      eg_evaluation -= Evaluator::king_cornering(position.get_king_square(PieceColor::Black), position.get_king_square(PieceColor::White));
+      score.eg += Evaluator::king_cornering(position.get_king_square(PieceColor::Black));
+      score.eg -= Evaluator::king_cornering(position.get_king_square(PieceColor::White));
     }
 
-    for piece_type in [PieceType::Pawn, PieceType::Knight, PieceType::Bishop, PieceType::Rook, PieceType::Queen, PieceType::King] {
-      let mut board = position.get_by_side_and_type(PieceColor::White, piece_type);
-      while board != 0 {
-        let square = get_lsb!(board);
-        mg_evaluation += eval_params.get_mg_piece_value(piece_type) + eval_params.get_mg_psqt_value(piece_type, PieceColor::White, square);
-        eg_evaluation += eval_params.get_eg_piece_value(piece_type) + eval_params.get_eg_psqt_value(piece_type, PieceColor::White, square);
-        pop_lsb!(board);
-      }
+    score += Evaluator::material_eval(position, PieceColor::White, eval_params);
+    score -= Evaluator::material_eval(position, PieceColor::Black, eval_params);
 
-      let mut board = position.get_by_side_and_type(PieceColor::Black, piece_type);
-      while board != 0 {
-        let square = get_lsb!(board);
-        mg_evaluation -= eval_params.get_mg_piece_value(piece_type) + eval_params.get_mg_psqt_value(piece_type, PieceColor::Black, square);
-        eg_evaluation -= eval_params.get_eg_piece_value(piece_type) + eval_params.get_eg_psqt_value(piece_type, PieceColor::Black, square);
-        pop_lsb!(board);
-      }
+    if Evaluator::has_bishop_pair(position, PieceColor::White) {
+      score.mg += MG_BISHOP_PAIR;
+      score.eg += EG_BISHOP_PAIR;
+    }
+    if Evaluator::has_bishop_pair(position, PieceColor::Black) {
+      score.mg -= MG_BISHOP_PAIR;
+      score.eg -= EG_BISHOP_PAIR;
     }
 
-    let phase = position.get_phase();
-    (((mg_evaluation * (256 - phase)) + (eg_evaluation * phase)) >> 8) * position.get_side().to_i32()
+    (((score.mg * (256 - phase)) + (score.eg * phase)) >> 8) * position.get_side().to_i32()
   }
 
   #[inline(always)]
-  fn king_cornering(friendly_square: Square, opponent_square: Square) -> i32 {
-    let mut evaluation: i32 = 0;
-    let distance_between_kings: i32 = (friendly_square.get_file().abs_diff(opponent_square.get_file()) + friendly_square.get_rank().abs_diff(opponent_square.get_rank())) as i32;
+  fn material_eval(position: &Position, side: PieceColor, eval_params: &EvalParams) -> Score {
+    let mut score = Score { mg: 0, eg: 0 };
 
-    evaluation += 6 * ARR_CENTER_MANHATTAN_DISTANCE[opponent_square as usize];
-    evaluation += 2 * (14 - distance_between_kings);
+    for piece_type in [PieceType::Pawn, PieceType::Knight, PieceType::Bishop, PieceType::Rook, PieceType::Queen, PieceType::King] {
+      let mut board = position.get_by_side_and_type(side, piece_type);
+      while board != 0 {
+        let square = get_lsb!(board);
 
-    evaluation
+        score.mg += eval_params.get_mg_piece_value(piece_type) + eval_params.get_mg_psqt_value(piece_type, side, square);
+        score.eg += eval_params.get_eg_piece_value(piece_type) + eval_params.get_eg_psqt_value(piece_type, side, square);
+
+        pop_lsb!(board);
+      }
+    }
+
+    score
+  }
+
+  #[inline(always)]
+  pub fn has_bishop_pair(position: &Position, side: PieceColor) -> bool {
+    let bishops = position.get_by_side_and_type(side, PieceType::Bishop);
+    (bishops & LIGHT_SQUARES != 0) && (bishops & !LIGHT_SQUARES != 0)
   }
 
   #[inline(always)]
@@ -116,5 +129,32 @@ impl Evaluator {
     }
 
     false
+  }
+
+  #[inline(always)]
+  fn king_cornering(opponent_square: Square) -> i32 {
+    6 * ARR_CENTER_MANHATTAN_DISTANCE[opponent_square as usize]
+  }
+}
+
+impl Add for Score {
+  type Output = Self;
+
+  fn add(self, rhs: Self) -> Self::Output {
+    Score { mg: self.mg + rhs.mg, eg: self.eg + rhs.eg }
+  }
+}
+
+impl AddAssign for Score {
+  fn add_assign(&mut self, rhs: Self) {
+    self.mg += rhs.mg;
+    self.eg += rhs.eg;
+  }
+}
+
+impl SubAssign for Score {
+  fn sub_assign(&mut self, rhs: Self) {
+    self.mg -= rhs.mg;
+    self.eg -= rhs.eg;
   }
 }

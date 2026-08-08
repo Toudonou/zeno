@@ -1,3 +1,4 @@
+use crate::evaluator::Evaluator;
 use crate::piece::{PieceColor, PieceType};
 use crate::position::Position;
 use crate::square::Square;
@@ -18,7 +19,7 @@ impl PositionIR {
   pub fn from_position(position: &Position) -> PositionIR {
     Self {
       board: {
-        let mut position_features = Vec::with_capacity(16);
+        let mut position_features = Vec::with_capacity(8);
         for piece_type in [PieceType::Pawn, PieceType::Knight, PieceType::Bishop, PieceType::Rook, PieceType::Queen, PieceType::King] {
           // Features::Material
           let index = Features::Material(piece_type).to_index();
@@ -59,6 +60,14 @@ impl PositionIR {
             pop_lsb!(board);
           }
         }
+
+        // Feature::BishopPair
+        let index = Features::BishopPair.to_index();
+        let feature = i8::from(Evaluator::has_bishop_pair(position, PieceColor::White)) - i8::from(Evaluator::has_bishop_pair(position, PieceColor::Black));
+        if feature != 0 {
+          position_features.push((index, feature));
+        }
+
         position_features
       },
       mg_factor: (256f32 - position.get_phase() as f32) / 256f32,

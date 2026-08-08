@@ -186,7 +186,7 @@ impl SearcherUnit {
 
     // Static null move pruning
     if depth <= STATIC_NMP_DEPTH_HORIZON && !is_in_check && !is_pv && beta < MATE_SCORE {
-      let static_score = Evaluator::evaluate(&position, &EVAL_PARAMS_DEFAULT);
+      let static_score = Evaluator::static_evaluation(&position, &EVAL_PARAMS_DEFAULT);
       let score_margin = STATIC_NMP_MARGIN * depth;
       if static_score >= beta + score_margin {
         return self.quiescence_search(position, alpha, beta, &EVAL_PARAMS_DEFAULT);
@@ -195,7 +195,7 @@ impl SearcherUnit {
 
     // Razoring
     if depth <= RAZORING_DEPTH_HORIZON && !is_in_check && !is_pv && alpha < MATE_SCORE {
-      let static_score = Evaluator::evaluate(&position, &EVAL_PARAMS_DEFAULT);
+      let static_score = Evaluator::static_evaluation(&position, &EVAL_PARAMS_DEFAULT);
       let razoring_margin = RAZORING_BASE + RAZORING_MARGIN * depth;
       if static_score < alpha - razoring_margin {
         let quiescence_eval = self.quiescence_search(position, alpha, beta, &EVAL_PARAMS_DEFAULT);
