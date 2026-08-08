@@ -1,5 +1,23 @@
 # SPRT results per features
 
+## Bishop pair
+
+* [Zeno Bishop Pair](https://github.com/Toudonou/zeno/pull/7/changes/9ab332300cc62875dc632f485d2f8108c67d4dc7) vs Zeno develop
+
+```
+--------------------------------------------------
+Results of bishop-pair vs develop (8+0.08, 1t, 1MB, UHO_Lichess_4852_v1.epd):
+Elo: 10.00 +/- 5.16, nElo: 12.56 +/- 6.48
+LOS: 99.99 %, DrawRatio: 37.73 %, PairsRatio: 1.11
+Games: 11048, Wins: 4138, Losses: 3820, Draws: 3090, Points: 5683.0 (51.44 %)
+Ptnml(0-2): [531, 1096, 2084, 1150, 663], WL/DD Ratio: 3.94
+LLR: 4.60 (100.1%) (-4.60, 4.60) [0.00, 5.00]
+--------------------------------------------------
+SPRT ([0.00, 5.00]) completed - H1 was accepted
+Finished match
+Total Time: 04:40:07 (hours:minutes:seconds)
+```
+
 ## Adam optimizer for the tuner: values tuned from 0.0
 
 * [Zeno Adam](https://github.com/Toudonou/zeno/pull/6/changes/e41c5c0ae2ad30a70f76359d1278211b67bd5fd0) vs Zeno develop

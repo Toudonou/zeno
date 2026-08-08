@@ -103,9 +103,12 @@ def run_sprt_test(
 
 
 run_sprt_test(
-  None,
+  "9ab332300cc62875dc632f485d2f8108c67d4dc7", # https://github.com/Toudonou/zeno/pull/7/changes/9ab332300cc62875dc632f485d2f8108c67d4dc7
     "develop",
     name1="bishop-pair",
     name2="develop",
-    rounds=300,
+    rounds=10000,
+    bounds=(0, 5),
+    alpha=0.01,
+    beta=0.01
 )
