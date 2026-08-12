@@ -41,3 +41,5 @@
     - [x] [Razoring](https://www.chessprogramming.org/Razoring)
     - [x] Lazy SMP
 - [x] Time management (partially)
+- [x] [SPRT test](https://www.dogeystamp.com/chess3/)
+  - [UHO_Lichess_4852_v1.epd](https://github.com/official-stockfish/books/blob/master/UHO_Lichess_4852_v1.epd.zip)
