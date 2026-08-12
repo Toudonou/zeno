@@ -89,6 +89,8 @@ def run_sprt_test(
     -recover
   """
 
+    os.system("cp ~/UHO_Lichess_4852_v1.epd UHO_Lichess_4852_v1.epd")
+
     os.system(cmd)
 
     os.system("./ordo -o ratings.txt -- games.pgn")
@@ -97,18 +99,15 @@ def run_sprt_test(
     for d in cleanup:
         shutil.rmtree(d)
 
-    for f in ["ratings.txt", "games.pgn"]:
+    for f in ["ratings.txt", "games.pgn", "UHO_Lichess_4852_v1.epd"]:
         if os.path.exists(f):
             os.remove(f)
 
 
 run_sprt_test(
-  "9ab332300cc62875dc632f485d2f8108c67d4dc7", # https://github.com/Toudonou/zeno/pull/7/changes/9ab332300cc62875dc632f485d2f8108c67d4dc7
+  None,
     "develop",
-    name1="bishop-pair",
+    name1="delete-uho",
     name2="develop",
     rounds=10000,
-    bounds=(0, 5),
-    alpha=0.01,
-    beta=0.01
 )
