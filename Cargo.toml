@@ -1,10 +1,10 @@
 [package]
 name = "zeno"
-version = "2.0.0"
+version = "3.0.0"
 edition = "2024"
 
 [dependencies]
-rand = "0.10.0"
+rand = "0.10.2"
 thousands = "0.2.0"
 textplots = "0.8.7"
-clap = { version = "4.6.0", features = ["derive"] }
+clap = { version = "4.6.6", features = ["derive"] }

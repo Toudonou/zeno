@@ -15,7 +15,7 @@ def build_zeno_ref(ref):
     """
     Build a zeno version from a git ref (tag, branch, or commit hash)
     """
-    name = ref[:24] + "_" + str(randint(0, 10))
+    name = ref[:24] + "_" + str(randint(0, 10000))
     name = name.replace("/", "_")
 
     dirname = f"zeno_{name}"
@@ -105,9 +105,9 @@ def run_sprt_test(
 
 
 run_sprt_test(
-  None,
-    "develop",
-    name1="delete-uho",
-    name2="develop",
+  "develop",
+    "2.0",
+    name1="develop - 3.0",
+    name2="2.0",
     rounds=10000,
 )

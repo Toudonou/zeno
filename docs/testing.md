@@ -1,5 +1,28 @@
 # SPRT results per features
 
+## Zeno 3.0 vs Zeno 2.0
+
+* [Zeno 3.0](https://github.com/Toudonou/zeno/releases/tag/3.0) vs [Zeno 2.0](https://github.com/Toudonou/zeno/releases/tag/2.0)
+
+```
+--------------------------------------------------
+Results of develop - 3.0 vs 2.0 (8+0.08, 1t - NULL, 1MB - NULL, UHO_Lichess_4852_v1.epd):
+Elo: 270.69 +/- 5.68, nElo: 334.40 +/- 4.82
+LOS: 100.00 %, DrawRatio: 20.21 %, PairsRatio: 20.45
+Games: 20000, Wins: 15458, Losses: 2414, Draws: 2128, Points: 16522.0 (82.61 %)
+Ptnml(0-2): [132, 240, 2021, 1666, 5941], WL/DD Ratio: 17.21
+--------------------------------------------------
+Finished match
+Total Time: 07:10:17 (hours:minutes:seconds)
+
+Post-Convergence rating estimation
+done
+
+   # PLAYER           : RATING    POINTS  PLAYED    (%)
+   1 develop - 3.0    : 2436.6   16525.0   20003   82.6%
+   2 2.0              : 2163.4    3478.0   20003   17.4%
+```
+
 ## Bishop pair
 
 * [Zeno Bishop Pair](https://github.com/Toudonou/zeno/pull/7/changes/9ab332300cc62875dc632f485d2f8108c67d4dc7) vs Zeno develop

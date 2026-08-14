@@ -13,7 +13,7 @@ use std::sync::Arc;
 use std::time::Instant;
 use thousands::Separable;
 
-pub static NAME: &str = "Zeno 2.0-dev";
+pub static NAME: &str = "Zeno 3.0";
 pub static AUTHOR_NAME: &str = "Toudonou";
 
 pub fn uci_loop() {
