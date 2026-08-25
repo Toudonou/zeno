@@ -3,9 +3,9 @@ use crate::moves::Move;
 use crate::perft;
 use crate::piece::PieceColor;
 use crate::position::Position;
-use crate::search_constants::{DEFAULT_NUMBERS_OF_THREADS, SearchLimits, MIN_NUMBERS_OF_THREADS, MAX_NUMBERS_OF_THREADS};
+use crate::search_constants::{DEFAULT_NUMBERS_OF_THREADS, MAX_NUMBERS_OF_THREADS, MIN_NUMBERS_OF_THREADS, SearchLimits};
 use crate::search_pool::SearchPool;
-use crate::transposition_table::{DEFAULT_TRANSPOSITION_SIZE, TranspositionTable, MIN_TRANSPOSITION_SIZE, MAX_TRANSPOSITION_SIZE};
+use crate::transposition_table::{DEFAULT_TRANSPOSITION_SIZE, MAX_TRANSPOSITION_SIZE, MIN_TRANSPOSITION_SIZE, TranspositionTable};
 use crate::uci_config::UciConfig;
 use crate::utils::START_POSITION;
 use std::io;
@@ -13,7 +13,7 @@ use std::sync::Arc;
 use std::time::Instant;
 use thousands::Separable;
 
-pub static NAME: &str = "Zeno 3.0";
+pub static NAME: &str = "Zeno 3.0-dev";
 pub static AUTHOR_NAME: &str = "Toudonou";
 
 pub fn uci_loop() {

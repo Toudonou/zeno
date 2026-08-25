@@ -60,14 +60,13 @@ For UCI documentation, see the [UCI Protocol Reference](https://backscattering.d
 ### Building for Development
 
 ```sh
-cargo build  # Debug build
-cargo build --release  # Optimized release build
+cargo build --release  # Should always be in release mode
 ```
 
 ### Running Tests
 
 ```sh
-cargo test  # Run all tests
+cargo test --release
 ```
 
 ### Testing the Engine

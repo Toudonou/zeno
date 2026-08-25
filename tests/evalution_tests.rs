@@ -144,4 +144,87 @@ mod evaluation_tests {
     assert_eq!(Evaluator::has_bishop_pair(&Position::from_fen("r6r/1pp2pk1/p1n3p1/2Np4/3P2Pq/P2P3P/1P1Q1PK1/R4R2 w - - 4 20"), PieceColor::White), false);
     assert_eq!(Evaluator::has_bishop_pair(&Position::from_fen("r6r/1pp2pk1/p1n3p1/2Np4/3P2Pq/P2P3P/1P1Q1PK1/R4R2 w - - 4 20"), PieceColor::Black), false);
   }
+
+  #[test]
+  fn test_is_doubled_pawns() {
+    assert_eq!(
+      Evaluator::is_doubled_pawns(
+        Position::from_fen("4k3/2p3p1/1p2p2p/1P2P2P/1PP3P1/4P3/8/4K3 w - - 0 1").get_by_side_and_type(PieceColor::White, PieceType::Pawn),
+        Square::from_algebraic_notation("b4"),
+      ),
+      true
+    );
+    assert_eq!(
+      Evaluator::is_doubled_pawns(
+        Position::from_fen("4k3/2p3p1/1p2p2p/1P2P2P/1PP3P1/4P3/8/4K3 w - - 0 1").get_by_side_and_type(PieceColor::White, PieceType::Pawn),
+        Square::from_algebraic_notation("b5"),
+      ),
+      true
+    );
+    assert_eq!(
+      Evaluator::is_doubled_pawns(
+        Position::from_fen("4k3/2p3p1/1p2p2p/1P2P2P/1PP3P1/4P3/8/4K3 w - - 0 1").get_by_side_and_type(PieceColor::White, PieceType::Pawn),
+        Square::from_algebraic_notation("c4"),
+      ),
+      false
+    );
+    assert_eq!(
+      Evaluator::is_doubled_pawns(
+        Position::from_fen("4k3/2p3p1/1p2p2p/1P2P2P/1PP3P1/4P3/8/4K3 w - - 0 1").get_by_side_and_type(PieceColor::White, PieceType::Pawn),
+        Square::from_algebraic_notation("e5"),
+      ),
+      true
+    );
+    assert_eq!(
+      Evaluator::is_doubled_pawns(
+        Position::from_fen("4k3/2p3p1/1p2p2p/1P2P2P/1PP3P1/4P3/8/4K3 w - - 0 1").get_by_side_and_type(PieceColor::White, PieceType::Pawn),
+        Square::from_algebraic_notation("e3"),
+      ),
+      true
+    );
+
+    assert_eq!(
+      Evaluator::is_doubled_pawns(Position::from_fen("3k4/1pp2ppp/1p6/8/8/5P2/PPP2PPP/3K4 w - - 0 1").get_by_side_and_type(PieceColor::Black, PieceType::Pawn), Square::from_algebraic_notation("b6"),),
+      true
+    );
+    assert_eq!(
+      Evaluator::is_doubled_pawns(Position::from_fen("3k4/1pp2ppp/1p6/8/8/5P2/PPP2PPP/3K4 w - - 0 1").get_by_side_and_type(PieceColor::Black, PieceType::Pawn), Square::from_algebraic_notation("b7"),),
+      true
+    );
+
+    assert_eq!(
+      Evaluator::is_doubled_pawns(
+        Position::from_fen("2N5/1p6/p3pk2/P1b4r/5p1P/2P2r2/1P5P/R6K w - - 1 43").get_by_side_and_type(PieceColor::White, PieceType::Pawn),
+        Square::from_algebraic_notation("h2"),
+      ),
+      true
+    );
+    assert_eq!(
+      Evaluator::is_doubled_pawns(
+        Position::from_fen("2N5/1p6/p3pk2/P1b4r/5p1P/2P2r2/1P5P/R6K w - - 1 43").get_by_side_and_type(PieceColor::White, PieceType::Pawn),
+        Square::from_algebraic_notation("h4"),
+      ),
+      true
+    );
+  }
+  #[test]
+  fn test_is_passed_pawn() {
+    let position = Position::from_fen("8/2k5/7p/1P2Pp1P/2Pp1PP1/8/8/2K5 w - - 0 1");
+    let side = PieceColor::White;
+    let enemy_pawn = position.get_by_side_and_type(side.opposite(), PieceType::Pawn);
+    assert_eq!(Evaluator::is_passed_pawn(enemy_pawn, Square::from_algebraic_notation("b5"), side), true);
+    assert_eq!(Evaluator::is_passed_pawn(enemy_pawn, Square::from_algebraic_notation("c4"), side), true);
+    assert_eq!(Evaluator::is_passed_pawn(enemy_pawn, Square::from_algebraic_notation("e5"), side), true);
+    assert_eq!(Evaluator::is_passed_pawn(enemy_pawn, Square::from_algebraic_notation("f4"), side), false);
+    assert_eq!(Evaluator::is_passed_pawn(enemy_pawn, Square::from_algebraic_notation("g5"), side), false);
+    assert_eq!(Evaluator::is_passed_pawn(enemy_pawn, Square::from_algebraic_notation("h5"), side), false);
+
+    let position = Position::from_fen("8/p3q1kp/1p2Pnp1/3pQ3/2pP4/1nP3N1/1B4PP/6K1 w - - 0 1");
+    let side = PieceColor::Black;
+    let enemy_pawn = position.get_by_side_and_type(side.opposite(), PieceType::Pawn);
+    assert_eq!(Evaluator::is_passed_pawn(enemy_pawn, Square::from_algebraic_notation("a7"), side), true);
+    assert_eq!(Evaluator::is_passed_pawn(enemy_pawn, Square::from_algebraic_notation("b6"), side), false);
+    assert_eq!(Evaluator::is_passed_pawn(enemy_pawn, Square::from_algebraic_notation("h7"), side), false);
+    assert_eq!(Evaluator::is_passed_pawn(enemy_pawn, Square::from_algebraic_notation("g6"), side), false);
+  }
 }

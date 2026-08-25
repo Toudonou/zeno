@@ -1,7 +1,7 @@
 use crate::evaluator::Evaluator;
 use crate::piece::{PieceColor, PieceType};
 use crate::position::Position;
-use crate::square::Square;
+use crate::square::{Square, SquareOps};
 use crate::tuner::features::Features;
 use crate::{get_lsb, pop_lsb};
 
@@ -66,6 +66,34 @@ impl PositionIR {
         let feature = i8::from(Evaluator::has_bishop_pair(position, PieceColor::White)) - i8::from(Evaluator::has_bishop_pair(position, PieceColor::Black));
         if feature != 0 {
           position_features.push((index, feature));
+        }
+
+        // Feature::DoubledPawns - Feature::PassedPawns
+        let mut doubled_pawns_features = [0; 8];
+        let mut passed_pawns_features = [0; 8];
+        for side in [PieceColor::White, PieceColor::Black] {
+          let our_pawns = position.get_by_side_and_type(side, PieceType::Pawn);
+          let enemy_pawns = position.get_by_side_and_type(side.opposite(), PieceType::Pawn);
+          let mut pawns = position.get_by_side_and_type(side, PieceType::Pawn);
+          while pawns != 0 {
+            let square = get_lsb!(pawns);
+            let file = square.get_file() as usize;
+            let rank = square.get_rank() as usize;
+            let rank = if side == PieceColor::White { rank } else { 7 - rank };
+
+            doubled_pawns_features[file] += side.to_i32() as i8 * i8::from(Evaluator::is_doubled_pawns(our_pawns, square));
+            passed_pawns_features[rank] += side.to_i32() as i8 * i8::from(Evaluator::is_passed_pawn(enemy_pawns, square, side));
+
+            pop_lsb!(pawns);
+          }
+        }
+        for index in 0..8 {
+          if doubled_pawns_features[index] != 0 {
+            position_features.push((Features::DoubledPawns(index as u8).to_index(), doubled_pawns_features[index]));
+          }
+          if passed_pawns_features[index] != 0 {
+            position_features.push((Features::PassedPawns(index as u8).to_index(), passed_pawns_features[index]));
+          }
         }
 
         position_features

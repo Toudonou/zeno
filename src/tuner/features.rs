@@ -3,6 +3,7 @@ use std::sync::LazyLock;
 
 use crate::piece::PieceType;
 use crate::square::{Square, SquareOps};
+use crate::utils::FILES;
 
 pub static PIECE_TYPES: [PieceType; 6] = [PieceType::Pawn, PieceType::Knight, PieceType::Bishop, PieceType::Rook, PieceType::Queen, PieceType::King];
 
@@ -16,7 +17,7 @@ pub static SQUARES: [Square; Square::INVALID_SQUARE as usize] = {
   squares
 };
 
-pub const MAX_FEATURES: usize = /* Material */ PIECE_TYPES.len() + /* PSQT */ PIECE_TYPES.len() * SQUARES.len() + /* Bishop Pair */ 1;
+pub const MAX_FEATURES: usize = /* Material */ PIECE_TYPES.len() + /* PSQT */ PIECE_TYPES.len() * SQUARES.len() + /* Bishop Pair */ 1 + /* Doubled Pawns */ 8 + /* Passed Pawns */ 8;
 
 pub static FEATURES_ALL: LazyLock<Vec<Features>> = LazyLock::new(|| {
   let mut features = Vec::with_capacity(MAX_FEATURES);
@@ -32,6 +33,11 @@ pub static FEATURES_ALL: LazyLock<Vec<Features>> = LazyLock::new(|| {
   }
 
   features.push(Features::BishopPair);
+
+  for i in 0..FILES.len() {
+    features.push(Features::DoubledPawns(i as u8));
+    features.push(Features::PassedPawns(i as u8));
+  }
 
   features
 });
@@ -51,6 +57,8 @@ pub enum Features {
   Material(PieceType),
   Psqt(PieceType, Square),
   BishopPair,
+  DoubledPawns(u8),
+  PassedPawns(u8),
 }
 
 impl Features {

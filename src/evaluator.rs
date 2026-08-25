@@ -1,11 +1,14 @@
+use std::ops::{Add, AddAssign, SubAssign};
+use std::sync::LazyLock;
+
 use crate::bitboard::BitBoard;
+use crate::containers::ByColor;
 use crate::eval_params::EvalParams;
-use crate::params::{EG_BISHOP_PAIR, MG_BISHOP_PAIR};
 use crate::piece::{PieceColor, PieceType};
 use crate::position::Position;
-use crate::square::Square;
-use crate::{get_lsb, pop_lsb};
-use std::ops::{Add, AddAssign, SubAssign};
+use crate::square::{Square, SquareOps};
+use crate::utils::{ADJACENTS_FILES, FILES};
+use crate::{get_lsb, pop_lsb, shift};
 
 pub static DRAW_VALUE: i32 = 0;
 static LIGHT_SQUARES: BitBoard = 0x55AA55AA55AA55AAu64;
@@ -24,6 +27,23 @@ static ARR_CENTER_MANHATTAN_DISTANCE: [i32; 64] = [
   6, 5, 4, 3, 3, 4, 5, 6
 ];
 
+pub static PASSED_PAWNS_MASKS: LazyLock<ByColor<[BitBoard; 64]>> = LazyLock::new(|| {
+  let mut masks = ByColor::new([0; 64], [0; 64]);
+  for square in 0..Square::INVALID_SQUARE {
+    let file = square.get_file() as usize;
+    let front_rank = 1 + square.get_rank() as i8;
+    masks[PieceColor::White][square as usize] = shift!(ADJACENTS_FILES[file] | FILES[file], 8 * front_rank);
+  }
+
+  for square in 0..Square::INVALID_SQUARE {
+    let file = square.get_file() as usize;
+    let front_rank = -1 + square.get_rank() as i8;
+    masks[PieceColor::Black][square as usize] = shift!(ADJACENTS_FILES[file] | FILES[file], 8 * (front_rank - 7));
+  }
+
+  masks
+});
+
 pub struct Score {
   pub mg: i32,
   pub eg: i32,
@@ -33,11 +53,6 @@ pub struct Evaluator {}
 
 impl Evaluator {
   #[inline(always)]
-  pub fn evaluate(position: &Position, eval_params: &EvalParams) -> i32 {
-    Evaluator::static_evaluation(position, eval_params)
-  }
-
-  #[inline(always)]
   pub fn static_evaluation(position: &Position, eval_params: &EvalParams) -> i32 {
     let mut score = Score { mg: 0, eg: 0 };
     let phase = position.get_phase();
@@ -45,7 +60,7 @@ impl Evaluator {
     if phase >= DRAW_PHASE_THRESHOLD {
       // A draw by insufficient material can only occur during endgames
       if Evaluator::is_draw_by_insufficient_material(position) {
-        return 0;
+        return DRAW_VALUE;
       }
       score.eg += Evaluator::king_cornering(position.get_king_square(PieceColor::Black));
       score.eg -= Evaluator::king_cornering(position.get_king_square(PieceColor::White));
@@ -54,13 +69,16 @@ impl Evaluator {
     score += Evaluator::material_eval(position, PieceColor::White, eval_params);
     score -= Evaluator::material_eval(position, PieceColor::Black, eval_params);
 
+    score += Evaluator::pawns_evalution(position, PieceColor::White, eval_params);
+    score -= Evaluator::pawns_evalution(position, PieceColor::Black, eval_params);
+
     if Evaluator::has_bishop_pair(position, PieceColor::White) {
-      score.mg += MG_BISHOP_PAIR;
-      score.eg += EG_BISHOP_PAIR;
+      score.mg += eval_params.get_mg_bishop_pair_value();
+      score.eg += eval_params.get_eg_bishop_pair_value();
     }
     if Evaluator::has_bishop_pair(position, PieceColor::Black) {
-      score.mg -= MG_BISHOP_PAIR;
-      score.eg -= EG_BISHOP_PAIR;
+      score.mg -= eval_params.get_mg_bishop_pair_value();
+      score.eg -= eval_params.get_eg_bishop_pair_value();
     }
 
     (((score.mg * (256 - phase)) + (score.eg * phase)) >> 8) * position.get_side().to_i32()
@@ -86,9 +104,47 @@ impl Evaluator {
   }
 
   #[inline(always)]
+  pub fn pawns_evalution(position: &Position, side: PieceColor, eval_params: &EvalParams) -> Score {
+    let mut score = Score { mg: 0, eg: 0 };
+    let our_pawns = position.get_by_side_and_type(side, PieceType::Pawn);
+    let enemy_pawns = position.get_by_side_and_type(side.opposite(), PieceType::Pawn);
+    let mut board = our_pawns;
+
+    while board != 0 {
+      let square = get_lsb!(board);
+      let file = square.get_file();
+      let rank = square.get_rank();
+
+      if Evaluator::is_doubled_pawns(our_pawns, square) {
+        score.mg += eval_params.get_mg_doubled_pawns_value(file);
+        score.eg += eval_params.get_eg_doubled_pawns_value(file);
+      }
+
+      if Evaluator::is_passed_pawn(enemy_pawns, square, side) {
+        score.mg += eval_params.get_mg_passed_pawns_value(rank, side);
+        score.eg += eval_params.get_eg_passed_pawns_value(rank, side);
+      }
+
+      pop_lsb!(board);
+    }
+
+    score
+  }
+
+  #[inline(always)]
   pub fn has_bishop_pair(position: &Position, side: PieceColor) -> bool {
     let bishops = position.get_by_side_and_type(side, PieceType::Bishop);
     (bishops & LIGHT_SQUARES != 0) && (bishops & !LIGHT_SQUARES != 0)
+  }
+
+  #[inline(always)]
+  pub fn is_doubled_pawns(our_pawns: BitBoard, square: Square) -> bool {
+    our_pawns & FILES[square.get_file() as usize] != (1u64 << square)
+  }
+
+  #[inline(always)]
+  pub fn is_passed_pawn(enemy_pawns: BitBoard, square: Square, side: PieceColor) -> bool {
+    PASSED_PAWNS_MASKS[side][square as usize] & enemy_pawns == 0
   }
 
   #[inline(always)]
@@ -133,6 +189,7 @@ impl Evaluator {
 
   #[inline(always)]
   fn king_cornering(opponent_square: Square) -> i32 {
+    // 8/8/8/6p1/4k3/6K1/3R4/8 w - - 7 124 #15
     6 * ARR_CENTER_MANHATTAN_DISTANCE[opponent_square as usize]
   }
 }

@@ -27,7 +27,7 @@ def build_zeno_ref(ref):
     os.system(f"cd {dirname} && git checkout {ref} && cargo build --release")
     os.system(f"mv {dirname}/target/release/zeno {dirname}/target/release/zeno_{name}")
 
-    return f"./{dirname}/target/release/zeno_{name}", dirname
+   return f"./{dirname}/target/release/zeno_{name}", dirname, name
 
 
 def run_sprt_test(
@@ -56,19 +56,19 @@ def run_sprt_test(
 
     if ref1 is None:
         engine1 = build_current()
-        engine2, dir2 = build_zeno_ref(ref2)
+        engine2, dir2, temp_name = build_zeno_ref(ref2)
         cleanup.append(dir2)
 
         name1 = name1 or "Zeno current"
-        name2 = name2 or ref2[:24]
+        name2 = temp_name or ref2[:24]
 
     else:
-        engine1, dir1 = build_zeno_ref(ref1)
-        engine2, dir2 = build_zeno_ref(ref2)
+        engine1, dir1, temp_name1 = build_zeno_ref(ref1)
+        engine2, dir2, temp_name2 = build_zeno_ref(ref2)
         cleanup.extend([dir1, dir2])
 
-        name1 = name1 or ref1[:24]
-        name2 = name2 or ref2[:24]
+        name1 = name1 or temp_name1
+        name2 = name2 or temp_name2
 
     sprt_bounds = ""
     if bounds:
@@ -82,7 +82,7 @@ def run_sprt_test(
     -engine cmd={engine2} name="{name2}" \
     -pgnout file="games.pgn" \
     -openings file=UHO_Lichess_4852_v1.epd format=epd order=random \
-    -each tc=8+0.08 \
+    -each tc=8+0.08 option.Threads=1 option.Hash=1 \
     -rounds {rounds} -repeat \
     {sprt_bounds} \
     -concurrency {threads} \
@@ -105,9 +105,7 @@ def run_sprt_test(
 
 
 run_sprt_test(
-  "develop",
-    "2.0",
-    name1="develop - 3.0",
-    name2="2.0",
-    rounds=10000,
+  None,
+    "develop",
+    rounds=200,
 )
