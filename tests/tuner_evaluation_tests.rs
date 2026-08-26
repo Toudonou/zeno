@@ -608,7 +608,7 @@ mod tuner_evaluation_tests {
       }
       let position_ir = PositionIR::from_position(&position);
       let tuner_params = TunerParams::from_eval_param(&EVAL_PARAMS_DEFAULT);
-      assert!((Evaluator::evaluate(&position, &EVAL_PARAMS_DEFAULT) * position.get_side().to_i32() - tuner_evaluation(&position_ir, &tuner_params) as i32).abs() <= 1);
+      assert!((Evaluator::static_evaluation(&position, &EVAL_PARAMS_DEFAULT) * position.get_side().to_i32() - tuner_evaluation(&position_ir, &tuner_params) as i32).abs() <= 1);
     }
   }
 }

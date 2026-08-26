@@ -334,7 +334,7 @@ impl SearcherUnit {
   #[inline(always)]
   pub fn quiescence_search(&mut self, position: &mut Position, mut alpha: i32, beta: i32, eval_params: &EvalParams) -> Evaluation {
     self.nodes_visited += 1;
-    let static_evaluation = Evaluation::CentiPawns(Evaluator::evaluate(position, eval_params));
+    let static_evaluation = Evaluation::CentiPawns(Evaluator::static_evaluation(position, eval_params));
 
     let mut best_eval = static_evaluation;
     if best_eval.value() >= beta {

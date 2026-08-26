@@ -8,16 +8,31 @@ use crate::piece::{PieceColor, PieceType};
 
 pub static START_POSITION: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
-pub static RANK_1: BitBoard = 0x000000000000FF;
-pub static RANK_2: BitBoard = 0x0000000000FF00;
-pub static RANK_3: BitBoard = 0x00000000FF0000;
-pub static RANK_4: BitBoard = 0x000000FF000000;
-pub static RANK_5: BitBoard = 0x0000FF00000000;
-pub static RANK_6: BitBoard = 0x00FF0000000000;
-pub static RANK_7: BitBoard = 0xFF000000000000;
-pub static FILE_A: BitBoard = 0x101010101010101;
+pub static RANK_1: BitBoard = 0x00000000000000FF;
+pub static RANK_2: BitBoard = 0x000000000000FF00;
+pub static RANK_3: BitBoard = 0x0000000000FF0000;
+pub static RANK_4: BitBoard = 0x00000000FF000000;
+pub static RANK_5: BitBoard = 0x000000FF00000000;
+pub static RANK_6: BitBoard = 0x0000FF0000000000;
+pub static RANK_7: BitBoard = 0x00FF000000000000;
+pub static RANK_8: BitBoard = 0xFF00000000000000;
+pub static RANKS: [BitBoard; 8] = [RANK_1, RANK_2, RANK_3, RANK_4, RANK_5, RANK_6, RANK_7, RANK_8];
+
+pub static FILE_A: BitBoard = 0x0101010101010101;
+pub static FILE_B: BitBoard = 0x0202020202020202;
+pub static FILE_C: BitBoard = 0x0404040404040404;
+pub static FILE_D: BitBoard = 0x0808080808080808;
+pub static FILE_E: BitBoard = 0x1010101010101010;
+pub static FILE_F: BitBoard = 0x2020202020202020;
+pub static FILE_G: BitBoard = 0x4040404040404040;
+pub static FILE_H: BitBoard = 0x8080808080808080;
+pub static FILES: [BitBoard; 8] = [FILE_A, FILE_B, FILE_C, FILE_D, FILE_E, FILE_F, FILE_G, FILE_H];
+
+pub static ADJACENTS_FILES: [BitBoard; 8] = [FILE_B, FILE_A | FILE_C, FILE_B | FILE_D, FILE_C | FILE_E, FILE_D | FILE_F, FILE_E | FILE_G, FILE_F | FILE_H, FILE_G];
+
 pub static NOT_FILE_A: BitBoard = !FILE_A;
-pub static NOT_FILE_H: BitBoard = !0x8080808080808080;
+pub static NOT_FILE_H: BitBoard = !FILE_H;
+
 pub static BITBOARD_FILL_WITH_ONE: BitBoard = !0;
 
 #[rustfmt::skip]

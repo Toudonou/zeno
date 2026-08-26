@@ -48,8 +48,8 @@ pub fn adam_optimizer(dataset_path: &str, max_number_of_samples: usize, max_iter
   println!("Validation dataset size size: {}", validation_positions.len().separate_with_commas());
   println!();
 
-  let mut best_tuner_params = TunerParams::from_eval_param(&EVAL_PARAMS_DEFAULT);
-  let mut current_tuner_params = TunerParams::from_eval_param(&EVAL_PARAMS_DEFAULT);
+  let mut best_tuner_params = TunerParams::from_value(0.0);
+  let mut current_tuner_params = TunerParams::from_value(0.0);
   let mut gradients = TunerParams::from_value(0.0);
 
   let learning_rate = 1e-2;
@@ -131,10 +131,11 @@ pub fn adam_optimizer(dataset_path: &str, max_number_of_samples: usize, max_iter
 
   let final_error = compute_error(&dataset, &best_tuner_params, k);
   let header_comments = format!(
-    "// Dataset: {}\n// Algorithm: {}\n// Number of features: 2 * {}\n// Number of iterations: {}\n// Dataset size: {}\n// Training set size: {}\n// Validation set size: {}\n// Final error: {}\n// Sigmoid scale (k): {}\n",
+    "// Dataset: {}\n// Algorithm: {}\n// Number of features: 2 * {} = {}\n// Number of iterations: {}\n// Dataset size: {}\n// Training set size: {}\n// Validation set size: {}\n// Final error: {}\n// Sigmoid scale (k): {}\n",
     dataset_path,
     "Adam",
     MAX_FEATURES,
+    2 * MAX_FEATURES,
     max_iterations.separate_with_commas(),
     dataset.len().separate_with_commas(),
     training_size.separate_with_commas(),

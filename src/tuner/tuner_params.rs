@@ -6,7 +6,7 @@ use crate::eval_params::EvalParams;
 use crate::piece::{PieceColor, PieceType};
 use crate::square::Square;
 use crate::tuner::features::{FEATURES_ALL, Features, MAX_FEATURES};
-use crate::utils::get_psqt_index;
+use crate::utils::{FILES, get_psqt_index};
 
 #[derive(Clone, Debug)]
 pub struct TunerParams {
@@ -33,6 +33,14 @@ impl TunerParams {
         Features::BishopPair => {
           params_f32.mg[index] = eval_params.get_mg_bishop_pair_value() as f32;
           params_f32.eg[index] = eval_params.get_eg_bishop_pair_value() as f32;
+        }
+        Features::DoubledPawns(file) => {
+          params_f32.mg[index] = eval_params.get_mg_doubled_pawns_value(file) as f32;
+          params_f32.eg[index] = eval_params.get_eg_doubled_pawns_value(file) as f32;
+        }
+        Features::PassedPawns(rank) => {
+          params_f32.mg[index] = eval_params.get_mg_passed_pawns_value(rank, PieceColor::White) as f32;
+          params_f32.eg[index] = eval_params.get_eg_passed_pawns_value(rank, PieceColor::White) as f32;
         }
       };
     }
@@ -85,6 +93,30 @@ impl TunerParams {
     string_buffer.push_str("pub static EG_BISHOP_PAIR: i32 = ");
     string_buffer.push_str(&(self.eg[Features::BishopPair.to_index()] as i32).to_string());
     string_buffer.push_str(";\n");
+
+    string_buffer.push_str("\n");
+    string_buffer.push_str("pub static MG_DOUBLED_PAWNS: [i32; 8] = [");
+    for file in 0..(FILES.len() - 1) {
+      string_buffer.push_str(&format!("{}, ", self.mg[Features::DoubledPawns(file as u8).to_index()] as i32));
+    }
+    string_buffer.push_str(&format!("{}];\n", self.mg[Features::DoubledPawns((FILES.len() - 1) as u8).to_index()] as i32));
+    string_buffer.push_str("pub static EG_DOUBLED_PAWNS: [i32; 8] = [");
+    for file in 0..(FILES.len() - 1) {
+      string_buffer.push_str(&format!("{}, ", self.eg[Features::DoubledPawns(file as u8).to_index()] as i32));
+    }
+    string_buffer.push_str(&format!("{}];\n", self.eg[Features::DoubledPawns((FILES.len() - 1) as u8).to_index()] as i32));
+
+    string_buffer.push_str("\n");
+    string_buffer.push_str("pub static MG_PASSED_PAWNS: [i32; 8] = [");
+    for file in 0..(FILES.len() - 1) {
+      string_buffer.push_str(&format!("{}, ", self.mg[Features::PassedPawns(file as u8).to_index()] as i32));
+    }
+    string_buffer.push_str(&format!("{}];\n", self.mg[Features::PassedPawns((FILES.len() - 1) as u8).to_index()] as i32));
+    string_buffer.push_str("pub static EG_PASSED_PAWNS: [i32; 8] = [");
+    for file in 0..(FILES.len() - 1) {
+      string_buffer.push_str(&format!("{}, ", self.eg[Features::PassedPawns(file as u8).to_index()] as i32));
+    }
+    string_buffer.push_str(&format!("{}];\n", self.eg[Features::PassedPawns((FILES.len() - 1) as u8).to_index()] as i32));
 
     for piece_type in [PieceType::Pawn, PieceType::Knight, PieceType::Bishop, PieceType::Rook, PieceType::Queen, PieceType::King] {
       println!();
