@@ -4,6 +4,7 @@
 |:------------------------------------------------------------------------------------------------------------------------------------------------------|:--------------------|:-----------:|:-------------:|
 | [**Lazy SMP (4 threads and 64 MB for the TT)**](https://github.com/Toudonou/zeno/commit/45af0e0512fb749a019dbe7f0f5bdf4841af0b26)                     | Search              |    +180     |       -       |
 |                                                                                                                                                       |                     |             |               |
+| [**Zeno Doubled and Passed Pawns**](https://github.com/Toudonou/zeno/pull/9)                                                                          | Evaluation          |     +16     |     2526      |
 | [**Zeno-3.0**](https://github.com/Toudonou/zeno/releases/tag/3.0)                                                                                     | Core 3.0            |      0      |     2510      |
 | [**Bishop Pair**](https://github.com/Toudonou/zeno/pull/7)                                                                                            | Evaluation          |     +5      |     2510      |
 | [**Adam optimizer for the tuner**](https://github.com/Toudonou/zeno/pull/6)                                                                           | Evaluation (Tuning) |    +120     |     2505      |
