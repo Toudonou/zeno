@@ -1,5 +1,21 @@
 # SPRT results per features
 
+## Zeno Doubled and Passed Pawns vs Zeno Develop
+
+* [Zeno Doubled and Passed Pawns](https://github.com/Toudonou/zeno/pull/9/changes/854f390e86c902ea57425c22ad6391dba195eb7a) vs Zeno develop
+
+```
+--------------------------------------------------
+Results of Zeno doubled-passed-pawns vs Zeno develop (8+0.08, 1t, 1MB, UHO_Lichess_4852_v1.epd):
+Elo: 19.83 +/- 6.77, nElo: 24.25 +/- 8.26
+LOS: 100.00 %, DrawRatio: 37.15 %, PairsRatio: 1.30
+Games: 6804, Wins: 2718, Losses: 2330, Draws: 1756, Points: 3596.0 (52.85 %)
+Ptnml(0-2): [352, 579, 1264, 743, 464], WL/DD Ratio: 4.82
+LLR: 4.60 (100.0%) (-4.60, 4.60) [9.00, 16.00]
+--------------------------------------------------
+SPRT ([9.00, 16.00]) completed - H1 was accepted
+```
+
 ## Zeno 3.0 vs Zeno 2.0
 
 * [Zeno 3.0](https://github.com/Toudonou/zeno/releases/tag/3.0) vs [Zeno 2.0](https://github.com/Toudonou/zeno/releases/tag/2.0)

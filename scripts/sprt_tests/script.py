@@ -27,7 +27,7 @@ def build_zeno_ref(ref):
     os.system(f"cd {dirname} && git checkout {ref} && cargo build --release")
     os.system(f"mv {dirname}/target/release/zeno {dirname}/target/release/zeno_{name}")
 
-   return f"./{dirname}/target/release/zeno_{name}", dirname, name
+    return f"./{dirname}/target/release/zeno_{name}", dirname, name
 
 
 def run_sprt_test(
@@ -105,7 +105,13 @@ def run_sprt_test(
 
 
 run_sprt_test(
-  None,
+  "feature/doubled-passed-pawns",
     "develop",
-    rounds=200,
+    "Zeno doubled-passed-pawns",
+    "Zeno develop",
+    rounds=10000,
+    threads=15,
+    bounds=(9, 16),
+    alpha=0.01,
+    beta=0.01,
 )
