@@ -105,9 +105,7 @@ def run_sprt_test(
 
 
 run_sprt_test(
-    "feature/new-lmp-values",
+  None,
     "develop",
-    rounds=7000,
-    bounds=(2, 8),
-    threads=15
+    rounds=200,
 )
