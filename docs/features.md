@@ -15,6 +15,11 @@
     - [x] [Draw by Threefold repetition](https://en.wikipedia.org/wiki/Threefold_repetition)
     - [x] [Fifty-move rule (partially)](https://en.wikipedia.org/wiki/Fifty-move_rule)
     - [x] [Bishop Pair](https://www.chessprogramming.org/Bishop_Pair)
+    - [x] [Doubled Pawns](https://en.wikipedia.org/wiki/Doubled_pawns)
+    - [x] [Passed Pawn](https://en.wikipedia.org/wiki/Passed_pawn)
+    - [x] [Isolated Pawn](https://en.wikipedia.org/wiki/Isolated_pawn)
+    - [x] [Backward Pawn](https://en.wikipedia.org/wiki/Backward_pawn)
+    - [x] [Connected Pawn](https://en.wikipedia.org/wiki/Connected_pawns)
 - [x] Search
     - [x] [Alpha-beta pruning (Negamax)](https://en.wikipedia.org/wiki/Negamax#Negamax_with_alpha_beta_pruning)
     - [x] Move Ordering
