@@ -8,7 +8,7 @@ use crate::piece::{PieceColor, PieceType};
 use crate::position::Position;
 use crate::square::{Square, SquareOps};
 use crate::utils::{ADJACENTS_FILES, FILES};
-use crate::{get_lsb, pop_lsb, shift};
+use crate::{get_lsb, pop_lsb, shift, shift_north, shift_south};
 
 pub static DRAW_VALUE: i32 = 0;
 static LIGHT_SQUARES: BitBoard = 0x55AA55AA55AA55AAu64;
@@ -32,13 +32,28 @@ pub static PASSED_PAWNS_MASKS: LazyLock<ByColor<[BitBoard; 64]>> = LazyLock::new
   for square in 0..Square::INVALID_SQUARE {
     let file = square.get_file() as usize;
     let front_rank = 1 + square.get_rank() as i8;
-    masks[PieceColor::White][square as usize] = shift!(ADJACENTS_FILES[file] | FILES[file], 8 * front_rank);
+    masks[PieceColor::White][square as usize] = shift_north!(ADJACENTS_FILES[file] | FILES[file], front_rank);
   }
 
   for square in 0..Square::INVALID_SQUARE {
     let file = square.get_file() as usize;
     let front_rank = -1 + square.get_rank() as i8;
-    masks[PieceColor::Black][square as usize] = shift!(ADJACENTS_FILES[file] | FILES[file], 8 * (front_rank - 7));
+    masks[PieceColor::Black][square as usize] = shift_south!(ADJACENTS_FILES[file] | FILES[file], front_rank);
+  }
+
+  masks
+});
+
+pub static BACKWARD_PAWNS_MASKS: LazyLock<ByColor<[BitBoard; 64]>> = LazyLock::new(|| {
+  let mut masks = ByColor::new([0; 64], [0; 64]);
+  for square in 0..Square::INVALID_SQUARE {
+    let file = square.get_file() as usize;
+    masks[PieceColor::White][square as usize] = shift_south!(ADJACENTS_FILES[file] | FILES[file], square.get_rank() as i8);
+  }
+
+  for square in 0..Square::INVALID_SQUARE {
+    let file = square.get_file() as usize;
+    masks[PieceColor::Black][square as usize] = shift_north!(ADJACENTS_FILES[file] | FILES[file], square.get_rank() as i8);
   }
 
   masks
@@ -125,6 +140,21 @@ impl Evaluator {
         score.eg += eval_params.get_eg_passed_pawns_value(rank, side);
       }
 
+      if Evaluator::is_isolated_pawn(our_pawns, square) {
+        score.mg += eval_params.get_mg_isolated_pawns_value(file);
+        score.eg += eval_params.get_eg_isolated_pawns_value(file);
+      }
+
+      if Evaluator::is_backward_pawn(our_pawns, square, side) {
+        score.mg += eval_params.get_mg_backward_pawns_value(file);
+        score.eg += eval_params.get_eg_backward_pawns_value(file);
+      }
+
+      if Evaluator::is_connected_pawn(our_pawns, square) {
+        score.mg += eval_params.get_mg_connected_pawns_value(file);
+        score.eg += eval_params.get_eg_connected_pawns_value(file);
+      }
+
       pop_lsb!(board);
     }
 
@@ -145,6 +175,21 @@ impl Evaluator {
   #[inline(always)]
   pub fn is_passed_pawn(enemy_pawns: BitBoard, square: Square, side: PieceColor) -> bool {
     PASSED_PAWNS_MASKS[side][square as usize] & enemy_pawns == 0
+  }
+
+  #[inline(always)]
+  pub fn is_isolated_pawn(our_pawns: BitBoard, square: Square) -> bool {
+    ADJACENTS_FILES[square.get_file() as usize] & our_pawns == 0
+  }
+
+  #[inline(always)]
+  pub fn is_backward_pawn(our_pawns: BitBoard, square: Square, side: PieceColor) -> bool {
+    BACKWARD_PAWNS_MASKS[side][square as usize] & !(1u64 << square) & our_pawns == 0
+  }
+
+  #[inline(always)]
+  pub fn is_connected_pawn(our_pawns: BitBoard, square: Square) -> bool {
+    ADJACENTS_FILES[square.get_file() as usize] & our_pawns != 0
   }
 
   #[inline(always)]

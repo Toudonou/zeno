@@ -6,7 +6,50 @@ use crate::eval_params::EvalParams;
 use crate::piece::{PieceColor, PieceType};
 use crate::square::Square;
 use crate::tuner::features::{FEATURES_ALL, Features, MAX_FEATURES};
-use crate::utils::{FILES, get_psqt_index};
+use crate::utils::get_psqt_index;
+
+macro_rules! format_simple_features {
+  ($buffer:expr, $variable_name:expr, $feature:expr, $source:expr) => {
+    $buffer.push_str("\npub static ");
+    $buffer.push_str($variable_name);
+    $buffer.push_str(": i32 = ");
+    $buffer.push_str(&($source[$feature.to_index()] as i32).to_string());
+    $buffer.push_str(";")
+  };
+}
+
+macro_rules! format_n_features {
+  ($buffer:expr, $variable_name:expr, $feature:expr, $source:expr, $size:expr) => {
+    $buffer.push_str("\npub static ");
+    $buffer.push_str($variable_name);
+    $buffer.push_str(": [i32; ");
+    $buffer.push_str(&($size.to_string()));
+    $buffer.push_str("] = [");
+    for index in 0..($size - 1) {
+      $buffer.push_str(&format!("{}, ", $source[$feature(index as u8).to_index()] as i32).to_uppercase());
+    }
+    $buffer.push_str(&format!("{}", $source[$feature($size - 1 as u8).to_index()] as i32).to_uppercase());
+    $buffer.push_str("];");
+  };
+}
+
+macro_rules! format_psqt_features {
+  ($buffer:expr, $variable_name:expr, $piece_type:expr, $source:expr) => {
+    $buffer.push_str("\n#[rustfmt::skip]\n");
+    $buffer.push_str("pub static ");
+    $buffer.push_str($variable_name);
+    $buffer.push_str(": [i32; 64] = [");
+    $buffer.push_str("\n");
+    for rank in 0..=7 {
+      for file in 0..=7 {
+        let index = rank * 8 + file;
+        $buffer.push_str(&format!("{:4}, ", $source[Features::Psqt($piece_type, get_psqt_index(PieceColor::White, index) as Square).to_index()] as i32).to_uppercase());
+      }
+      $buffer.push_str("\n");
+    }
+    $buffer.push_str("];");
+  };
+}
 
 #[derive(Clone, Debug)]
 pub struct TunerParams {
@@ -42,6 +85,18 @@ impl TunerParams {
           params_f32.mg[index] = eval_params.get_mg_passed_pawns_value(rank, PieceColor::White) as f32;
           params_f32.eg[index] = eval_params.get_eg_passed_pawns_value(rank, PieceColor::White) as f32;
         }
+        Features::IsolatedPawns(file) => {
+          params_f32.mg[index] = eval_params.get_mg_isolated_pawns_value(file) as f32;
+          params_f32.eg[index] = eval_params.get_eg_isolated_pawns_value(file) as f32;
+        }
+        Features::BackwardPawns(file) => {
+          params_f32.mg[index] = eval_params.get_mg_backward_pawns_value(file) as f32;
+          params_f32.eg[index] = eval_params.get_eg_backward_pawns_value(file) as f32;
+        }
+        Features::ConnectedPawns(file) => {
+          params_f32.mg[index] = eval_params.get_mg_connected_pawns_value(file) as f32;
+          params_f32.eg[index] = eval_params.get_eg_connected_pawns_value(file) as f32;
+        }
       };
     }
 
@@ -67,104 +122,39 @@ impl TunerParams {
     string_buffer.push_str("use crate::containers::ByPieceType;\n");
 
     for piece_type in [PieceType::Pawn, PieceType::Knight, PieceType::Bishop, PieceType::Rook, PieceType::Queen, PieceType::King] {
-      println!();
+      format_simple_features!(string_buffer, &("MG_".to_owned() + &format!("{:?}", piece_type).to_uppercase() + "_VALUE"), Features::Material(piece_type), self.mg);
+      format_simple_features!(string_buffer, &("EG_".to_owned() + &format!("{:?}", piece_type).to_uppercase() + "_VALUE"), Features::Material(piece_type), self.eg);
       string_buffer.push_str("\n");
-
-      println!("{piece_type:?} : MG {} - EG {}", self.mg[Features::Material(piece_type).to_index()] as i32, self.eg[Features::Material(piece_type).to_index()] as i32);
-
-      string_buffer.push_str("pub static MG_");
-      string_buffer.push_str(&format!("{:?}", piece_type).to_uppercase());
-      string_buffer.push_str("_VALUE: i32 = ");
-      string_buffer.push_str(&(self.mg[Features::Material(piece_type).to_index()] as i32).to_string());
-      string_buffer.push_str(";\n");
-
-      string_buffer.push_str("pub static EG_");
-      string_buffer.push_str(&format!("{:?}", piece_type).to_uppercase());
-      string_buffer.push_str("_VALUE: i32 = ");
-      string_buffer.push_str(&(self.eg[Features::Material(piece_type).to_index()] as i32).to_string());
-      string_buffer.push_str(";\n");
     }
 
+    format_simple_features!(string_buffer, "MG_BISHOP_PAIR", Features::BishopPair, self.mg);
+    format_simple_features!(string_buffer, "EG_BISHOP_PAIR", Features::BishopPair, self.eg);
     string_buffer.push_str("\n");
-    string_buffer.push_str("pub static MG_BISHOP_PAIR: i32 = ");
-    string_buffer.push_str(&(self.mg[Features::BishopPair.to_index()] as i32).to_string());
-    string_buffer.push_str(";\n");
 
-    string_buffer.push_str("pub static EG_BISHOP_PAIR: i32 = ");
-    string_buffer.push_str(&(self.eg[Features::BishopPair.to_index()] as i32).to_string());
-    string_buffer.push_str(";\n");
-
+    format_n_features!(string_buffer, "MG_DOUBLED_PAWNS", Features::DoubledPawns, self.mg, 8);
+    format_n_features!(string_buffer, "EG_DOUBLED_PAWNS", Features::DoubledPawns, self.eg, 8);
     string_buffer.push_str("\n");
-    string_buffer.push_str("pub static MG_DOUBLED_PAWNS: [i32; 8] = [");
-    for file in 0..(FILES.len() - 1) {
-      string_buffer.push_str(&format!("{}, ", self.mg[Features::DoubledPawns(file as u8).to_index()] as i32));
-    }
-    string_buffer.push_str(&format!("{}];\n", self.mg[Features::DoubledPawns((FILES.len() - 1) as u8).to_index()] as i32));
-    string_buffer.push_str("pub static EG_DOUBLED_PAWNS: [i32; 8] = [");
-    for file in 0..(FILES.len() - 1) {
-      string_buffer.push_str(&format!("{}, ", self.eg[Features::DoubledPawns(file as u8).to_index()] as i32));
-    }
-    string_buffer.push_str(&format!("{}];\n", self.eg[Features::DoubledPawns((FILES.len() - 1) as u8).to_index()] as i32));
 
+    format_n_features!(string_buffer, "MG_PASSED_PAWNS", Features::PassedPawns, self.mg, 8);
+    format_n_features!(string_buffer, "EG_PASSED_PAWNS", Features::PassedPawns, self.eg, 8);
     string_buffer.push_str("\n");
-    string_buffer.push_str("pub static MG_PASSED_PAWNS: [i32; 8] = [");
-    for file in 0..(FILES.len() - 1) {
-      string_buffer.push_str(&format!("{}, ", self.mg[Features::PassedPawns(file as u8).to_index()] as i32));
-    }
-    string_buffer.push_str(&format!("{}];\n", self.mg[Features::PassedPawns((FILES.len() - 1) as u8).to_index()] as i32));
-    string_buffer.push_str("pub static EG_PASSED_PAWNS: [i32; 8] = [");
-    for file in 0..(FILES.len() - 1) {
-      string_buffer.push_str(&format!("{}, ", self.eg[Features::PassedPawns(file as u8).to_index()] as i32));
-    }
-    string_buffer.push_str(&format!("{}];\n", self.eg[Features::PassedPawns((FILES.len() - 1) as u8).to_index()] as i32));
+
+    format_n_features!(string_buffer, "MG_ISOLATED_PAWNS", Features::IsolatedPawns, self.mg, 8);
+    format_n_features!(string_buffer, "EG_ISOLATED_PAWNS", Features::IsolatedPawns, self.eg, 8);
+    string_buffer.push_str("\n");
+
+    format_n_features!(string_buffer, "MG_BACKWARD_PAWNS", Features::BackwardPawns, self.mg, 8);
+    format_n_features!(string_buffer, "EG_BACKWARD_PAWNS", Features::BackwardPawns, self.eg, 8);
+    string_buffer.push_str("\n");
+
+    format_n_features!(string_buffer, "MG_CONNECTED_PAWNS", Features::ConnectedPawns, self.mg, 8);
+    format_n_features!(string_buffer, "EG_CONNECTED_PAWNS", Features::ConnectedPawns, self.eg, 8);
+    string_buffer.push_str("\n");
 
     for piece_type in [PieceType::Pawn, PieceType::Knight, PieceType::Bishop, PieceType::Rook, PieceType::Queen, PieceType::King] {
-      println!();
+      format_psqt_features!(string_buffer, &("MG_".to_owned() + &format!("{:?}", piece_type).to_uppercase() + "_TABLE"), piece_type, self.mg);
+      format_psqt_features!(string_buffer, &("EG_".to_owned() + &format!("{:?}", piece_type).to_uppercase() + "_TABLE"), piece_type, self.eg);
       string_buffer.push_str("\n");
-
-      println!("MG PSQT");
-      string_buffer.push_str("#[rustfmt::skip]\n");
-      string_buffer.push_str("static MG_");
-      string_buffer.push_str(&format!("{:?}", piece_type).to_uppercase());
-      string_buffer.push_str("_TABLE: [i32; 64] = [");
-      string_buffer.push_str("\n");
-      for rank in 0..=7 {
-        print!("{} ", 8 - rank);
-        for file in 0..=7 {
-          let index = rank * 8 + file;
-          print!("{:4} ", self.mg[Features::Psqt(piece_type, get_psqt_index(PieceColor::White, index) as Square).to_index()] as i32);
-          string_buffer.push_str(&format!("{:4}, ", self.mg[Features::Psqt(piece_type, get_psqt_index(PieceColor::White, index) as Square).to_index()] as i32).to_uppercase());
-        }
-        println!();
-        string_buffer.push_str("\n");
-      }
-      for i in [' ', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'] {
-        print!("{:+04} ", i);
-      }
-      println!();
-      string_buffer.push_str("];\n");
-
-      println!("EG PSQT");
-      string_buffer.push_str("#[rustfmt::skip]\n");
-      string_buffer.push_str("static EG_");
-      string_buffer.push_str(&format!("{:?}", piece_type).to_uppercase());
-      string_buffer.push_str("_TABLE: [i32; 64] = [");
-      string_buffer.push_str("\n");
-      for rank in 0..=7 {
-        print!("{} ", 8 - rank);
-        for file in 0..=7 {
-          let index = rank * 8 + file;
-          print!("{:4} ", self.eg[Features::Psqt(piece_type, get_psqt_index(PieceColor::White, index) as Square).to_index()] as i32);
-          string_buffer.push_str(&format!("{:4}, ", self.eg[Features::Psqt(piece_type, get_psqt_index(PieceColor::White, index) as Square).to_index()] as i32).to_uppercase());
-        }
-        println!();
-        string_buffer.push_str("\n");
-      }
-      for i in [' ', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'] {
-        print!("{:+04} ", i);
-      }
-      println!();
-      string_buffer.push_str("];\n");
     }
 
     string_buffer.push_str("\npub static MG_PIECES_VALUES: ByPieceType<i32> = ByPieceType::new(MG_PAWN_VALUE, MG_KNIGHT_VALUE, MG_BISHOP_VALUE, MG_ROOK_VALUE, MG_QUEEN_VALUE, MG_KING_VALUE);");

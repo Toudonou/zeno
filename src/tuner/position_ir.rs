@@ -71,6 +71,9 @@ impl PositionIR {
         // Feature::DoubledPawns - Feature::PassedPawns
         let mut doubled_pawns_features = [0; 8];
         let mut passed_pawns_features = [0; 8];
+        let mut isolated_pawns_features = [0; 8];
+        let mut backward_pawns_features = [0; 8];
+        let mut connected_pawns_features = [0; 8];
         for side in [PieceColor::White, PieceColor::Black] {
           let our_pawns = position.get_by_side_and_type(side, PieceType::Pawn);
           let enemy_pawns = position.get_by_side_and_type(side.opposite(), PieceType::Pawn);
@@ -83,16 +86,29 @@ impl PositionIR {
 
             doubled_pawns_features[file] += side.to_i32() as i8 * i8::from(Evaluator::is_doubled_pawns(our_pawns, square));
             passed_pawns_features[rank] += side.to_i32() as i8 * i8::from(Evaluator::is_passed_pawn(enemy_pawns, square, side));
+            isolated_pawns_features[file] += side.to_i32() as i8 * i8::from(Evaluator::is_isolated_pawn(our_pawns, square));
+            backward_pawns_features[file] += side.to_i32() as i8 * i8::from(Evaluator::is_backward_pawn(our_pawns, square, side));
+            connected_pawns_features[file] += side.to_i32() as i8 * i8::from(Evaluator::is_connected_pawn(our_pawns, square));
 
             pop_lsb!(pawns);
           }
         }
+
         for index in 0..8 {
           if doubled_pawns_features[index] != 0 {
             position_features.push((Features::DoubledPawns(index as u8).to_index(), doubled_pawns_features[index]));
           }
           if passed_pawns_features[index] != 0 {
             position_features.push((Features::PassedPawns(index as u8).to_index(), passed_pawns_features[index]));
+          }
+          if isolated_pawns_features[index] != 0 {
+            position_features.push((Features::IsolatedPawns(index as u8).to_index(), isolated_pawns_features[index]));
+          }
+          if backward_pawns_features[index] != 0 {
+            position_features.push((Features::BackwardPawns(index as u8).to_index(), backward_pawns_features[index]));
+          }
+          if connected_pawns_features[index] != 0 {
+            position_features.push((Features::ConnectedPawns(index as u8).to_index(), connected_pawns_features[index]));
           }
         }
 

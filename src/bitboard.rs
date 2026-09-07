@@ -19,6 +19,20 @@ macro_rules! shift {
   };
 }
 
+#[macro_export]
+macro_rules! shift_north {
+  ($bitboard:expr, $amount:expr) => {
+    shift!($bitboard, 8 * $amount)
+  };
+}
+
+#[macro_export]
+macro_rules! shift_south {
+  ($bitboard:expr, $amount:expr) => {
+    shift!($bitboard, 8 * ($amount - 7))
+  };
+}
+
 pub type BitBoard = u64;
 
 pub trait BitBoardOps {
