@@ -74,21 +74,14 @@ pub struct Position {
   phase: i8,
 
   zobrist_hash: BoardHash,
+  pawn_hash: BoardHash,
 }
 
 impl Position {
   // https://www.freechess.org/Help/HelpFiles/fen.html
   pub fn from_fen(fen: &str) -> Position {
-    let mut board_index: u64 = 56;
-
-    let mut white_board: BitBoard = 0;
-    let mut black_board: BitBoard = 0;
-    let mut pawns_board: BitBoard = 0;
-    let mut knights_board: BitBoard = 0;
-    let mut bishops_board: BitBoard = 0;
-    let mut rooks_board: BitBoard = 0;
-    let mut queens_board: BitBoard = 0;
-    let mut kings_board: BitBoard = 0;
+    let mut side_occupancies: ByColor<BitBoard> = ByColor::new(0, 0);
+    let mut pieces_occupancies: ByPieceType<BitBoard> = ByPieceType::new(0, 0, 0, 0, 0, 0);
 
     let mut parts = fen.split_whitespace();
     let board_part = parts.next().expect("Missing board part");
@@ -98,70 +91,37 @@ impl Position {
     let half_move_part = parts.next().unwrap_or("0");
     let number_of_moves_move_part = parts.next().unwrap_or("1");
 
-    for ch in board_part.chars() {
-      match ch {
-        '/' => {
-          board_index = board_index - 16;
+    let mut zobrist_hash: BoardHash = 0;
+    let mut pawn_hash: BoardHash = 0;
+    let mut phase = TOTAL_PHASE;
+
+    for (rank_index, rank_str) in board_part.split('/').enumerate() {
+      let rank = 7 - rank_index as u64; // FEN ranks run 8 -> 1
+      let mut file: u64 = 0;
+
+      for ch in rank_str.chars() {
+        if let Some(empty) = ch.to_digit(10) {
+          file += empty as u64;
           continue;
         }
 
-        '1'..='8' => {
-          let skip = ch.to_digit(10).unwrap() - 1;
-          board_index += skip as u64;
-        }
-        'P' | 'p' => {
-          pawns_board |= 1u64 << board_index;
-          if ch == 'P' {
-            white_board |= 1u64 << board_index;
-          } else {
-            black_board |= 1u64 << board_index;
-          }
-        }
-        'N' | 'n' => {
-          knights_board |= 1u64 << board_index;
-          if ch == 'N' {
-            white_board |= 1u64 << board_index;
-          } else {
-            black_board |= 1u64 << board_index;
-          }
-        }
-        'B' | 'b' => {
-          bishops_board |= 1u64 << board_index;
-          if ch == 'B' {
-            white_board |= 1u64 << board_index;
-          } else {
-            black_board |= 1u64 << board_index;
-          }
-        }
-        'R' | 'r' => {
-          rooks_board |= 1u64 << board_index;
-          if ch == 'R' {
-            white_board |= 1u64 << board_index;
-          } else {
-            black_board |= 1u64 << board_index;
-          }
-        }
-        'Q' | 'q' => {
-          queens_board |= 1u64 << board_index;
-          if ch == 'Q' {
-            white_board |= 1u64 << board_index;
-          } else {
-            black_board |= 1u64 << board_index;
-          }
-        }
-        'K' | 'k' => {
-          kings_board |= 1u64 << board_index;
-          if ch == 'K' {
-            white_board |= 1u64 << board_index;
-          } else {
-            black_board |= 1u64 << board_index;
-          }
+        let piece_type = Self::piece_from_char(ch).unwrap_or_else(|| panic!("Invalid character in FEN: {}", ch));
+        let side = if ch.is_uppercase() { PieceColor::White } else { PieceColor::Black };
+        let square = rank * 8 + file;
+
+        pieces_occupancies[piece_type] |= 1u64 << square;
+        side_occupancies[side] |= 1u64 << square;
+        phase -= get_phase(piece_type);
+
+        let piece = Piece { color: side, piece_type };
+        let piece_key = ZobristHash::get_piece_key(piece, square as u8);
+        zobrist_hash ^= piece_key;
+        if piece_type == PieceType::Pawn {
+          pawn_hash ^= piece_key;
         }
 
-        ' ' => break,
-        _ => panic!("Invalid character in FEN: {}", ch),
+        file += 1;
       }
-      board_index = board_index + 1;
     }
 
     let side = match turn_part {
@@ -193,55 +153,13 @@ impl Position {
       }
     }
 
-    let mut zobrish_hash: u64 = 0;
-    zobrish_hash ^= ZobristHash::get_castling_key(castling_rights);
-    zobrish_hash ^= u64::from(side == PieceColor::White) * ZobristHash::get_side_key();
-    let mut phase = TOTAL_PHASE;
+    zobrist_hash ^= ZobristHash::get_castling_key(castling_rights);
+    zobrist_hash ^= BoardHash::from(side == PieceColor::White) * ZobristHash::get_side_key();
 
-    let boards: ByPieceType<BitBoard> = ByPieceType::new(pawns_board, knights_board, bishops_board, rooks_board, queens_board, kings_board);
-    for piece_type in [PieceType::Pawn, PieceType::Knight, PieceType::Bishop, PieceType::Rook, PieceType::Queen, PieceType::King] {
-      let mut board = boards[piece_type] & white_board;
-      while board != 0 {
-        phase -= get_phase(piece_type);
-
-        let square = get_lsb!(board);
-        zobrish_hash ^= ZobristHash::get_piece_key(Piece { color: PieceColor::White, piece_type }, square);
-        pop_lsb!(board);
-      }
-
-      board = boards[piece_type] & black_board;
-      while board != 0 {
-        phase -= get_phase(piece_type);
-
-        let square = get_lsb!(board);
-        zobrish_hash ^= ZobristHash::get_piece_key(Piece { color: PieceColor::Black, piece_type }, square);
-        pop_lsb!(board);
-      }
+    // En passant key is only applied if the opponent can take the en passant at his turn
+    if en_passant_file < 8 && pieces_occupancies[PieceType::Pawn] & side_occupancies[side] & PAWNS_OCCUPANCY_OBLIGATION_FOR_EN_PASSANT[side][en_passant_file as usize] != 0 {
+      zobrist_hash ^= ZobristHash::get_en_passant_file_key(en_passant_file);
     }
-
-    if en_passant_file < 8 {
-      // En passant key is only applied if the opponent can take the en passant at his turn
-      match side {
-        PieceColor::White => {
-          if pawns_board & white_board & PAWNS_OCCUPANCY_OBLIGATION_FOR_EN_PASSANT[PieceColor::White][en_passant_file as usize] != 0 {
-            zobrish_hash ^= ZobristHash::get_en_passant_file_key(en_passant_file);
-          } else {
-            en_passant_file = 0;
-          };
-        }
-        PieceColor::Black => {
-          if pawns_board & black_board & PAWNS_OCCUPANCY_OBLIGATION_FOR_EN_PASSANT[PieceColor::Black][en_passant_file as usize] != 0 {
-            zobrish_hash ^= ZobristHash::get_en_passant_file_key(en_passant_file);
-          } else {
-            en_passant_file = 0;
-          };
-        }
-        PieceColor::None => {}
-      }
-    }
-
-    let side_occupancies = ByColor::new(white_board, black_board);
-    let pieces_occupancies = ByPieceType::new(pawns_board, knights_board, bishops_board, rooks_board, queens_board, kings_board);
 
     Position {
       side_occupancies,
@@ -252,7 +170,8 @@ impl Position {
       number_of_moves: number_of_moves_move_part.parse().unwrap_or(1),
       half_move_clock: half_move_part.parse().unwrap_or(0),
       phase,
-      zobrist_hash: zobrish_hash,
+      zobrist_hash,
+      pawn_hash,
     }
   }
 
@@ -273,14 +192,23 @@ impl Position {
     // Putting 0 at the index of the destination
     if destination_piece.piece_type != PieceType::None {
       self.pieces_occupancies[destination_piece.piece_type] &= !destination_mask;
-      self.zobrist_hash ^= ZobristHash::get_piece_key(destination_piece, destination);
       self.phase += get_phase(destination_piece.piece_type);
-      // If the destination is not empty, the half move clock will be reset
-      self.half_move_clock = 0;
+      self.half_move_clock = 0; // If the destination is not empty, the half move clock will be reset
+
+      self.zobrist_hash ^= ZobristHash::get_piece_key(destination_piece, destination);
+      if destination_piece.piece_type == PieceType::Pawn {
+        self.pawn_hash ^= ZobristHash::get_piece_key(destination_piece, destination);
+      }
     } else {
       // Half move clock update
       // Pawn's moves are irreversible,
-      self.half_move_clock = if source_piece.piece_type == PieceType::Pawn { 0 } else { self.half_move_clock + 1 }
+      self.half_move_clock = if source_piece.piece_type == PieceType::Pawn {
+        self.pawn_hash ^= ZobristHash::get_piece_key(source_piece, source);
+        self.pawn_hash ^= ZobristHash::get_piece_key(source_piece, destination);
+        0
+      } else {
+        self.half_move_clock + 1
+      }
     }
 
     // Update castling rights
@@ -328,6 +256,7 @@ impl Position {
         self.pieces_occupancies[PieceType::Pawn] &= !(1u64 << enemy_pawn_square);
         self.side_occupancies[enemy_side] &= !(1u64 << enemy_pawn_square);
         self.zobrist_hash ^= ZobristHash::get_key_after_en_passant_has_been_taken_by(our_side, enemy_pawn_square);
+        self.pawn_hash ^= ZobristHash::get_key_after_en_passant_has_been_taken_by(our_side, enemy_pawn_square);
 
         self.phase += get_phase(PieceType::Pawn);
       }
@@ -342,6 +271,7 @@ impl Position {
         self.pieces_occupancies[PieceType::Pawn] &= !destination_mask;
         self.pieces_occupancies[promotion_piece_type] |= destination_mask;
 
+        self.pawn_hash ^= ZobristHash::get_piece_key(Piece { color: our_side, piece_type: PieceType::Pawn }, destination);
         self.zobrist_hash ^= ZobristHash::get_piece_key(Piece { color: our_side, piece_type: PieceType::Pawn }, destination);
         self.zobrist_hash ^= ZobristHash::get_piece_key(Piece { color: our_side, piece_type: promotion_piece_type }, destination);
 
@@ -628,6 +558,11 @@ impl Position {
   }
 
   #[inline(always)]
+  pub fn get_pawn_hash(&self) -> BoardHash {
+    self.pawn_hash
+  }
+
+  #[inline(always)]
   pub fn get_phase(&self) -> i32 {
     // max(0): if we have a custom setup with more pieces than a normal chess board start position
     (self.phase.max(0) as i32 * 256 + (TOTAL_PHASE as i32 / 2)) / TOTAL_PHASE as i32 // phase from [0, 24] to [0, 256]
@@ -637,6 +572,11 @@ impl Position {
   #[inline(always)]
   pub fn is_endgame(&self) -> bool {
     self.get_phase() >= DRAW_PHASE_THRESHOLD
+  }
+
+  #[inline(always)]
+  pub fn get_castling_rights(&self) -> u8 {
+    self.castling_rights
   }
 
   #[inline(always)]
@@ -695,14 +635,14 @@ impl Position {
       print!("{} ", rank + 1);
       for file in 0..=7 {
         let index = (rank * 8 + file as usize) as Square;
-        print!("{} ", self.piece_to_unicode(&self.get_piece_on_square(index)));
+        print!("{} ", Self::piece_to_unicode(&self.get_piece_on_square(index)));
       }
       println!();
     }
     println!("\n  a b c d e f g h\n");
   }
 
-  fn piece_to_unicode(&self, piece: &Piece) -> char {
+  fn piece_to_unicode(piece: &Piece) -> char {
     match (piece.color, piece.piece_type) {
       (PieceColor::White, PieceType::Pawn) => '♙',
       (PieceColor::White, PieceType::Knight) => '♘',
@@ -719,6 +659,18 @@ impl Position {
       (PieceColor::Black, PieceType::King) => '♚',
 
       _ => '·',
+    }
+  }
+
+  fn piece_from_char(ch: char) -> Option<PieceType> {
+    match ch.to_ascii_lowercase() {
+      'p' => Some(PieceType::Pawn),
+      'n' => Some(PieceType::Knight),
+      'b' => Some(PieceType::Bishop),
+      'r' => Some(PieceType::Rook),
+      'q' => Some(PieceType::Queen),
+      'k' => Some(PieceType::King),
+      _ => None,
     }
   }
 }
