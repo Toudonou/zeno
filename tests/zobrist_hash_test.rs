@@ -1,94 +1,78 @@
 #[cfg(test)]
 mod zobrist_hash_test {
+  use zeno::bitboard::BitBoard;
   use zeno::moves::Move;
-  use zeno::piece::PieceColor;
+  use zeno::piece::{Piece, PieceColor, PieceType};
   use zeno::position::Position;
-  use zeno::utils::START_POSITION;
+  use zeno::square::{Square, SquareOps};
+  use zeno::utils::{PAWNS_OCCUPANCY_OBLIGATION_FOR_EN_PASSANT, START_POSITION};
+  use zeno::zobrist_hash::{BoardHash, ZobristHash};
+  use zeno::{get_lsb, pop_lsb};
 
   #[test]
   fn test_zobrist_hash_polyglot_values() {
     // For hash verification: https://shinkarom.github.io/zobrist/
 
-    // En passant for black
-    let position = Position::from_fen("rnbqkbnr/8/8/8/pppppppp/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-    assert_eq!(position.get_zobrist_hash(), 0x0b667f4815ea3b0e);
+    let zobrist_tests = &[
+      ("rnbqkbnr/8/8/8/pppppppp/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 0x0b667f4815ea3b0e as BitBoard),
+      ("rnbqkbnr/8/8/8/Pppppppp/8/1PPPPPPP/RNBQKBNR b KQkq a3 0 1", 0xba07ee13cf46d018 as BitBoard),
+      ("rnbqkbnr/8/8/8/pPpppppp/8/2PPPPPP/RNBQKBNR b KQkq b3 0 1", 0xda9843864982ee80 as BitBoard),
+      ("rnbqkbnr/8/8/8/pPPppppp/8/3PPPPP/RNBQKBNR b KQkq c3 0 1", 0xcb9f05ae49f1012c as BitBoard),
+      ("rnbqkbnr/8/8/8/pPPPpppp/8/4PPPP/RNBQKBNR b KQkq d3 0 1", 0xf32c86f4aace7a45 as BitBoard),
+      ("rnbqkbnr/8/8/8/pPPPPppp/8/5PPP/RNBQKBNR b KQkq e3 0 1", 0xa8fe06ebbabd0ad1 as BitBoard),
+      ("rnbqkbnr/8/8/8/pPPPpPpp/8/6PP/RNBQKBNR b KQkq f3 0 1", 0xfafa6872c7e9c138 as BitBoard),
+      ("rnbqkbnr/8/8/8/pPPPpPPp/8/7P/RNBQKBNR b KQkq g3 0 1", 0xcf06001050152e80 as BitBoard),
+      ("rbnqknbr/pppppppp/8/PPPPPPPP/8/8/8/RBNQKNBR b KQkq - 0 1", 0x2fb2c51fed28a34e as BitBoard),
+      ("rbnqknbr/1ppppppp/8/pPPPPPPP/8/8/8/RBNQKNBR w KQkq a6 0 1", 0x45723021c8c25d73 as BitBoard),
+      ("rbnqknbr/2pppppp/8/ppPPPPPP/8/8/8/RBNQKNBR w KQkq b6 0 1", 0xfc84484f238d0959 as BitBoard),
+      ("rbnqknbr/3ppppp/8/pPpPPPPP/8/8/8/RBNQKNBR w KQkq c6 0 1", 0x9e59bbf864faf07f as BitBoard),
+      ("rbnqknbr/4pppp/8/pPBpPPPP/8/8/8/RBNQKN1R w KQkq d6 0 1", 0x87973947f59667fd as BitBoard),
+      ("rbnqknbr/5ppp/8/pPpppPPP/8/8/8/RBNQKN1R w KQkq e6 0 1", 0xf3773c3b91e55bd6 as BitBoard),
+      ("rbnqknbr/6pp/8/pPppppPP/8/8/8/RBNQKN1R w KQkq f6 0 1", 0x1a6fd715bb64c649 as BitBoard),
+      ("rbnqknbr/7p/8/pPpppppP/8/8/8/RBNQKN1R w KQkq g6 0 1", 0x8a5895747f8a183f as BitBoard),
+      ("rbnqknbr/8/8/pPpppppp/8/8/8/RBNQKN1R w KQkq h6 0 1", 0x7b12dcf34309a006 as BitBoard),
+    ];
 
-    let position = Position::from_fen("rnbqkbnr/8/8/8/Pppppppp/8/1PPPPPPP/RNBQKBNR b KQkq a3 0 1");
-    assert_eq!(position.get_zobrist_hash(), 0xba07ee13cf46d018);
-
-    let position = Position::from_fen("rnbqkbnr/8/8/8/pPpppppp/8/2PPPPPP/RNBQKBNR b KQkq b3 0 1");
-    assert_eq!(position.get_zobrist_hash(), 0xda9843864982ee80);
-
-    let position = Position::from_fen("rnbqkbnr/8/8/8/pPPppppp/8/3PPPPP/RNBQKBNR b KQkq c3 0 1");
-    assert_eq!(position.get_zobrist_hash(), 0xcb9f05ae49f1012c);
-
-    let position = Position::from_fen("rnbqkbnr/8/8/8/pPPPpppp/8/4PPPP/RNBQKBNR b KQkq d3 0 1");
-    assert_eq!(position.get_zobrist_hash(), 0xf32c86f4aace7a45);
-
-    let position = Position::from_fen("rnbqkbnr/8/8/8/pPPPPppp/8/5PPP/RNBQKBNR b KQkq e3 0 1");
-    assert_eq!(position.get_zobrist_hash(), 0xa8fe06ebbabd0ad1);
-
-    let position = Position::from_fen("rnbqkbnr/8/8/8/pPPPpPpp/8/6PP/RNBQKBNR b KQkq f3 0 1");
-    assert_eq!(position.get_zobrist_hash(), 0xfafa6872c7e9c138);
-
-    let position = Position::from_fen("rnbqkbnr/8/8/8/pPPPpPPp/8/7P/RNBQKBNR b KQkq g3 0 1");
-    assert_eq!(position.get_zobrist_hash(), 0xcf06001050152e80);
-
-    // En passant for white
-    let position = Position::from_fen("rbnqknbr/pppppppp/8/PPPPPPPP/8/8/8/RBNQKNBR b KQkq - 0 1");
-    assert_eq!(position.get_zobrist_hash(), 0x2fb2c51fed28a34e);
-
-    let position = Position::from_fen("rbnqknbr/1ppppppp/8/pPPPPPPP/8/8/8/RBNQKNBR w KQkq a6 0 1");
-    assert_eq!(position.get_zobrist_hash(), 0x45723021c8c25d73);
-
-    let position = Position::from_fen("rbnqknbr/2pppppp/8/ppPPPPPP/8/8/8/RBNQKNBR w KQkq b6 0 1");
-    assert_eq!(position.get_zobrist_hash(), 0xfc84484f238d0959);
-
-    let position = Position::from_fen("rbnqknbr/3ppppp/8/pPpPPPPP/8/8/8/RBNQKNBR w KQkq c6 0 1");
-    assert_eq!(position.get_zobrist_hash(), 0x9e59bbf864faf07f);
-
-    let position = Position::from_fen("rbnqknbr/4pppp/8/pPBpPPPP/8/8/8/RBNQKN1R w KQkq d6 0 1");
-    assert_eq!(position.get_zobrist_hash(), 0x87973947f59667fd);
-
-    let position = Position::from_fen("rbnqknbr/5ppp/8/pPpppPPP/8/8/8/RBNQKN1R w KQkq e6 0 1");
-    assert_eq!(position.get_zobrist_hash(), 0xf3773c3b91e55bd6);
-
-    let position = Position::from_fen("rbnqknbr/6pp/8/pPppppPP/8/8/8/RBNQKN1R w KQkq f6 0 1");
-    assert_eq!(position.get_zobrist_hash(), 0x1a6fd715bb64c649);
-
-    let position = Position::from_fen("rbnqknbr/7p/8/pPpppppP/8/8/8/RBNQKN1R w KQkq g6 0 1");
-    assert_eq!(position.get_zobrist_hash(), 0x8a5895747f8a183f);
-
-    let position = Position::from_fen("rbnqknbr/8/8/pPpppppp/8/8/8/RBNQKN1R w KQkq h6 0 1");
-    assert_eq!(position.get_zobrist_hash(), 0x7b12dcf34309a006);
+    for &(fen, expected_hash) in zobrist_tests {
+      let position = Position::from_fen(fen);
+      assert_eq!(position.get_zobrist_hash(), expected_hash, "Zobrist mismatch for FEN: {fen}");
+      assert_eq!(position.get_zobrist_hash(), position.get_pawn_hash() ^ get_non_pawn_position_hash(&position), "Zobrist reconstruction mismatch for FEN: {fen}");
+    }
 
     // Tests from http://hgm.nubati.net/book_format.html
     let mut position = Position::from_fen(START_POSITION);
     assert_eq!(position.get_zobrist_hash(), 0x463b96181691fc9c);
+    assert_eq!(position.get_zobrist_hash(), position.get_pawn_hash() ^ get_non_pawn_position_hash(&position));
 
     let mov = Move::from_uci_notation("e2e4", &position).unwrap();
     position.make_move(mov);
     assert_eq!(position.get_zobrist_hash(), 0x823c9b50fd114196);
+    assert_eq!(position.get_zobrist_hash(), position.get_pawn_hash() ^ get_non_pawn_position_hash(&position));
 
     let mov = Move::from_uci_notation("d7d5", &position).unwrap();
     position.make_move(mov);
     assert_eq!(position.get_zobrist_hash(), 0x0756b94461c50fb0);
+    assert_eq!(position.get_zobrist_hash(), position.get_pawn_hash() ^ get_non_pawn_position_hash(&position));
 
     let mov = Move::from_uci_notation("e4e5", &position).unwrap();
     position.make_move(mov);
     assert_eq!(position.get_zobrist_hash(), 0x662fafb965db29d4);
+    assert_eq!(position.get_zobrist_hash(), position.get_pawn_hash() ^ get_non_pawn_position_hash(&position));
 
     let mov = Move::from_uci_notation("f7f5", &position).unwrap();
     position.make_move(mov);
     assert_eq!(position.get_zobrist_hash(), 0x22a48b5a8e47ff78);
+    assert_eq!(position.get_zobrist_hash(), position.get_pawn_hash() ^ get_non_pawn_position_hash(&position));
 
     let mov = Move::from_uci_notation("e1e2", &position).unwrap();
     position.make_move(mov);
     assert_eq!(position.get_zobrist_hash(), 0x652a607ca3f242c1);
+    assert_eq!(position.get_zobrist_hash(), position.get_pawn_hash() ^ get_non_pawn_position_hash(&position));
 
     let mov = Move::from_uci_notation("e8f7", &position).unwrap();
     position.make_move(mov);
     assert_eq!(position.get_zobrist_hash(), 0x00fdd303c946bdd9);
+    assert_eq!(position.get_zobrist_hash(), position.get_pawn_hash() ^ get_non_pawn_position_hash(&position));
 
     let mut position = Position::from_fen(START_POSITION);
     let moves = "a2a4 b7b5 h2h4 b5b4 c2c4".split_whitespace();
@@ -97,12 +81,14 @@ mod zobrist_hash_test {
       None => {}
     });
     assert_eq!(position.get_zobrist_hash(), 0x3c8123ea7b067637);
+    assert_eq!(position.get_zobrist_hash(), position.get_pawn_hash() ^ get_non_pawn_position_hash(&position));
 
     let mov = Move::from_uci_notation("b4c3", &position).unwrap();
     position.make_move(mov);
     let mov = Move::from_uci_notation("a1a3", &position).unwrap();
     position.make_move(mov);
     assert_eq!(position.get_zobrist_hash(), 0x5c3f9b829b279560);
+    assert_eq!(position.get_zobrist_hash(), position.get_pawn_hash() ^ get_non_pawn_position_hash(&position));
   }
 
   #[test]
@@ -114,6 +100,7 @@ mod zobrist_hash_test {
     position.make_move(mov);
     let expected_position = Position::from_fen("3b1rk1/1bqR2pp/5pn1/1p2rN2/2p1p3/2P1B2Q/1PB2PPP/R5K1 b - - 1 1");
     assert_eq!(position.get_zobrist_hash(), expected_position.get_zobrist_hash());
+    assert_eq!(position.get_zobrist_hash(), position.get_pawn_hash() ^ get_non_pawn_position_hash(&position));
     assert_eq!(position.get_side(), PieceColor::Black);
   }
 
@@ -126,6 +113,7 @@ mod zobrist_hash_test {
     position.make_move(mov);
     let expected_position = Position::from_fen("r1bqkb1r/pppp1ppp/2n2n2/1B2p3/4P3/5N2/PPPP1PPP/RNBQ1RK1 b kq - 5 4");
     assert_eq!(position.get_zobrist_hash(), expected_position.get_zobrist_hash());
+    assert_eq!(position.get_zobrist_hash(), position.get_pawn_hash() ^ get_non_pawn_position_hash(&position));
     assert_eq!(position.get_side(), PieceColor::Black);
   }
 
@@ -138,6 +126,7 @@ mod zobrist_hash_test {
     position.make_move(mov);
     let expected_position = Position::from_fen("rnb1kb1r/pp3ppp/4p3/q2p4/3QnB2/2N5/PPP1PPPP/2KR1BNR b kq - 1 8");
     assert_eq!(position.get_zobrist_hash(), expected_position.get_zobrist_hash());
+    assert_eq!(position.get_zobrist_hash(), position.get_pawn_hash() ^ get_non_pawn_position_hash(&position));
     assert_eq!(position.get_side(), PieceColor::Black);
   }
 
@@ -150,6 +139,7 @@ mod zobrist_hash_test {
     position.make_move(mov);
     let expected_position = Position::from_fen("r1bqkbnr/ppp3pp/2n2P2/8/2Bp4/5N2/PP3PPP/RNBQK2R b KQkq - 0 7");
     assert_eq!(position.get_zobrist_hash(), expected_position.get_zobrist_hash());
+    assert_eq!(position.get_zobrist_hash(), position.get_pawn_hash() ^ get_non_pawn_position_hash(&position));
     assert_eq!(position.get_side(), PieceColor::Black);
   }
 
@@ -185,9 +175,13 @@ mod zobrist_hash_test {
     let expected_position_for_queen_promotion = Position::from_fen("r1Q1kbnr/1p4pp/p7/3qn3/3pP1b1/5N2/P4PPP/RNBQ1RK1 b - - 0 12");
 
     assert_eq!(position_for_knight_promotion.get_zobrist_hash(), expected_position_for_knight_promotion.get_zobrist_hash());
+    assert_eq!(position_for_knight_promotion.get_zobrist_hash(), position_for_knight_promotion.get_pawn_hash() ^ get_non_pawn_position_hash(&position_for_knight_promotion));
     assert_eq!(position_for_bishop_promotion.get_zobrist_hash(), expected_position_for_bishop_promotion.get_zobrist_hash());
+    assert_eq!(position_for_bishop_promotion.get_zobrist_hash(), position_for_bishop_promotion.get_pawn_hash() ^ get_non_pawn_position_hash(&position_for_bishop_promotion));
     assert_eq!(position_for_rook_promotion.get_zobrist_hash(), expected_position_for_rook_promotion.get_zobrist_hash());
+    assert_eq!(position_for_rook_promotion.get_zobrist_hash(), position_for_rook_promotion.get_pawn_hash() ^ get_non_pawn_position_hash(&position_for_rook_promotion));
     assert_eq!(position_for_queen_promotion.get_zobrist_hash(), expected_position_for_queen_promotion.get_zobrist_hash());
+    assert_eq!(position_for_queen_promotion.get_zobrist_hash(), position_for_queen_promotion.get_pawn_hash() ^ get_non_pawn_position_hash(&position_for_queen_promotion));
 
     assert_eq!(position_for_knight_promotion.get_side(), PieceColor::Black);
     assert_eq!(position_for_bishop_promotion.get_side(), PieceColor::Black);
@@ -204,6 +198,7 @@ mod zobrist_hash_test {
     position.make_move(mov);
     let expected_position = Position::from_fen("r3r1k1/p1p2ppp/Q7/1p6/1P3p1b/7N/P3qN1P/3R1K1R w - - 2 27");
     assert_eq!(position.get_zobrist_hash(), expected_position.get_zobrist_hash());
+    assert_eq!(position.get_zobrist_hash(), position.get_pawn_hash() ^ get_non_pawn_position_hash(&position));
     assert_eq!(position.get_side(), PieceColor::White);
   }
 
@@ -216,6 +211,7 @@ mod zobrist_hash_test {
     position.make_move(mov);
     let expected_position = Position::from_fen("rn3rk1/ppp1bppp/8/5q2/2NP1p2/2P2P1N/PP3K1P/R2Q1B1R w - - 1 16");
     assert_eq!(position.get_zobrist_hash(), expected_position.get_zobrist_hash());
+    assert_eq!(position.get_zobrist_hash(), position.get_pawn_hash() ^ get_non_pawn_position_hash(&position));
     assert_eq!(position.get_side(), PieceColor::White);
   }
 
@@ -228,6 +224,7 @@ mod zobrist_hash_test {
     position.make_move(mov);
     let expected_position = Position::from_fen("2kr3r/pRp2ppn/2nqp2p/3p4/3P2P1/P1P1PN1P/2P2P2/2BQK2R w K - 1 14");
     assert_eq!(position.get_zobrist_hash(), expected_position.get_zobrist_hash());
+    assert_eq!(position.get_zobrist_hash(), position.get_pawn_hash() ^ get_non_pawn_position_hash(&position));
     assert_eq!(position.get_side(), PieceColor::White);
   }
 
@@ -240,6 +237,7 @@ mod zobrist_hash_test {
     position.make_move(mov);
     let expected_position = Position::from_fen("2rq1r1k/1B2b3/p3p1P1/1p6/3P4/PP1Q2p1/4n2P/R4KR1 w - - 0 25");
     assert_eq!(position.get_zobrist_hash(), expected_position.get_zobrist_hash());
+    assert_eq!(position.get_zobrist_hash(), position.get_pawn_hash() ^ get_non_pawn_position_hash(&position));
     assert_eq!(position.get_side(), PieceColor::White);
   }
 
@@ -275,13 +273,41 @@ mod zobrist_hash_test {
     let expected_position_for_queen_promotion = Position::from_fen("2rq4/1B5R/p3pkPQ/8/3P4/1P6/p4r2/1R1K3q w - - 0 34");
 
     assert_eq!(position_for_knight_promotion.get_zobrist_hash(), expected_position_for_knight_promotion.get_zobrist_hash());
+    assert_eq!(position_for_knight_promotion.get_zobrist_hash(), position_for_knight_promotion.get_pawn_hash() ^ get_non_pawn_position_hash(&position_for_knight_promotion));
     assert_eq!(position_for_bishop_promotion.get_zobrist_hash(), expected_position_for_bishop_promotion.get_zobrist_hash());
+    assert_eq!(position_for_bishop_promotion.get_zobrist_hash(), position_for_bishop_promotion.get_pawn_hash() ^ get_non_pawn_position_hash(&position_for_bishop_promotion));
     assert_eq!(position_for_rook_promotion.get_zobrist_hash(), expected_position_for_rook_promotion.get_zobrist_hash());
+    assert_eq!(position_for_rook_promotion.get_zobrist_hash(), position_for_rook_promotion.get_pawn_hash() ^ get_non_pawn_position_hash(&position_for_rook_promotion));
     assert_eq!(position_for_queen_promotion.get_zobrist_hash(), expected_position_for_queen_promotion.get_zobrist_hash());
+    assert_eq!(position_for_queen_promotion.get_zobrist_hash(), position_for_queen_promotion.get_pawn_hash() ^ get_non_pawn_position_hash(&position_for_queen_promotion));
 
     assert_eq!(position_for_knight_promotion.get_side(), PieceColor::White);
     assert_eq!(position_for_bishop_promotion.get_side(), PieceColor::White);
     assert_eq!(position_for_rook_promotion.get_side(), PieceColor::White);
     assert_eq!(position_for_queen_promotion.get_side(), PieceColor::White);
+  }
+
+  fn get_non_pawn_position_hash(position: &Position) -> BoardHash {
+    let mut zobrish_hash: u64 = 0;
+    zobrish_hash ^= ZobristHash::get_castling_key(position.get_castling_rights());
+    zobrish_hash ^= u64::from(position.get_side() == PieceColor::White) * ZobristHash::get_side_key();
+
+    for side in [PieceColor::White, PieceColor::Black] {
+      for piece_type in [PieceType::Knight, PieceType::Bishop, PieceType::Rook, PieceType::Queen, PieceType::King] {
+        let mut board = position.get_by_side_and_type(side, piece_type);
+        while board != 0 {
+          let square = get_lsb!(board);
+          zobrish_hash ^= ZobristHash::get_piece_key(Piece { color: side, piece_type }, square);
+          pop_lsb!(board);
+        }
+      }
+    }
+
+    let en_passant = position.get_en_passant();
+    if en_passant < 64 && position.get_by_side_and_type(position.get_side(), PieceType::Pawn) & PAWNS_OCCUPANCY_OBLIGATION_FOR_EN_PASSANT[position.get_side()][en_passant.get_file() as usize] != 0 {
+      zobrish_hash ^= ZobristHash::get_en_passant_file_key(en_passant.get_file());
+    }
+
+    zobrish_hash
   }
 }
