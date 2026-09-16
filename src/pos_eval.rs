@@ -1,7 +1,7 @@
-use std::fmt::{Display, Formatter};
-use std::ops::{Mul, MulAssign};
 use crate::params::MG_PAWN_VALUE;
 use crate::utils::MAX_PLY;
+use std::fmt::{Display, Formatter};
+use std::ops::{Mul, MulAssign};
 
 pub static MATE_SCORE: i32 = 1_000_000;
 

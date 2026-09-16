@@ -3,6 +3,7 @@ use std::sync::{Arc, mpsc};
 
 use crate::history::History;
 use crate::moves::Move;
+use crate::pawn_table::PawnTable;
 use crate::position::Position;
 use crate::search_constants::{MAX_NUMBERS_OF_THREADS, MIN_NUMBERS_OF_THREADS, SearchLimits, SearchResult};
 use crate::search_unit::SearcherUnit;

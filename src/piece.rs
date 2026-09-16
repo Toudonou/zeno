@@ -11,15 +11,20 @@ pub enum PieceColor {
 }
 
 impl PieceColor {
+  /// Returns the opposite color of the current color.
+  /// # Panics
+  /// Panics if the current color is None.
   #[inline(always)]
   pub fn opposite(self) -> Self {
     // PieceColor::None.opposite() should never be called
     OPPOSITE_COLOR_TABLE[self]
   }
 
+  /// Returns the sign of the current color.
+  /// # Panics
+  /// Panics if the current color is None.
   #[inline(always)]
   pub fn to_i32(self) -> i32 {
-    // PieceColor::None.to_i32() should never be called
     SIGN_TABLE[self]
   }
 }
