@@ -103,7 +103,7 @@ impl AtomicTTEntry {
 
   #[inline(always)]
   pub fn get_tt_entry(&self) -> TTEntry {
-    TTEntry { hash: self.hash.load(Ordering::Relaxed), data: self.data.load(Ordering::Relaxed) }
+    TTEntry::new(self.hash.load(Ordering::Relaxed), self.data.load(Ordering::Relaxed))
   }
 
   #[inline(always)]
@@ -144,10 +144,6 @@ impl TranspositionTable {
     TranspositionTable { table, max_entries }
   }
 
-  pub fn index(&self, hash: BoardHash) -> usize {
-    hash as usize & (self.max_entries - 1) // max_entries is a power of 2, therefore (x % max_entries) == x & (max_entries)
-  }
-
   #[inline(always)]
   pub fn get_entry(&self, hash: BoardHash) -> TTEntry {
     self.table[self.index(hash)].get_tt_entry()
@@ -157,7 +153,7 @@ impl TranspositionTable {
   pub fn save_entry(&self, hash: BoardHash, best_move: Option<Move>, depth: u32, flag: TTFlag, evaluation: Evaluation, ply: u32) {
     let entry = &self.table[self.index(hash)];
     entry.hash.store(hash, Ordering::Relaxed);
-    entry.data.store(AtomicTTEntry::pack_data(best_move, depth, flag, evaluation, ply).into(), Ordering::Relaxed);
+    entry.data.store(AtomicTTEntry::pack_data(best_move, depth, flag, evaluation, ply), Ordering::Relaxed);
   }
 
   pub fn print_transposition_stats(&self) {
@@ -171,5 +167,10 @@ impl TranspositionTable {
       entry.hash.store(0, Ordering::Relaxed);
       entry.data.store(0, Ordering::Relaxed);
     }
+  }
+
+  #[inline(always)]
+  fn index(&self, hash: BoardHash) -> usize {
+    hash as usize & (self.max_entries - 1) // max_entries is a power of 2, therefore (x % max_entries) == x & (max_entries - 1)
   }
 }

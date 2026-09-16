@@ -1,9 +1,10 @@
-use std::ops::{Add, AddAssign, SubAssign};
-use std::sync::LazyLock;
+use std::ops::{Add, AddAssign, Sub, SubAssign};
+use std::sync::{Arc, LazyLock};
 
 use crate::bitboard::BitBoard;
 use crate::containers::ByColor;
 use crate::eval_params::EvalParams;
+use crate::pawn_table::PawnTable;
 use crate::piece::{PieceColor, PieceType};
 use crate::position::Position;
 use crate::square::{Square, SquareOps};
@@ -44,6 +45,7 @@ pub static PASSED_PAWNS_MASKS: LazyLock<ByColor<[BitBoard; 64]>> = LazyLock::new
   masks
 });
 
+#[derive(Debug, Clone, Copy)]
 pub struct Score {
   pub mg: i32,
   pub eg: i32,
@@ -53,7 +55,7 @@ pub struct Evaluator {}
 
 impl Evaluator {
   #[inline(always)]
-  pub fn static_evaluation(position: &Position, eval_params: &EvalParams) -> i32 {
+  pub fn static_evaluation(position: &Position, eval_params: &EvalParams, pawn_table: &mut PawnTable) -> i32 {
     let mut score = Score { mg: 0, eg: 0 };
     let phase = position.get_phase();
 
@@ -69,8 +71,21 @@ impl Evaluator {
     score += Evaluator::material_eval(position, PieceColor::White, eval_params);
     score -= Evaluator::material_eval(position, PieceColor::Black, eval_params);
 
-    score += Evaluator::pawns_evalution(position, PieceColor::White, eval_params);
-    score -= Evaluator::pawns_evalution(position, PieceColor::Black, eval_params);
+    score += if let Some(pawn_eval) = pawn_table.get_entry(position.get_pawn_hash()) {
+      pawn_eval
+    } else {
+      let pawn_eval = Evaluator::pawns_evalution(position, PieceColor::White, eval_params) - Evaluator::pawns_evalution(position, PieceColor::Black, eval_params);
+      pawn_table.save_entry(position.get_pawn_hash(), pawn_eval);
+      pawn_eval
+    };
+
+    // score += if let Some(pawn_eval) = pawn_table.get_entry(position.get_pawn_hash()) {
+    //   pawn_eval
+    // } else {
+    //   let pawn_eval = Evaluator::pawns_evalution(position, PieceColor::White, eval_params) - Evaluator::pawns_evalution(position, PieceColor::Black, eval_params);
+    //   pawn_table.save_entry(position.get_pawn_hash(), pawn_eval);
+    //   pawn_eval
+    // };
 
     if Evaluator::has_bishop_pair(position, PieceColor::White) {
       score.mg += eval_params.get_mg_bishop_pair_value();
@@ -199,6 +214,14 @@ impl Add for Score {
 
   fn add(self, rhs: Self) -> Self::Output {
     Score { mg: self.mg + rhs.mg, eg: self.eg + rhs.eg }
+  }
+}
+
+impl Sub for Score {
+  type Output = Self;
+
+  fn sub(self, rhs: Self) -> Self::Output {
+    Score { mg: self.mg - rhs.mg, eg: self.eg - rhs.eg }
   }
 }
 

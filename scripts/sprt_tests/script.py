@@ -105,13 +105,7 @@ def run_sprt_test(
 
 
 run_sprt_test(
-  "feature/doubled-passed-pawns",
+    None,
     "develop",
-    "Zeno doubled-passed-pawns",
-    "Zeno develop",
-    rounds=10000,
-    threads=15,
-    bounds=(9, 16),
-    alpha=0.01,
-    beta=0.01,
+    rounds=50,
 )

@@ -8,6 +8,7 @@ use crate::evaluator::{DRAW_VALUE, Evaluator};
 use crate::history::History;
 use crate::moves::{Move, MoveType};
 use crate::moves_picker::MovePicker;
+use crate::pawn_table::PawnTable;
 use crate::piece::{PieceColor, PieceType};
 use crate::pos_eval::{Evaluation, MATE_SCORE};
 use crate::position::Position;
@@ -27,6 +28,7 @@ pub struct SearcherUnit {
   search_tables: SearchTables,
   total_threads_nodes: Arc<AtomicU32>,
   external_stop: Option<Arc<AtomicBool>>,
+  pawn_table: PawnTable,
   transposition_table: Arc<TranspositionTable>,
 }
 
@@ -38,6 +40,7 @@ impl SearcherUnit {
       nodes_visited: 0,
       stop_search: false,
       total_threads_nodes,
+      pawn_table: PawnTable::default(),
       transposition_table,
       timer: Instant::now(),
       search_limits: SearchLimits::ThinkingTime(3000),
@@ -126,6 +129,8 @@ impl SearcherUnit {
       }
     }
 
+    // self.pawn_table.print_stats();
+
     search_result
   }
 
@@ -186,7 +191,7 @@ impl SearcherUnit {
 
     // Static null move pruning
     if depth <= STATIC_NMP_DEPTH_HORIZON && !is_in_check && !is_pv && beta < MATE_SCORE {
-      let static_score = Evaluator::static_evaluation(&position, &EVAL_PARAMS_DEFAULT);
+      let static_score = Evaluator::static_evaluation(&position, &EVAL_PARAMS_DEFAULT, &mut self.pawn_table);
       let score_margin = STATIC_NMP_MARGIN * depth;
       if static_score >= beta + score_margin {
         return self.quiescence_search(position, alpha, beta, &EVAL_PARAMS_DEFAULT);
@@ -195,7 +200,7 @@ impl SearcherUnit {
 
     // Razoring
     if depth <= RAZORING_DEPTH_HORIZON && !is_in_check && !is_pv && alpha < MATE_SCORE {
-      let static_score = Evaluator::static_evaluation(&position, &EVAL_PARAMS_DEFAULT);
+      let static_score = Evaluator::static_evaluation(&position, &EVAL_PARAMS_DEFAULT, &mut self.pawn_table);
       let razoring_margin = RAZORING_BASE + RAZORING_MARGIN * depth;
       if static_score < alpha - razoring_margin {
         let quiescence_eval = self.quiescence_search(position, alpha, beta, &EVAL_PARAMS_DEFAULT);
@@ -334,7 +339,7 @@ impl SearcherUnit {
   #[inline(always)]
   pub fn quiescence_search(&mut self, position: &mut Position, mut alpha: i32, beta: i32, eval_params: &EvalParams) -> Evaluation {
     self.nodes_visited += 1;
-    let static_evaluation = Evaluation::CentiPawns(Evaluator::static_evaluation(position, eval_params));
+    let static_evaluation = Evaluation::CentiPawns(Evaluator::static_evaluation(position, eval_params, &mut self.pawn_table));
 
     let mut best_eval = static_evaluation;
     if best_eval.value() >= beta {
