@@ -24,3 +24,5 @@ target
 .venv/
 /.fuse_hidden0000265800000256
 /scripts/sprt_tests/UHO_Lichess_4852_v1.epd
+lichess-big3-resolved.book
+quiet-labeled.epd
