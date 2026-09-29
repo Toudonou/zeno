@@ -103,7 +103,7 @@ def run_sprt_test(
 
 
 run_sprt_test(
-    "feature/new-lmr-values",
+    "feature/new-lmp-values",
     "develop",
     rounds=100,
 )
