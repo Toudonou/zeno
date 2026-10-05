@@ -134,37 +134,38 @@ impl SearcherUnit {
     position: &mut Position,
     history: &mut History,
     ply: i32,
-    depth: i32,
+    mut depth: i32,
     mut alpha: i32,
     beta: i32,
     previous_move: Option<Move>,
     pv_line: &mut Vec<Move>,
     num_extensions: i32,
   ) -> Evaluation {
+    pv_line.clear(); // Always clear the pv_line to take early return into account
+
     if self.update_and_check_stop(depth) {
       return Evaluation::CentiPawns(-ZENO_INFINITY);
     }
 
     self.nodes_visited += 1;
 
-    let side = position.get_side();
+    let is_root = ply == 1;
     let is_pv = beta - alpha != 1;
+    let side = position.get_side();
     let is_in_check = position.is_check(side);
     let mut child_pv_line: Vec<Move> = Vec::with_capacity(depth.max(1) as usize);
 
     // Check extension
     let extension = i32::from(num_extensions < MAX_EXTENSION && is_in_check);
-    let mut depth = depth + extension;
+    depth += extension;
     depth = depth.clamp(0, MAX_PLY);
 
     // Check for threefold repetition and fifty-move rule (partially)
     if history.is_repetition(position) || position.get_half_move_clock() >= 100 {
-      pv_line.clear();
       return Evaluation::CentiPawns(DRAW_VALUE);
     }
 
-    if depth <= 0 || ply > MAX_PLY {
-      pv_line.clear();
+    if !is_root && depth <= 0 || ply > MAX_PLY {
       return self.quiescence_search(position, alpha, beta, &EVAL_PARAMS_DEFAULT);
     }
 
@@ -173,11 +174,8 @@ impl SearcherUnit {
     if tt_entry.get_flag() != TTFlag::None && tt_entry.get_hash() == position.get_zobrist_hash() {
       let tt_eval = tt_entry.get_evaluation(ply as u32);
       tt_move = tt_entry.get_best_move();
-      if ply > 1 && tt_entry.get_depth() as i32 >= depth {
-        // In the case of TTFlag::Exact flag, it is best to avoid returning the evaluation as it can result in the drawing of a winning endgame.
-        // https://talkchess.com/viewtopic.php?t=20080
-        if (tt_entry.get_flag() == TTFlag::LowerBound && tt_eval.value() >= beta) || (tt_entry.get_flag() == TTFlag::UpperBound && tt_eval.value() <= alpha) {
-          pv_line.clear();
+      if !is_root && tt_entry.get_depth() as i32 >= depth {
+        if tt_entry.get_flag() == TTFlag::Exact || (tt_entry.get_flag() == TTFlag::LowerBound && tt_eval.value() >= beta) || (tt_entry.get_flag() == TTFlag::UpperBound && tt_eval.value() <= alpha) {
           pv_line.push(tt_move.unwrap_or_default());
           return tt_eval;
         }
@@ -185,7 +183,7 @@ impl SearcherUnit {
     }
 
     // Static null move pruning
-    if depth <= STATIC_NMP_DEPTH_HORIZON && !is_in_check && !is_pv && beta < MATE_SCORE {
+    if !is_root && depth <= STATIC_NMP_DEPTH_HORIZON && !is_in_check && !is_pv && beta < MATE_SCORE {
       let static_score = Evaluator::static_evaluation(&position, &EVAL_PARAMS_DEFAULT);
       let score_margin = STATIC_NMP_MARGIN * depth;
       if static_score >= beta + score_margin {
@@ -194,7 +192,7 @@ impl SearcherUnit {
     }
 
     // Razoring
-    if depth <= RAZORING_DEPTH_HORIZON && !is_in_check && !is_pv && alpha < MATE_SCORE {
+    if !is_root && depth <= RAZORING_DEPTH_HORIZON && !is_in_check && !is_pv && alpha < MATE_SCORE {
       let static_score = Evaluator::static_evaluation(&position, &EVAL_PARAMS_DEFAULT);
       let razoring_margin = RAZORING_BASE + RAZORING_MARGIN * depth;
       if static_score < alpha - razoring_margin {
@@ -207,7 +205,7 @@ impl SearcherUnit {
 
     // Null move
     let can_do_null_move = !is_pv && !is_in_check && position.has_non_pawn_material();
-    if can_do_null_move && depth >= NMP_DEPTH_LIMIT {
+    if !is_root && can_do_null_move && depth >= NMP_DEPTH_LIMIT {
       let previous_en_passant_file = position.make_null_move();
       history.save_hash(position.get_zobrist_hash());
 
@@ -232,7 +230,6 @@ impl SearcherUnit {
       false,
     );
     if move_picker.get_moves_count() == 0 {
-      pv_line.clear();
       if is_in_check {
         return Evaluation::MateIn(-ply);
       }
@@ -242,7 +239,7 @@ impl SearcherUnit {
     let original_alpha = alpha;
     let mut best_eval = Evaluation::CentiPawns(-ZENO_INFINITY);
     let mut best_move = None;
-    let mut quiets_moves: Vec<Move> = Vec::with_capacity(move_picker.get_moves_count());
+    let mut quiets_moves: Vec<Move> = Vec::with_capacity((move_picker.get_moves_count() / 2).max(1));
     while let Some((mov, move_index)) = move_picker.pick_best_move() {
       let mut eval: Evaluation;
       let is_capture = position.get_piece_on_square(mov.destination()).piece_type != PieceType::None || mov.move_type() == MoveType::EnPassant;
@@ -266,7 +263,7 @@ impl SearcherUnit {
         eval = self.pv_search(&mut temp_position, history, ply + 1, depth - 1, -beta, -alpha, Some(mov), &mut child_pv_line, num_extensions + extension) * -1;
       } else {
         // Late move reduction
-        let can_lmr = ply > 1 && !is_in_check && is_quiet && !is_pv && depth >= LMR_DEPTH_LIMIT && quiets_moves.len() as i32 >= LMR_MOVE_SEARCHED;
+        let can_lmr = !is_root && !is_in_check && is_quiet && !is_pv && depth >= LMR_DEPTH_LIMIT && quiets_moves.len() as i32 >= LMR_MOVE_SEARCHED;
         let lmr_r = if can_lmr { (LMR_REDUCTION + depth / (2 * LMR_DEPTH_LIMIT)).clamp(1, depth - 2) } else { 0 };
 
         eval = self.pv_search(&mut temp_position, history, ply + 1, depth - 1 - lmr_r, -alpha - 1, -alpha, Some(mov), &mut child_pv_line, num_extensions + extension) * -1;

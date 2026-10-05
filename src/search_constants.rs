@@ -11,7 +11,7 @@ pub static BASE_ASPIRATION_WINDOW_DELTA: i32 = 30;
 pub static NODES_BETWEEN_TIME_CHECKS: u32 = 4096;
 
 pub static LMP_DEPTH_HORIZON: i32 = 5;
-pub static LMP_MARGINS: [i32; 1 + LMP_DEPTH_HORIZON as usize] = [0, 9, 13, 17, 21, 25];
+pub static LMP_MARGINS: [i32; 1 + LMP_DEPTH_HORIZON as usize] = [0, 6, 10, 14, 18, 22];
 
 pub static LMR_DEPTH_LIMIT: i32 = 6;
 pub static LMR_MOVE_SEARCHED: i32 = 6;
@@ -62,14 +62,7 @@ pub struct SearchResult {
 impl SearchResult {
   #[inline(always)]
   pub fn print_info(&self) {
-    print!(
-      "info depth {} nodes {} time {} nps {} {} ",
-      self.depth,
-      self.nodes,
-      self.search_time,
-      1000 * self.nodes as u128 / self.search_time,
-      self.score
-    );
+    print!("info depth {} nodes {} time {} nps {} {} ", self.depth, self.nodes, self.search_time, 1000 * self.nodes as u128 / self.search_time, self.score);
 
     print!("pv ");
     for mov in &self.pv {

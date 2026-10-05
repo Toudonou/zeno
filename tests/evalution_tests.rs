@@ -4,7 +4,7 @@ mod evaluation_tests {
   use zeno::evaluator::Evaluator;
   use zeno::history::History;
   use zeno::moves::{Move, MoveType};
-  use zeno::moves_picker::MovePicker;
+  use zeno::moves_picker::{MovePicker, SEE_VALUES};
   use zeno::piece::{PieceColor, PieceType};
   use zeno::pos_eval::{Evaluation, MATE_SCORE};
   use zeno::position::Position;
@@ -12,7 +12,7 @@ mod evaluation_tests {
   use zeno::search_pool::SearchPool;
   use zeno::square::{Square, SquareOps};
   use zeno::transposition_table::TranspositionTable;
-  use zeno::utils::{MAX_PLY, SEE_VALUES, START_POSITION};
+  use zeno::utils::{MAX_PLY, START_POSITION};
 
   #[test]
   fn test_evaluation_conversion_from_i32_to_u32_and_reverse() {
