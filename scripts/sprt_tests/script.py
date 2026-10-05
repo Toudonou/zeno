@@ -90,9 +90,7 @@ def run_sprt_test(
   """
 
     os.system("cp ~/UHO_Lichess_4852_v1.epd UHO_Lichess_4852_v1.epd")
-
     os.system(cmd)
-
     os.system("./ordo -o ratings.txt -- games.pgn")
     os.system("cat ratings.txt")
 
@@ -105,13 +103,9 @@ def run_sprt_test(
 
 
 run_sprt_test(
-  "feature/doubled-passed-pawns",
+    "feature/new-lmp-values",
     "develop",
-    "Zeno doubled-passed-pawns",
-    "Zeno develop",
-    rounds=10000,
-    threads=15,
-    bounds=(9, 16),
-    alpha=0.01,
-    beta=0.01,
+    rounds=7000,
+    bounds=(2, 8),
+    threads=15
 )

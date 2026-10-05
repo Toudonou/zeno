@@ -1,11 +1,12 @@
 use std::cmp;
 
+use crate::containers::ByPieceType;
 use crate::moves::{MOVE_LIST_MAX_SIZE, Move, MoveList, MoveType};
 use crate::moves_generator::{generate_legal_moves, generate_quiescences_moves};
 use crate::piece::{Piece, PieceType};
 use crate::position::Position;
 use crate::square::Square;
-use crate::utils::{SEE_VALUES, ZENO_INFINITY};
+use crate::utils::ZENO_INFINITY;
 
 // Move's order
 // 1. TT move
@@ -23,6 +24,8 @@ static KILLER_MOVE_SCORE: i32 = 7_000_000;
 static COUNTER_MOVE_SCORE: i32 = 5_000_000;
 static CASTLE_MOVE_SCORE: i32 = 2_000_000;
 static BAD_CAPTURE_MOVE_SCORE: i32 = 1_000_000;
+
+pub static SEE_VALUES: ByPieceType<i32> = ByPieceType::new(100, 300, 350, 500, 900, 10000);
 
 pub struct MovePicker {
   moves_list: MoveList,
