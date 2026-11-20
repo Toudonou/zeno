@@ -102,10 +102,4 @@ def run_sprt_test(
             os.remove(f)
 
 
-run_sprt_test(
-    "feature/new-lmp-values",
-    "develop",
-    rounds=7000,
-    bounds=(2, 8),
-    threads=15
-)
+run_sprt_test(None, "develop", rounds=100, threads=15)

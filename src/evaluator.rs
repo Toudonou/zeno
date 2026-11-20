@@ -62,8 +62,8 @@ impl Evaluator {
       if Evaluator::is_draw_by_insufficient_material(position) {
         return DRAW_VALUE;
       }
-      score.eg += Evaluator::king_cornering(position.get_king_square(PieceColor::Black));
-      score.eg -= Evaluator::king_cornering(position.get_king_square(PieceColor::White));
+      // score.eg += Evaluator::king_cornering(position.get_king_square(PieceColor::Black));
+      // score.eg -= Evaluator::king_cornering(position.get_king_square(PieceColor::White));
     }
 
     score += Evaluator::material_eval(position, PieceColor::White, eval_params);

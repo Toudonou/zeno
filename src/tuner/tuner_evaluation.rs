@@ -11,5 +11,5 @@ pub fn tuner_evaluation(position_ir: &PositionIR, tuner_params: &TunerParams) ->
     eg_evaluation += *feature as f32 * tuner_params.eg[*index];
   }
 
-  position_ir.mg_factor * mg_evaluation + position_ir.eg_factor * eg_evaluation
+  position_ir.draw_factor as f32 * (position_ir.mg_factor * mg_evaluation + position_ir.eg_factor * eg_evaluation)
 }

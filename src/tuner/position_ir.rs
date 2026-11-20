@@ -1,4 +1,4 @@
-use crate::evaluator::Evaluator;
+use crate::evaluator::{DRAW_PHASE_THRESHOLD, Evaluator};
 use crate::piece::{PieceColor, PieceType};
 use crate::position::Position;
 use crate::square::{Square, SquareOps};
@@ -12,6 +12,7 @@ pub struct PositionIR {
   pub side: PieceColor,
   pub mg_factor: f32,
   pub eg_factor: f32,
+  pub draw_factor: i8,
 }
 
 impl PositionIR {
@@ -101,6 +102,7 @@ impl PositionIR {
       mg_factor: (256f32 - position.get_phase() as f32) / 256f32,
       eg_factor: position.get_phase() as f32 / 256f32,
       side: position.get_side(),
+      draw_factor: 1 - i8::from(position.get_phase() >= DRAW_PHASE_THRESHOLD && Evaluator::is_draw_by_insufficient_material(position)),
     }
   }
 }
