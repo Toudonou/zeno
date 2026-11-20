@@ -12,7 +12,8 @@ pub struct PositionIR {
   pub side: PieceColor,
   pub mg_factor: f32,
   pub eg_factor: f32,
-  pub draw_factor: i8,
+  pub draw_by_rules: i8,
+  pub conering_score: i32,
 }
 
 impl PositionIR {
@@ -102,7 +103,12 @@ impl PositionIR {
       mg_factor: (256f32 - position.get_phase() as f32) / 256f32,
       eg_factor: position.get_phase() as f32 / 256f32,
       side: position.get_side(),
-      draw_factor: 1 - i8::from(position.get_phase() >= DRAW_PHASE_THRESHOLD && Evaluator::is_draw_by_insufficient_material(position)),
+      draw_by_rules: 1 - i8::from(position.get_phase() >= DRAW_PHASE_THRESHOLD && Evaluator::is_draw_by_insufficient_material(position)),
+      conering_score: if position.get_phase() >= DRAW_PHASE_THRESHOLD {
+        Evaluator::king_cornering(position.get_king_square(PieceColor::Black)) - Evaluator::king_cornering(position.get_king_square(PieceColor::White))
+      } else {
+        0
+      },
     }
   }
 }

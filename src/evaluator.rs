@@ -62,8 +62,8 @@ impl Evaluator {
       if Evaluator::is_draw_by_insufficient_material(position) {
         return DRAW_VALUE;
       }
-      // score.eg += Evaluator::king_cornering(position.get_king_square(PieceColor::Black));
-      // score.eg -= Evaluator::king_cornering(position.get_king_square(PieceColor::White));
+      score.eg += Evaluator::king_cornering(position.get_king_square(PieceColor::Black));
+      score.eg -= Evaluator::king_cornering(position.get_king_square(PieceColor::White));
     }
 
     score += Evaluator::material_eval(position, PieceColor::White, eval_params);
@@ -188,7 +188,7 @@ impl Evaluator {
   }
 
   #[inline(always)]
-  fn king_cornering(opponent_square: Square) -> i32 {
+  pub fn king_cornering(opponent_square: Square) -> i32 {
     // 8/8/8/6p1/4k3/6K1/3R4/8 w - - 7 124 #15
     6 * ARR_CENTER_MANHATTAN_DISTANCE[opponent_square as usize]
   }
